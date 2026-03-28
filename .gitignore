@@ -1,0 +1,53 @@
+# Next.js
+.next/
+out/
+
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+
+# Claude Code internal files
+.claude/
+.claude.json
+
+# Windows home directory junk (repo rooted at home dir)
+AppData/
+Application Data/
+Contacts/
+Cookies/
+Documents/
+Downloads/
+Favorites/
+Links/
+Local Settings/
+Music/
+My Documents/
+NetHood/
+OneDrive/
+PrintHood/
+Recent/
+Saved Games/
+Searches/
+SendTo/
+Start Menu/
+Templates/
+Videos/
+NTUSER*
+ntuser*
+*.blf
+*.regtrans-ms
+
+# Other projects
+resume-cleaner/

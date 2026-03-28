@@ -1,0 +1,134 @@
+'use client'
+
+import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { motion } from 'framer-motion'
+import {
+  LayoutDashboard,
+  FileSearch,
+  FileText,
+  Search,
+  Trophy,
+  Clock,
+  Settings,
+  Brain,
+  LogOut,
+} from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { cn, getPlanLabel } from '@/lib/utils'
+import type { UserProfile } from '@/types/database'
+
+const NAV_ITEMS = [
+  { label: 'Home',              href: '/dashboard',          icon: LayoutDashboard },
+  { label: 'Resume Scorer',     href: '/dashboard/scorer',   icon: FileSearch      },
+  { label: 'Summary Generator', href: '/dashboard/summary',  icon: FileText        },
+  { label: 'Boolean Generator', href: '/dashboard/boolean',  icon: Search          },
+  { label: 'Stack Ranking',     href: '/dashboard/ranking',  icon: Trophy          },
+  { label: 'History',           href: '/dashboard/history',  icon: Clock           },
+  { label: 'Settings',          href: '/dashboard/settings', icon: Settings        },
+]
+
+const containerVariants = {
+  hidden:  {},
+  visible: { transition: { staggerChildren: 0.05, delayChildren: 0.1 } },
+}
+
+const itemVariants = {
+  hidden:  { opacity: 0, x: -12 },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.2, ease: 'easeOut' } },
+}
+
+interface SidebarProps {
+  profile: UserProfile
+  userEmail: string
+}
+
+export function Sidebar({ profile, userEmail }: SidebarProps) {
+  const pathname = usePathname()
+  const router   = useRouter()
+
+  async function handleLogout() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
+
+  const planBadgeClass = {
+    free:   'badge-free',
+    pro:    'badge-pro',
+    agency: 'badge-agency',
+  }[profile.plan_tier]
+
+  const initials = userEmail.slice(0, 2).toUpperCase()
+
+  return (
+    <aside className="flex flex-col w-64 min-h-screen bg-[#1A1D2E] border-r border-white/8 flex-shrink-0">
+      {/* Logo */}
+      <div className="flex items-center gap-2.5 px-5 py-5 border-b border-white/8">
+        <div className="w-8 h-8 rounded-lg bg-gradient-brand flex items-center justify-center shadow-glow-sm">
+          <Brain className="w-4 h-4 text-white" />
+        </div>
+        <span className="text-base font-semibold gradient-text">RecruiterIQ</span>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 px-3 py-4 overflow-y-auto">
+        <motion.ul
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="space-y-0.5"
+        >
+          {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
+            const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
+            return (
+              <motion.li key={href} variants={itemVariants}>
+                <Link
+                  href={href}
+                  className={cn('nav-item', isActive && 'nav-active')}
+                >
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  <span>{label}</span>
+                  {/* Agency-only badge */}
+                  {href === '/dashboard/ranking' && profile.plan_tier === 'free' && (
+                    <span className="ml-auto text-[10px] font-semibold text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded-full">
+                      PRO
+                    </span>
+                  )}
+                </Link>
+              </motion.li>
+            )
+          })}
+        </motion.ul>
+      </nav>
+
+      {/* User section */}
+      <div className="px-3 py-4 border-t border-white/8 space-y-1">
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/4">
+          {/* Avatar */}
+          <div className="w-8 h-8 rounded-full bg-gradient-brand flex items-center justify-center text-xs font-semibold text-white flex-shrink-0">
+            {initials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-white truncate">{userEmail}</p>
+            <span className={cn(
+              'inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full border mt-0.5',
+              planBadgeClass
+            )}>
+              {getPlanLabel(profile.plan_tier)}
+            </span>
+          </div>
+        </div>
+
+        <button
+          onClick={handleLogout}
+          className="nav-item w-full text-slate-500 hover:text-red-400 hover:bg-red-500/8"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Sign out</span>
+        </button>
+      </div>
+    </aside>
+  )
+}
