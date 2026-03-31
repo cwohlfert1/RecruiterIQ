@@ -1,8 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Standalone output for Railway containerized deployment
-  output: 'standalone',
-
   // Image domains for future avatar/upload features
   images: {
     remotePatterns: [
