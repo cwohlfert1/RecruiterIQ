@@ -271,7 +271,7 @@ export function HistoryClient() {
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(from, to)
-      if (debSearch) q = q.ilike('candidate_name', `%${debSearch}%`)
+      if (debSearch) q = q.ilike('job_title', `%${debSearch}%`)
       q.then(({ data, count }) => {
         if (cancelled) return
         setSummaries((data ?? []) as ClientSummary[])
@@ -450,8 +450,8 @@ export function HistoryClient() {
           <thead>
             <tr className="border-b border-white/6">
               <th className={thCls}>Date</th>
-              <th className={thCls}>Candidate</th>
-              <th className={thCls}>Resume preview</th>
+              <th className={thCls}>Job Title</th>
+              <th className={thCls}>Notes preview</th>
               <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wide pb-3">Actions</th>
             </tr>
           </thead>
@@ -466,10 +466,10 @@ export function HistoryClient() {
                     {formatRelativeTime(row.created_at)}
                   </td>
                   <td className="py-3 pr-4 text-sm text-slate-200 max-w-[140px] truncate">
-                    {row.candidate_name ?? 'Unknown'}
+                    {row.job_title}
                   </td>
                   <td className="py-3 pr-4 text-sm text-slate-500 max-w-[280px] truncate">
-                    {row.resume_text.slice(0, 80)}…
+                    {row.input_notes.slice(0, 80)}…
                   </td>
                   <td className="py-3">
                     <RowActions
@@ -544,28 +544,15 @@ export function HistoryClient() {
                   <tr>
                     <td colSpan={3} className="pb-3">
                       <ExpandPanel>
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                LinkedIn String
-                              </p>
-                              <CopyButton text={row.linkedin_string} />
-                            </div>
-                            <div className="bg-slate-900/60 rounded-lg p-3">
-                              <HighlightBoolean str={row.linkedin_string} />
-                            </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Boolean String
+                            </p>
+                            <CopyButton text={row.boolean_output} />
                           </div>
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                Indeed String
-                              </p>
-                              <CopyButton text={row.indeed_string} />
-                            </div>
-                            <div className="bg-slate-900/60 rounded-lg p-3">
-                              <HighlightBoolean str={row.indeed_string} />
-                            </div>
+                          <div className="bg-slate-900/60 rounded-lg p-3">
+                            <HighlightBoolean str={row.boolean_output} />
                           </div>
                         </div>
                       </ExpandPanel>

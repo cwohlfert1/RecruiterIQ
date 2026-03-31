@@ -49,7 +49,7 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
 
   async function handleLogout() {
     const supabase = createClient()
-    await supabase.auth.signOut()
+    await supabase.auth.signOut({ scope: 'local' })
     router.push('/login')
     router.refresh()
   }

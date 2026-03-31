@@ -7,8 +7,8 @@ import type { ActivityLog, ActivityFeature } from '@/types/database'
 
 const FEATURE_META: Record<ActivityFeature, { icon: React.ReactNode; color: string; label: string }> = {
   resume_scorer:  { icon: <FileSearch className="w-4 h-4" />, color: 'text-indigo-400 bg-indigo-500/15', label: 'Resume Scorer'     },
-  client_summary: { icon: <FileText   className="w-4 h-4" />, color: 'text-violet-400 bg-violet-500/15', label: 'Summary Generator' },
-  boolean_search: { icon: <Search     className="w-4 h-4" />, color: 'text-blue-400   bg-blue-500/15',   label: 'Boolean Generator' },
+  summary:        { icon: <FileText   className="w-4 h-4" />, color: 'text-violet-400 bg-violet-500/15', label: 'Summary Generator' },
+  boolean:        { icon: <Search     className="w-4 h-4" />, color: 'text-blue-400   bg-blue-500/15',   label: 'Boolean Generator' },
   stack_ranking:  { icon: <Trophy     className="w-4 h-4" />, color: 'text-yellow-400 bg-yellow-500/15', label: 'Stack Ranking'     },
 }
 
