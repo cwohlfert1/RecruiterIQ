@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
   // 1. Auth + plan gate
   const gate = await checkAIGate()
   if (!gate.allowed) {
-    return NextResponse.json({ error: gate.reason }, { status: 403 })
+    const status = gate.reason === 'unauthenticated' ? 401 : 403
+    return NextResponse.json({ error: gate.reason }, { status })
   }
 
   // 2. Parse and validate inputs
@@ -135,7 +136,9 @@ Return ONLY this JSON structure:
     },
   }
 
-  const { data: scoreRow, error: insertError } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
+  const { data: scoreRow, error: insertError } = await db
     .from('resume_scores')
     .insert({
       user_id:        gate.userId,
@@ -153,7 +156,7 @@ Return ONLY this JSON structure:
   }
 
   // 5. Log activity
-  await supabase.from('activity_log').insert({
+  await db.from('activity_log').insert({
     user_id:     gate.userId,
     feature:     'resume_scorer',
     record_id:   scoreRow.id,

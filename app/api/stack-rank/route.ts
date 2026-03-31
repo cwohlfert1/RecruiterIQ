@@ -38,9 +38,10 @@ export async function POST(req: NextRequest) {
   // 1. Auth + agency plan gate
   const gate = await checkAIGate('agency')
   if (!gate.allowed) {
+    const status = gate.reason === 'unauthenticated' ? 401 : 403
     return NextResponse.json(
       { error: gate.reason, reason: gate.reason, planTier: gate.planTier },
-      { status: 403 },
+      { status },
     )
   }
 
@@ -128,8 +129,10 @@ Sort by cqi_score descending. rank starts at 1.`
 
   // 6. Save to Supabase
   const supabase = createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
 
-  const { data: ranking, error: rankingError } = await supabase
+  const { data: ranking, error: rankingError } = await db
     .from('stack_rankings')
     .insert({
       user_id:   gate.userId,
@@ -163,7 +166,7 @@ Sort by cqi_score descending. rank starts at 1.`
     }
   })
 
-  const { data: insertedCandidates, error: candidatesError } = await supabase
+  const { data: insertedCandidates, error: candidatesError } = await db
     .from('stack_ranking_candidates')
     .insert(candidateRows)
     .select('id, rank, candidate_name')
@@ -173,7 +176,7 @@ Sort by cqi_score descending. rank starts at 1.`
   }
 
   // 7. Log activity
-  await supabase.from('activity_log').insert({
+  await db.from('activity_log').insert({
     user_id:     gate.userId,
     feature:     'stack_ranking',
     record_id:   ranking.id,
@@ -185,7 +188,8 @@ Sort by cqi_score descending. rank starts at 1.`
 
   // 9. Return ranked results — include DB ids for note-saving
   const idMap = new Map(
-    (insertedCandidates ?? []).map((row) => [row.candidate_name, row.id])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (insertedCandidates ?? []).map((row: any) => [row.candidate_name, row.id])
   )
 
   return NextResponse.json({

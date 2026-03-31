@@ -1,6 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import type { Database } from '@/types/database'
+
+type UserProfileRow = Database['public']['Tables']['user_profiles']['Row']
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { TopBar } from '@/components/dashboard/top-bar'
 import { MobileNav } from '@/components/dashboard/mobile-nav'
@@ -18,11 +21,14 @@ export default async function DashboardLayout({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
+  const { data: profileData } = await supabase
     .from('user_profiles')
     .select('*')
     .eq('user_id', user.id)
     .single()
+
+  // Cast to bypass TypeScript generic inference issue with Supabase SSR client
+  const profile = profileData as UserProfileRow | null
 
   if (!profile) redirect('/login')
 
@@ -34,7 +40,8 @@ export default async function DashboardLayout({
 
     if (daysPassed > GRACE_PERIOD_DAYS) {
       const admin = createAdminClient()
-      await admin
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (admin as any)
         .from('user_profiles')
         .update({
           plan_tier: 'free',
@@ -56,7 +63,8 @@ export default async function DashboardLayout({
     const periodEnd = new Date(profile.billing_period_end)
     if (Date.now() > periodEnd.getTime()) {
       const admin = createAdminClient()
-      await admin
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (admin as any)
         .from('user_profiles')
         .update({
           plan_tier: 'free',

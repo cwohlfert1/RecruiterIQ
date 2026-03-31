@@ -19,11 +19,13 @@ export async function POST(req: NextRequest) {
     const admin = createAdminClient()
 
     // ── Verify ownership before mutating ─────────────────────────────────
-    const { data: member } = await admin
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const adminDb = admin as any
+    const { data: member } = await adminDb
       .from('team_members')
       .select('id, owner_user_id, status')
       .eq('id', memberId)
-      .single()
+      .single() as { data: { id: string; owner_user_id: string; status: string } | null }
 
     if (!member) {
       return NextResponse.json({ error: 'Member not found' }, { status: 404 })
@@ -36,7 +38,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Set status to removed — history is retained ───────────────────────
-    await admin
+    await adminDb
       .from('team_members')
       .update({ status: 'removed' })
       .eq('id', memberId)

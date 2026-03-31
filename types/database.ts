@@ -102,16 +102,18 @@ export type Database = {
         Row: {
           id:             string
           user_id:        string
-          candidate_name: string | null
-          resume_text:    string
+          job_title:      string
+          company_name:   string | null
+          input_notes:    string
           summary_output: string
           created_at:     string
         }
         Insert: {
           id?:            string
           user_id:        string
-          candidate_name?: string | null
-          resume_text:    string
+          job_title:      string
+          company_name?:  string | null
+          input_notes:    string
           summary_output: string
         }
         Update: never
@@ -121,18 +123,20 @@ export type Database = {
           id:              string
           user_id:         string
           job_title:       string
-          inputs_json:     BooleanInputsJson
-          linkedin_string: string
-          indeed_string:   string
+          required_skills: string[]
+          optional_skills: string[]
+          exclusions:      string[]
+          boolean_output:  string
           created_at:      string
         }
         Insert: {
           id?:             string
           user_id:         string
           job_title:       string
-          inputs_json:     BooleanInputsJson
-          linkedin_string: string
-          indeed_string:   string
+          required_skills: string[]
+          optional_skills: string[]
+          exclusions:      string[]
+          boolean_output:  string
         }
         Update: never
       }
@@ -237,8 +241,8 @@ export type Database = {
 
 export type ActivityFeature =
   | 'resume_scorer'
-  | 'client_summary'
-  | 'boolean_search'
+  | 'summary'
+  | 'boolean'
   | 'stack_ranking'
 
 export type BreakdownCategory = {

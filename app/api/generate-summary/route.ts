@@ -7,9 +7,10 @@ export async function POST(req: NextRequest) {
   // 1. Auth + plan gate — Pro and above required
   const gate = await checkAIGate('pro')
   if (!gate.allowed) {
+    const status = gate.reason === 'unauthenticated' ? 401 : 403
     return Response.json(
       { error: 'Access denied', reason: gate.reason, planTier: gate.planTier },
-      { status: 403 },
+      { status },
     )
   }
 
@@ -86,8 +87,10 @@ Be professional, concise, and compelling. No fluff.`,
 
         // 5. Persist to DB after streaming completes
         const supabase = createClient()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const db = supabase as any
 
-        await supabase.from('client_summaries').insert({
+        await db.from('client_summaries').insert({
           user_id:        gate.userId,
           job_title:      jobTitle.trim(),
           company_name:   safeCompany || null,
@@ -95,7 +98,7 @@ Be professional, concise, and compelling. No fluff.`,
           summary_output: fullText,
         })
 
-        await supabase.from('activity_log').insert({
+        await db.from('activity_log').insert({
           user_id:     gate.userId,
           feature:     'summary',
           description: `Generated summary for ${jobTitle.trim()}${safeCompany ? ` at ${safeCompany}` : ''}`,

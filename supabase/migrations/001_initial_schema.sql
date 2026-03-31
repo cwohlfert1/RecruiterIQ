@@ -231,9 +231,9 @@ CREATE INDEX idx_resume_scores_user_job_title
   ON public.resume_scores(user_id, job_title)
   WHERE job_title IS NOT NULL;
 
--- Dashboard stat card: count this month's scores per user
+-- Dashboard stat card: count this month's scores per user (use created_at range query)
 CREATE INDEX idx_resume_scores_user_month
-  ON public.resume_scores(user_id, date_trunc('month', created_at));
+  ON public.resume_scores(user_id, created_at);
 
 -- RLS
 ALTER TABLE public.resume_scores ENABLE ROW LEVEL SECURITY;
@@ -264,8 +264,9 @@ CREATE POLICY "resume_scores: delete own"
 CREATE TABLE public.client_summaries (
   id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id         uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  candidate_name  text,                              -- optional; used for history search
-  resume_text     text        NOT NULL,
+  job_title       text        NOT NULL,              -- used for history search
+  company_name    text,                              -- optional
+  input_notes     text        NOT NULL,              -- recruiter notes / intake
   summary_output  text        NOT NULL,
   created_at      timestamptz NOT NULL DEFAULT now()
 );
@@ -273,13 +274,13 @@ CREATE TABLE public.client_summaries (
 CREATE INDEX idx_client_summaries_user_created
   ON public.client_summaries(user_id, created_at DESC);
 
-CREATE INDEX idx_client_summaries_user_name
-  ON public.client_summaries(user_id, candidate_name)
-  WHERE candidate_name IS NOT NULL;
+CREATE INDEX idx_client_summaries_user_job_title
+  ON public.client_summaries(user_id, job_title)
+  WHERE job_title IS NOT NULL;
 
 -- Dashboard stat card
 CREATE INDEX idx_client_summaries_user_month
-  ON public.client_summaries(user_id, date_trunc('month', created_at));
+  ON public.client_summaries(user_id, created_at);
 
 -- RLS
 ALTER TABLE public.client_summaries ENABLE ROW LEVEL SECURITY;
@@ -314,13 +315,14 @@ CREATE POLICY "client_summaries: delete own"
 --   }
 -- =============================================================================
 CREATE TABLE public.boolean_searches (
-  id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id         uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  job_title       text        NOT NULL,              -- top-level for search; also in inputs_json
-  inputs_json     jsonb       NOT NULL,
-  linkedin_string text        NOT NULL,
-  indeed_string   text        NOT NULL,
-  created_at      timestamptz NOT NULL DEFAULT now()
+  id               uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id          uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  job_title        text        NOT NULL,
+  required_skills  text[]      NOT NULL DEFAULT '{}',
+  optional_skills  text[]      NOT NULL DEFAULT '{}',
+  exclusions       text[]      NOT NULL DEFAULT '{}',
+  boolean_output   text        NOT NULL,
+  created_at       timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_boolean_searches_user_created
@@ -331,7 +333,7 @@ CREATE INDEX idx_boolean_searches_user_job_title
 
 -- Dashboard stat card
 CREATE INDEX idx_boolean_searches_user_month
-  ON public.boolean_searches(user_id, date_trunc('month', created_at));
+  ON public.boolean_searches(user_id, created_at);
 
 -- RLS
 ALTER TABLE public.boolean_searches ENABLE ROW LEVEL SECURITY;
@@ -464,8 +466,8 @@ CREATE TABLE public.activity_log (
   feature     text        NOT NULL
                             CHECK (feature IN (
                               'resume_scorer',
-                              'client_summary',
-                              'boolean_search',
+                              'summary',
+                              'boolean',
                               'stack_ranking'
                             )),
   record_id   uuid        NOT NULL,

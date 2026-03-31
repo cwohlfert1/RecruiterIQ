@@ -11,12 +11,12 @@ export async function POST(req: NextRequest) {
   const signature = req.headers.get('x-square-hmacsha256-signature') ?? ''
 
   // ── 2. Verify signature ───────────────────────────────────────────────
-  const isValid = WebhooksHelper.isValidWebhookEventSignature(
-    rawBody,
-    signature,
-    process.env.SQUARE_WEBHOOK_SIGNATURE_KEY!,
-    WEBHOOK_URL
-  )
+  const isValid = await WebhooksHelper.verifySignature({
+    requestBody:     rawBody,
+    signatureHeader: signature,
+    signatureKey:    process.env.SQUARE_WEBHOOK_SIGNATURE_KEY!,
+    notificationUrl: WEBHOOK_URL,
+  })
 
   if (!isValid) {
     console.warn('[webhook/square] Invalid signature')
@@ -33,6 +33,8 @@ export async function POST(req: NextRequest) {
 
 async function processWebhookAsync(rawBody: string) {
   const admin = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const adminDb = admin as any
   let event: { event_id: string; type: string; data?: unknown }
 
   try {
@@ -46,7 +48,7 @@ async function processWebhookAsync(rawBody: string) {
   const eventType = event.type
 
   // ── 4. Idempotency: insert event; skip if already processed ──────────
-  const { error: insertError } = await admin
+  const { error: insertError } = await adminDb
     .from('square_webhook_events')
     .insert({
       event_id: eventId,
@@ -86,14 +88,14 @@ async function processWebhookAsync(rawBody: string) {
     }
 
     // Mark processed
-    await admin
+    await adminDb
       .from('square_webhook_events')
       .update({ processed: true, processed_at: new Date().toISOString() })
       .eq('event_id', eventId)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error(`[webhook/square] Processing error for ${eventId}:`, msg)
-    await admin
+    await adminDb
       .from('square_webhook_events')
       .update({ error: msg })
       .eq('event_id', eventId)
@@ -103,7 +105,8 @@ async function processWebhookAsync(rawBody: string) {
 // ── Event handlers ──────────────────────────────────────────────────────────
 
 async function handleSubscriptionUpdate(
-  admin: ReturnType<typeof createAdminClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any,
   event: Record<string, unknown>
 ) {
   const sub = (event as { data?: { object?: { subscription?: Record<string, unknown> } } })
@@ -131,7 +134,8 @@ async function handleSubscriptionUpdate(
 }
 
 async function handlePaymentMade(
-  admin: ReturnType<typeof createAdminClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any,
   event: Record<string, unknown>
 ) {
   const invoice = (event as { data?: { object?: { invoice?: Record<string, unknown> } } })
@@ -149,7 +153,8 @@ async function handlePaymentMade(
 }
 
 async function handlePaymentFailed(
-  admin: ReturnType<typeof createAdminClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any,
   event: Record<string, unknown>
 ) {
   const invoice = (event as { data?: { object?: { invoice?: Record<string, unknown> } } })
@@ -167,7 +172,8 @@ async function handlePaymentFailed(
 }
 
 async function handleSubscriptionCanceled(
-  admin: ReturnType<typeof createAdminClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any,
   event: Record<string, unknown>
 ) {
   const sub = (event as { data?: { object?: { subscription?: Record<string, unknown> } } })

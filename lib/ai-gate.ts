@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import type { UserProfile } from '@/types/database'
+import type { Database } from '@/types/database'
 
 export type PlanTier = 'free' | 'pro' | 'agency'
 
@@ -23,11 +24,14 @@ export async function checkAIGate(requiredPlan?: 'pro' | 'agency'): Promise<AIGa
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { allowed: false, reason: 'unauthenticated' }
 
-  const { data: profile } = await supabase
+  const { data: profileData } = await supabase
     .from('user_profiles')
     .select('*')
     .eq('user_id', user.id)
     .single()
+
+  // Cast to bypass TypeScript generic inference issue with Supabase SSR client
+  const profile = profileData as Database['public']['Tables']['user_profiles']['Row'] | null
 
   if (!profile) return { allowed: false, reason: 'unauthenticated' }
 
@@ -38,7 +42,8 @@ export async function checkAIGate(requiredPlan?: 'pro' | 'agency'): Promise<AIGa
   monthStart.setHours(0, 0, 0, 0)
 
   if (lastReset < monthStart) {
-    await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any)
       .from('user_profiles')
       .update({ ai_calls_this_month: 0, last_reset_at: monthStart.toISOString() })
       .eq('user_id', user.id)
@@ -73,13 +78,15 @@ export async function checkAIGate(requiredPlan?: 'pro' | 'agency'): Promise<AIGa
 export async function incrementAICallCount(userId: string): Promise<void> {
   const supabase = createClient()
 
-  const { data } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
+  const { data } = await db
     .from('user_profiles')
     .select('ai_calls_this_month')
     .eq('user_id', userId)
-    .single()
+    .single() as { data: { ai_calls_this_month: number } | null }
 
-  await supabase
+  await db
     .from('user_profiles')
     .update({ ai_calls_this_month: (data?.ai_calls_this_month ?? 0) + 1 })
     .eq('user_id', userId)

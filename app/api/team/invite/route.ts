@@ -16,11 +16,13 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Plan check: agency only ───────────────────────────────────────────
-    const { data: profile } = await supabase
+    const { data: profileData } = await supabase
       .from('user_profiles')
       .select('plan_tier')
       .eq('user_id', user.id)
       .single()
+
+    const profile = profileData as { plan_tier: string } | null
 
     if (profile?.plan_tier !== 'agency') {
       return NextResponse.json({ error: 'Agency plan required' }, { status: 403 })
@@ -53,13 +55,14 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Prevent duplicate active invites ─────────────────────────────────
-    const { data: existing } = await admin
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existing } = await (admin as any)
       .from('team_members')
       .select('id, status')
       .eq('owner_user_id', user.id)
       .eq('invited_email', normalizedEmail)
       .in('status', ['pending', 'active'])
-      .maybeSingle()
+      .maybeSingle() as { data: { id: string; status: string } | null }
 
     if (existing) {
       return NextResponse.json(
@@ -73,7 +76,8 @@ export async function POST(req: NextRequest) {
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + INVITE_TTL_DAYS)
 
-    await admin.from('team_members').insert({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (admin as any).from('team_members').insert({
       owner_user_id: user.id,
       invited_email: normalizedEmail,
       invite_token: token,

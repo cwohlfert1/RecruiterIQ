@@ -125,10 +125,11 @@ function CandidateCard({
     if (noteText === (candidate.notes ?? '')) return
 
     setNoteSaving(true)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = createBrowserClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    )
+    ) as any
     await supabase
       .from('stack_ranking_candidates')
       .update({ notes: noteText })
@@ -273,10 +274,11 @@ export default function RankingPage() {
   // ── Check plan tier on mount ────────────────────────────────────────────────
   useEffect(() => {
     async function checkPlan() {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const supabase = createBrowserClient<Database>(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      )
+      ) as any
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setPlanChecked(true); return }
 
@@ -284,7 +286,7 @@ export default function RankingPage() {
         .from('user_profiles')
         .select('plan_tier')
         .eq('user_id', user.id)
-        .single()
+        .single() as { data: { plan_tier: string } | null }
 
       const agency = profile?.plan_tier === 'agency'
       setIsAgency(agency)

@@ -22,7 +22,7 @@ async function createPlan(
   name: string,
   priceInCents: number
 ) {
-  const response = await squareClient.catalog.upsertObject({
+  const response = await squareClient.catalog.object.upsert({
     idempotencyKey,
     object: {
       type: 'SUBSCRIPTION_PLAN',
@@ -46,12 +46,13 @@ async function createPlan(
     },
   })
 
-  const obj = response.catalogObject
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const obj = response.catalogObject as any
   if (!obj?.id) throw new Error(`Failed to create plan: ${name}`)
 
-  const planId = obj.id
+  const planId = obj.id as string
   // The variation ID is the phase ID — used as planVariationId when creating subscriptions
-  const planVariationId = obj.subscriptionPlanData?.phases?.[0]?.uid ?? ''
+  const planVariationId: string = obj.subscriptionPlanData?.phases?.[0]?.uid ?? ''
 
   return { planId, planVariationId }
 }

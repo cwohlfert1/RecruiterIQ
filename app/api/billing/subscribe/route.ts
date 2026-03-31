@@ -4,6 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { squareClient } from '@/lib/square/client'
 import { PLAN_CONFIG, type PaidPlanKey } from '@/lib/square/plans'
+import type { Database } from '@/types/database'
+
+type UserProfileRow    = Database['public']['Tables']['user_profiles']['Row']
+type UserProfileUpdate = Database['public']['Tables']['user_profiles']['Update']
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,11 +18,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 })
     }
 
-    const { data: profile } = await supabase
+    const { data: profileData } = await supabase
       .from('user_profiles')
       .select('plan_tier, square_customer_id')
       .eq('user_id', user.id)
       .single()
+
+    const profile = profileData as Pick<UserProfileRow, 'plan_tier' | 'square_customer_id'> | null
 
     if (!profile) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
@@ -82,15 +88,15 @@ export async function POST(req: NextRequest) {
 
     // ── Update Supabase ───────────────────────────────────────────────────
     const admin = createAdminClient()
-    await admin
-      .from('user_profiles')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (admin.from('user_profiles') as any)
       .update({
         plan_tier: plan,
         subscription_status: 'active',
         square_customer_id: customerId,
         square_subscription_id: subscription.id,
         grace_period_start: null,
-      })
+      } satisfies UserProfileUpdate)
       .eq('user_id', user.id)
 
     return NextResponse.json({ success: true })

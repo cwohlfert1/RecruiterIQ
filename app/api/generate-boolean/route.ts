@@ -7,9 +7,10 @@ export async function POST(req: NextRequest) {
   // 1. Auth + plan gate — available to all plans
   const gate = await checkAIGate()
   if (!gate.allowed) {
+    const status = gate.reason === 'unauthenticated' ? 401 : 403
     return Response.json(
       { error: 'Access denied', reason: gate.reason, planTier: gate.planTier },
-      { status: 403 },
+      { status },
     )
   }
 
@@ -109,8 +110,10 @@ Rules:
 
         // 5. Persist to DB after streaming completes
         const supabase = createClient()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const db = supabase as any
 
-        await supabase.from('boolean_searches').insert({
+        await db.from('boolean_searches').insert({
           user_id:        gate.userId,
           job_title:      safeJobTitle,
           required_skills: safeRequired,
@@ -119,7 +122,7 @@ Rules:
           boolean_output:  fullText,
         })
 
-        await supabase.from('activity_log').insert({
+        await db.from('activity_log').insert({
           user_id:     gate.userId,
           feature:     'boolean',
           description: `Generated Boolean string for ${safeJobTitle}`,

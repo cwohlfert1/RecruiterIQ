@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { TeamClient } from './team-client'
+import type { Database } from '@/types/database'
 
 export const metadata = { title: 'Team Management' }
 
@@ -10,11 +11,13 @@ export default async function TeamPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
+  const { data: profileData } = await supabase
     .from('user_profiles')
     .select('plan_tier')
     .eq('user_id', user.id)
     .single()
+
+  const profile = profileData as Pick<Database['public']['Tables']['user_profiles']['Row'], 'plan_tier'> | null
 
   if (!profile) redirect('/login')
 
@@ -25,12 +28,14 @@ export default async function TeamPage() {
 
   // Fetch team members with their AI call counts
   const admin = createAdminClient()
-  const { data: members } = await admin
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const adminDb = admin as any
+  const { data: members } = await adminDb
     .from('team_members')
     .select('*')
     .eq('owner_user_id', user.id)
     .in('status', ['pending', 'active'])
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: true }) as { data: Database['public']['Tables']['team_members']['Row'][] | null }
 
   // Fetch AI calls for active members
   const activeMemberIds = (members ?? [])
@@ -39,10 +44,10 @@ export default async function TeamPage() {
 
   const callsByUser: Record<string, number> = {}
   if (activeMemberIds.length > 0) {
-    const { data: profiles } = await admin
+    const { data: profiles } = await adminDb
       .from('user_profiles')
       .select('user_id, ai_calls_this_month')
-      .in('user_id', activeMemberIds)
+      .in('user_id', activeMemberIds) as { data: Pick<Database['public']['Tables']['user_profiles']['Row'], 'user_id' | 'ai_calls_this_month'>[] | null }
 
     profiles?.forEach((p) => {
       callsByUser[p.user_id] = p.ai_calls_this_month
