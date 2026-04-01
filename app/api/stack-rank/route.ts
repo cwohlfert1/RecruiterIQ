@@ -118,7 +118,8 @@ Sort by cqi_score descending. rank starts at 1.`
     })
 
     const rawText = response.content[0].type === 'text' ? response.content[0].text : ''
-    rankedCandidates = JSON.parse(rawText) as ClaudeCandidate[]
+    const cleaned = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+    rankedCandidates = JSON.parse(cleaned) as ClaudeCandidate[]
 
     if (!Array.isArray(rankedCandidates)) {
       throw new Error('Claude did not return an array')
