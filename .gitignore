@@ -51,3 +51,16 @@ ntuser*
 
 # Other projects
 resume-cleaner/
+
+# IDE
+.vscode/
+.idea/
+
+# Test artifacts
+.env.test
+test-results/
+tests/.auth/
+tsconfig.tsbuildinfo
+
+# Supabase temp
+supabase/.temp/

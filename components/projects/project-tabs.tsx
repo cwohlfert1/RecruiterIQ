@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Users, FileText, Search, Activity, Settings, Construction } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { CandidateRow } from '@/app/dashboard/projects/[id]/page'
+import { CandidatesTab } from '@/components/projects/tabs/candidates-tab'
+import { JdTab }         from '@/components/projects/tabs/jd-tab'
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -13,6 +16,22 @@ interface Tab {
   key:   TabKey
   label: string
   icon:  React.ElementType
+}
+
+interface ProjectRef {
+  id:          string
+  title:       string
+  client_name: string
+  jd_text:     string | null
+  owner_id:    string
+}
+
+interface Props {
+  project:    ProjectRef
+  candidates: CandidateRow[]
+  userId:     string
+  canEdit:    boolean
+  isManager:  boolean
 }
 
 // ─── Tabs Config ─────────────────────────────────────────────
@@ -43,10 +62,11 @@ function TabStub({ label }: { label: string }) {
 
 // ─── Component ───────────────────────────────────────────────
 
-export function ProjectTabs() {
-  const [active, setActive] = useState<TabKey>('candidates')
+export function ProjectTabs({ project, candidates, userId, canEdit, isManager }: Props) {
+  const [active,  setActive]  = useState<TabKey>('candidates')
+  const [jdText,  setJdText]  = useState<string | null>(project.jd_text)
 
-  const currentTab = TABS.find(t => t.key === active) ?? TABS[0]
+  const isOwner = project.owner_id === userId
 
   return (
     <div>
@@ -77,7 +97,29 @@ export function ProjectTabs() {
       </div>
 
       {/* Tab content */}
-      <TabStub label={currentTab.label} />
+      {active === 'candidates' && (
+        <CandidatesTab
+          project={{ ...project, jd_text: jdText }}
+          initialCandidates={candidates}
+          userId={userId}
+          canEdit={canEdit}
+          isOwner={isOwner}
+          isManager={isManager}
+        />
+      )}
+
+      {active === 'jd' && (
+        <JdTab
+          projectId={project.id}
+          jdText={jdText}
+          canEdit={canEdit}
+          onJdSaved={setJdText}
+        />
+      )}
+
+      {(active === 'boolean' || active === 'activity' || active === 'settings') && (
+        <TabStub label={TABS.find(t => t.key === active)!.label} />
+      )}
     </div>
   )
 }
