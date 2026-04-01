@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { FileText, Loader2, Copy, Check, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { UpgradeModal } from '@/components/upgrade-modal'
+import { FileDropTextarea } from '@/components/ui/file-drop-textarea'
 import { cn } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────
@@ -256,21 +257,13 @@ export default function SummaryPage() {
                 </label>
                 <WordCounter count={notesWords} max={500} />
               </div>
-              <textarea
+              <FileDropTextarea
                 id="notes"
                 value={notes}
-                onChange={e => setNotes(e.target.value)}
-                placeholder="Paste raw intake notes, key requirements, culture fit details…"
+                onChange={setNotes}
+                placeholder="Paste or drag-and-drop raw intake notes, key requirements, culture fit details…"
                 rows={8}
-                className={cn(
-                  'w-full resize-none rounded-xl bg-white/5 border px-4 py-3 text-sm text-slate-200 placeholder:text-slate-600',
-                  'focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors',
-                  notesWords >= 500
-                    ? 'border-red-500/40'
-                    : notesWords >= 425
-                    ? 'border-yellow-500/40'
-                    : 'border-white/10',
-                )}
+                minHeight="200px"
               />
             </div>
 

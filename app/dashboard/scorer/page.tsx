@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { FileSearch, Loader2, RefreshCw, ShieldAlert, AlertTriangle, CheckCircle2, Minus } from 'lucide-react'
 import { toast } from 'sonner'
 import { UpgradeModal } from '@/components/upgrade-modal'
+import { FileDropTextarea } from '@/components/ui/file-drop-textarea'
 import { cn } from '@/lib/utils'
 import type { RedFlag } from '@/types/database'
 
@@ -390,19 +391,15 @@ export default function ScorerPage() {
                       </label>
                       <WordCounter count={jdWords} max={2000} />
                     </div>
-                    <textarea
+                    <FileDropTextarea
                       id="jd-input"
                       value={jdText}
-                      onChange={e => { setJdText(e.target.value); if (errors.jd) setErrors(p => ({ ...p, jd: undefined })) }}
-                      placeholder="Paste the job description here…"
+                      onChange={v => { setJdText(v); if (errors.jd) setErrors(p => ({ ...p, jd: undefined })) }}
+                      placeholder="Paste or drag-and-drop the job description here…"
                       rows={10}
-                      className={cn(
-                        'w-full resize-none rounded-xl bg-white/5 border px-4 py-3 text-sm text-slate-200 placeholder:text-slate-600',
-                        'focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors',
-                        errors.jd ? 'border-red-500/60' : jdWords >= 2000 ? 'border-red-500/40' : jdWords >= 1600 ? 'border-yellow-500/40' : 'border-white/10',
-                      )}
+                      error={errors.jd}
+                      minHeight="200px"
                     />
-                    {errors.jd && <p className="text-xs text-red-400">{errors.jd}</p>}
                   </div>
 
                   <div className="space-y-2">
@@ -412,19 +409,15 @@ export default function ScorerPage() {
                       </label>
                       <WordCounter count={resumeWords} max={5000} />
                     </div>
-                    <textarea
+                    <FileDropTextarea
                       id="resume-input"
                       value={resumeText}
-                      onChange={e => { setResumeText(e.target.value); if (errors.resume) setErrors(p => ({ ...p, resume: undefined })) }}
-                      placeholder="Paste the candidate's resume here…"
+                      onChange={v => { setResumeText(v); if (errors.resume) setErrors(p => ({ ...p, resume: undefined })) }}
+                      placeholder="Paste or drag-and-drop the candidate's resume here…"
                       rows={14}
-                      className={cn(
-                        'w-full resize-none rounded-xl bg-white/5 border px-4 py-3 text-sm text-slate-200 placeholder:text-slate-600',
-                        'focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors',
-                        errors.resume ? 'border-red-500/60' : resumeWords >= 5000 ? 'border-red-500/40' : resumeWords >= 4000 ? 'border-yellow-500/40' : 'border-white/10',
-                      )}
+                      error={errors.resume}
+                      minHeight="280px"
                     />
-                    {errors.resume && <p className="text-xs text-red-400">{errors.resume}</p>}
                   </div>
 
                   <button
@@ -544,19 +537,15 @@ export default function ScorerPage() {
                       </label>
                       <WordCounter count={rfResumeWords} max={5000} />
                     </div>
-                    <textarea
+                    <FileDropTextarea
                       id="rf-resume"
                       value={rfResumeText}
-                      onChange={e => { setRfResumeText(e.target.value); if (rfErrors.resume) setRfErrors({}) }}
-                      placeholder="Paste the candidate's resume here…"
+                      onChange={v => { setRfResumeText(v); if (rfErrors.resume) setRfErrors({}) }}
+                      placeholder="Paste or drag-and-drop the candidate's resume here…"
                       rows={14}
-                      className={cn(
-                        'w-full resize-none rounded-xl bg-white/5 border px-4 py-3 text-sm text-slate-200 placeholder:text-slate-600',
-                        'focus:outline-none focus:ring-2 focus:ring-red-500/40 transition-colors',
-                        rfErrors.resume ? 'border-red-500/60' : rfResumeWords >= 5000 ? 'border-red-500/40' : rfResumeWords >= 4000 ? 'border-yellow-500/40' : 'border-white/10',
-                      )}
+                      error={rfErrors.resume}
+                      minHeight="280px"
                     />
-                    {rfErrors.resume && <p className="text-xs text-red-400">{rfErrors.resume}</p>}
                   </div>
 
                   <div className="space-y-2">
@@ -567,17 +556,13 @@ export default function ScorerPage() {
                       </label>
                       <WordCounter count={rfJdWords} max={2000} />
                     </div>
-                    <textarea
+                    <FileDropTextarea
                       id="rf-jd"
                       value={rfJdText}
-                      onChange={e => setRfJdText(e.target.value)}
-                      placeholder="Paste the job description to detect catfish signals…"
+                      onChange={setRfJdText}
+                      placeholder="Paste or drag-and-drop the job description to detect catfish signals…"
                       rows={6}
-                      className={cn(
-                        'w-full resize-none rounded-xl bg-white/5 border px-4 py-3 text-sm text-slate-200 placeholder:text-slate-600',
-                        'focus:outline-none focus:ring-2 focus:ring-red-500/40 transition-colors',
-                        rfJdWords >= 2000 ? 'border-red-500/40' : rfJdWords >= 1600 ? 'border-yellow-500/40' : 'border-white/10',
-                      )}
+                      minHeight="160px"
                     />
                   </div>
 

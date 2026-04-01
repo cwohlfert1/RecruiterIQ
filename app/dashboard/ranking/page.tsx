@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Trash2, Plus, ChevronRight, Check, X, Download, RotateCcw, Loader2, Trophy, ChevronDown, ChevronUp } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
 import { UpgradeModal } from '@/components/upgrade-modal'
+import { FileDropTextarea } from '@/components/ui/file-drop-textarea'
 import type { Database } from '@/types/database'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -503,19 +504,21 @@ export default function RankingPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                  Job Description <span className="text-red-400">*</span>
-                </label>
-                <textarea
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-sm font-medium text-slate-300">
+                    Job Description <span className="text-red-400">*</span>
+                  </label>
+                  <span className={`text-xs ${jdWordCount > 500 ? 'text-red-400' : 'text-slate-500'}`}>
+                    {jdWordCount}/500 words
+                  </span>
+                </div>
+                <FileDropTextarea
                   value={jobDescription}
-                  onChange={(e) => setJobDescription(e.target.value)}
-                  placeholder="Paste the job description here…"
+                  onChange={setJobDescription}
+                  placeholder="Paste or drag-and-drop the job description here…"
                   rows={6}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 resize-none focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
+                  minHeight="160px"
                 />
-                <p className={`text-xs mt-1 text-right ${jdWordCount > 500 ? 'text-red-400' : 'text-slate-500'}`}>
-                  {jdWordCount}/500 words
-                </p>
               </div>
 
               <button
@@ -565,17 +568,19 @@ export default function RankingPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Resume Text</label>
-                <textarea
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-medium text-slate-400">Resume Text</label>
+                  <span className={`text-xs ${newResumeWords > 500 ? 'text-red-400' : 'text-slate-500'}`}>
+                    {newResumeWords}/500 words
+                  </span>
+                </div>
+                <FileDropTextarea
                   value={newResume}
-                  onChange={(e) => setNewResume(e.target.value)}
-                  placeholder="Paste resume text here…"
+                  onChange={setNewResume}
+                  placeholder="Paste or drag-and-drop resume text here…"
                   rows={8}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 resize-none focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
+                  minHeight="200px"
                 />
-                <p className={`text-xs mt-1 text-right ${newResumeWords > 500 ? 'text-red-400' : 'text-slate-500'}`}>
-                  {newResumeWords}/500 words
-                </p>
               </div>
 
               <button

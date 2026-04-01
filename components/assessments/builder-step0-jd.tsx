@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, FileText, Plus, ArrowLeft, RefreshCw, CheckCircle2 } from 'lucide-react'
+import { FileDropTextarea } from '@/components/ui/file-drop-textarea'
 import { cn } from '@/lib/utils'
 import type { AssessmentDraft, QuestionDraft } from './assessment-builder'
 import type { ProctoringConfig, TestCase, MCOption } from '@/types/database'
@@ -200,12 +201,12 @@ export function BuilderStep0JD({ onSkip, onConfirm }: Props) {
           </div>
 
           <div>
-            <textarea
+            <FileDropTextarea
               value={jdText}
-              onChange={e => setJdText(e.target.value)}
+              onChange={setJdText}
               rows={12}
-              placeholder="Paste the full job description here — including responsibilities, requirements, and nice-to-haves. The more detail, the better the questions."
-              className="w-full px-3.5 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-colors resize-none"
+              placeholder="Paste or drag-and-drop the full job description here — including responsibilities, requirements, and nice-to-haves."
+              minHeight="240px"
             />
             <p className="text-xs text-slate-600 mt-1">
               {jdText.length < 50
