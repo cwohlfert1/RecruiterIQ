@@ -37,9 +37,15 @@ export async function POST(
     return NextResponse.json({ error: 'Job description required' }, { status: 400 })
   }
 
-  // All user IDs to generate for (owner + all project members)
+  // Admin client — used for activity logging AND inserts (bypasses RLS for service-level writes)
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  // All user IDs to generate for (owner + all project members, minimum 1)
   const allUserIds = Array.from(new Set([project.owner_id, ...members.map(m => m.user_id)]))
-  const n = allUserIds.length
+  const n = Math.max(allUserIds.length, 1)
 
   // Generate N variations via Claude
   const prompt = `You are a Boolean search string expert for technical recruiting.
@@ -79,8 +85,13 @@ Make each variation genuinely distinct so recruiters using different strings fin
       messages:   [{ role: 'user', content: prompt }],
     })
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : ''
-    const jsonMatch = text.match(/\[[\s\S]*\]/)
+    const rawText = response.content[0].type === 'text' ? response.content[0].text : ''
+    // Strip markdown fences if Claude wraps the response
+    const cleaned = rawText
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/, '')
+      .trim()
+    const jsonMatch = cleaned.match(/\[[\s\S]*\]/)
     if (!jsonMatch) throw new Error('No JSON array in response')
 
     const parsed = JSON.parse(jsonMatch[0])
@@ -98,14 +109,18 @@ Make each variation genuinely distinct so recruiters using different strings fin
 
   await incrementAICallCount(user.id)
 
-  // Archive all existing active strings for this project
-  await supabase
+  // Archive all existing active strings for this project (admin bypasses RLS)
+  const { error: archiveError } = await admin
     .from('project_boolean_strings')
     .update({ is_active: false })
     .eq('project_id', params.id)
     .eq('is_active', true)
 
-  // Insert new active strings
+  if (archiveError) {
+    console.error('[boolean-generate] archive error:', archiveError.message, JSON.stringify(archiveError))
+  }
+
+  // Insert new active strings via admin client (bypasses RLS — auth already validated above)
   const inserts = allUserIds.map((uid, i) => ({
     project_id:      params.id,
     user_id:         uid,
@@ -115,20 +130,16 @@ Make each variation genuinely distinct so recruiters using different strings fin
     created_by:      user.id,
   }))
 
-  const { error: insertError } = await supabase
+  const { error: insertError } = await admin
     .from('project_boolean_strings')
     .insert(inserts)
 
   if (insertError) {
-    console.error('Insert error:', insertError)
+    console.error('[boolean-generate] insert error:', insertError.message, JSON.stringify(insertError))
     return NextResponse.json({ error: 'Failed to save variations' }, { status: 500 })
   }
 
   // Log activity
-  const admin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
   await admin.from('project_activity').insert({
     project_id:    params.id,
     user_id:       user.id,

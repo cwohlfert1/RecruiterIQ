@@ -98,7 +98,7 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
   }
 
   return (
-    <aside className="flex flex-col w-64 min-h-screen bg-[#1A1D2E] border-r border-white/8 flex-shrink-0">
+    <aside className="flex flex-col w-64 h-full bg-[#1A1D2E] border-r border-white/8 flex-shrink-0">
       {/* Logo */}
       <div className="flex items-center px-5 py-5 border-b border-white/8">
         <CandidLogo variant="dark" className="h-8 w-auto" />

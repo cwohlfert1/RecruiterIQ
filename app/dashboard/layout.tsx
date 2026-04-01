@@ -82,14 +82,14 @@ export default async function DashboardLayout({
   const showGraceBanner = profile.subscription_status === 'grace'
 
   return (
-    <div className="flex min-h-screen bg-[#0F1117]">
-      {/* Sidebar — desktop only */}
-      <div className="hidden md:flex">
+    <div className="flex h-screen bg-[#0F1117]">
+      {/* Sidebar — desktop only, always full height */}
+      <div className="hidden md:flex h-full flex-shrink-0">
         <Sidebar profile={profile} userEmail={user.email ?? ''} />
       </div>
 
       {/* Main content */}
-      <div className="flex flex-col flex-1 min-w-0">
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopBar profile={profile} />
         {showGraceBanner && <GracePeriodBanner />}
         <main className="flex-1 p-6 pb-24 md:pb-6 overflow-y-auto">

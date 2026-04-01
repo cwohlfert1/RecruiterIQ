@@ -6,13 +6,27 @@ import { cn } from '@/lib/utils'
 import type { UserProfile } from '@/types/database'
 
 const PAGE_TITLES: Record<string, string> = {
-  '/dashboard':          'Dashboard',
-  '/dashboard/scorer':   'Resume Scorer',
-  '/dashboard/summary':  'Summary Generator',
-  '/dashboard/boolean':  'Boolean Generator',
-  '/dashboard/ranking':  'Stack Ranking',
-  '/dashboard/history':  'History',
-  '/dashboard/settings': 'Settings',
+  '/dashboard':                    'Dashboard',
+  '/dashboard/scorer':             'Resume Scorer',
+  '/dashboard/summary':            'Summary Generator',
+  '/dashboard/boolean':            'Boolean Generator',
+  '/dashboard/ranking':            'Stack Ranking',
+  '/dashboard/history':            'History',
+  '/dashboard/projects':           'My Projects',
+  '/dashboard/projects/create':    'Create Project',
+  '/dashboard/assessments':        'My Assessments',
+  '/dashboard/assessments/create': 'Create Assessment',
+  '/dashboard/settings':           'Settings',
+  '/dashboard/settings/billing':   'Billing & Plan',
+  '/dashboard/settings/team':      'Team',
+}
+
+function resolveTitle(pathname: string): string {
+  if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname]
+  if (pathname.startsWith('/dashboard/projects/'))    return 'Project'
+  if (pathname.startsWith('/dashboard/assessments/')) return 'Assessment'
+  if (pathname.startsWith('/dashboard/settings/'))    return 'Settings'
+  return 'Candid.ai'
 }
 
 interface TopBarProps {
@@ -21,7 +35,7 @@ interface TopBarProps {
 
 export function TopBar({ profile }: TopBarProps) {
   const pathname = usePathname()
-  const title    = PAGE_TITLES[pathname] ?? 'Candid.ai'
+  const title    = resolveTitle(pathname)
   const limit    = getPlanLimit(profile.plan_tier)
   const used     = profile.ai_calls_this_month
   const pct      = limit ? Math.min((used / limit) * 100, 100) : 0

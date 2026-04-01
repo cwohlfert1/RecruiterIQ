@@ -79,23 +79,39 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
+  // Resolve emails for owner + all non-owner members
   const memberUserIds = rawMembers.map(m => m.user_id)
+  const allUserIds    = Array.from(new Set([project.owner_id, ...memberUserIds]))
   const emailMap: Record<string, string> = {}
 
-  if (memberUserIds.length > 0) {
-    await Promise.all(memberUserIds.map(async uid => {
+  await Promise.all(allUserIds.map(async uid => {
+    if (uid === user.id && user.email) {
+      emailMap[uid] = user.email
+    } else {
       const { data } = await admin.auth.admin.getUserById(uid)
       if (data?.user?.email) emailMap[uid] = data.user.email
-    }))
+    }
+  }))
+
+  // Owner always appears first as a synthetic member entry (not in project_members table)
+  const ownerEntry = {
+    id:       `owner-${project.owner_id}`,
+    user_id:  project.owner_id,
+    role:     'owner',
+    email:    emailMap[project.owner_id] ?? null,
+    added_at: project.created_at as string | null,
   }
 
-  const members = rawMembers.map(m => ({
-    id:       m.id,
-    user_id:  m.user_id,
-    role:     m.role,
-    email:    emailMap[m.user_id] ?? null,
-    added_at: m.added_at,
-  }))
+  const members = [
+    ownerEntry,
+    ...rawMembers.map(m => ({
+      id:       m.id,
+      user_id:  m.user_id,
+      role:     m.role,
+      email:    emailMap[m.user_id] ?? null,
+      added_at: m.added_at,
+    })),
+  ]
 
   // Fetch assessment invite + session data for candidates that have invite_id
   const inviteIds = rawCands

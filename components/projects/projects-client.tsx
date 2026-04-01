@@ -77,7 +77,7 @@ function ProjectCard({ project }: { project: ProjectListItem }) {
     >
       <Link
         href={`/dashboard/projects/${project.id}`}
-        className="group block glass-card rounded-2xl p-5 hover:border-white/15 transition-all duration-150"
+        className="group block glass-card rounded-2xl p-5 cursor-pointer hover:bg-white/5 hover:border-indigo-500/30 hover:shadow-[0_0_16px_rgba(99,102,241,0.12)] transition-all duration-200"
       >
         {/* Top row — title + status */}
         <div className="flex items-start justify-between gap-3 mb-2">

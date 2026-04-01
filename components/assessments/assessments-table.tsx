@@ -162,7 +162,7 @@ export function AssessmentsTable({ rows }: { rows: AssessmentRow[] }) {
                     <Link
                       href={`/dashboard/assessments/${row.id}`}
                       className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/8 transition-colors"
-                      title="View results"
+                      title="View Results"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
                     </Link>
@@ -172,7 +172,7 @@ export function AssessmentsTable({ rows }: { rows: AssessmentRow[] }) {
                       <button
                         onClick={() => handleCopyLink('', row.id)}
                         className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/8 transition-colors"
-                        title="Copy candidate link"
+                        title="Copy Link"
                       >
                         {copied === row.id
                           ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
@@ -199,7 +199,7 @@ export function AssessmentsTable({ rows }: { rows: AssessmentRow[] }) {
                         onClick={() => handleDelete(row.id)}
                         disabled={deleting === row.id}
                         className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/8 transition-colors disabled:opacity-40"
-                        title="Delete draft"
+                        title="Delete"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>

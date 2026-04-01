@@ -84,6 +84,29 @@ export default async function DashboardPage() {
     <div className="max-w-5xl mx-auto space-y-8">
       {safeProfile.plan_tier === 'free' && <UpgradeBanner />}
 
+      {/* Onboarding — shown only when user has no activity and no projects yet */}
+      {stats.resumes === 0 && stats.activeProjects === 0 && (
+        <section className="glass-card rounded-2xl p-8 flex flex-col sm:flex-row items-center gap-6">
+          <div className="w-14 h-14 rounded-2xl bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
+            <Sparkles className="w-7 h-7 text-indigo-400" />
+          </div>
+          <div className="flex-1 text-center sm:text-left">
+            <h3 className="text-base font-semibold text-white mb-1">
+              Welcome to Candid.ai — Start by creating your first project
+            </h3>
+            <p className="text-sm text-slate-400">
+              Projects keep your pipeline organised. Add candidates, score resumes, and collaborate with your team — all in one place.
+            </p>
+          </div>
+          <Link
+            href="/dashboard/projects/create"
+            className="flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-brand hover-glow transition-all duration-150 whitespace-nowrap"
+          >
+            Create a Project
+          </Link>
+        </section>
+      )}
+
       {/* Stat cards */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-4">
@@ -139,33 +162,6 @@ export default async function DashboardPage() {
                 </Link>
               )
             })}
-          </div>
-        </section>
-      )}
-
-      {/* Empty state — new users with no data yet */}
-      {stats.resumes === 0 && stats.summaries === 0 && stats.booleans === 0 && stats.rankings === 0 && stats.activeProjects === 0 && (
-        <section className="glass-card rounded-2xl p-10 flex flex-col items-center text-center">
-          <div className="w-14 h-14 rounded-2xl bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center mb-4">
-            <Sparkles className="w-7 h-7 text-indigo-400" />
-          </div>
-          <h3 className="text-base font-semibold text-white mb-1">Welcome to Candid.ai</h3>
-          <p className="text-sm text-slate-400 max-w-sm mb-6">
-            Your AI recruiting platform is ready. Start a project to organise your pipeline, or use the tools individually.
-          </p>
-          <div className="flex flex-wrap gap-3 justify-center">
-            <Link
-              href="/dashboard/projects/create"
-              className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-brand hover-glow transition-all duration-150"
-            >
-              Create a Project
-            </Link>
-            <Link
-              href="/dashboard/scorer"
-              className="px-4 py-2 rounded-xl text-sm font-medium text-slate-300 border border-white/10 hover:border-white/20 hover:text-white transition-colors"
-            >
-              Score a Resume
-            </Link>
           </div>
         </section>
       )}

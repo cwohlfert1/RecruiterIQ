@@ -1,6 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { UserProfile } from '@/types/database'
 
@@ -15,12 +16,15 @@ export function UsageMeter({ profile }: UsageMeterProps) {
 
   if (!isFree) {
     return (
-      <div className="flex items-center justify-between py-1">
-        <span className="text-sm text-slate-400">AI calls this month</span>
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-500" />
-          <span className="text-sm font-semibold text-white">{used} used</span>
-          <span className="text-xs text-slate-500">(unlimited)</span>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-slate-400">AI calls this month</span>
+          <span className="text-sm font-semibold text-white tabular-nums">{used} used</span>
+        </div>
+        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-green-500/8 border border-green-500/20">
+          <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+          <span className="text-sm font-semibold text-green-300">Unlimited</span>
+          <span className="text-xs text-slate-500 ml-auto">No call limit on your plan</span>
         </div>
       </div>
     )
