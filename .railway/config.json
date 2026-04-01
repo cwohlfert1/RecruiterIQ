@@ -1,0 +1,27 @@
+{
+  "projects": {
+    "C:\\Users\\cwohl\\OneDrive\\Desktop\\tournament-fantasy": {
+      "projectPath": "C:\\Users\\cwohl\\OneDrive\\Desktop\\tournament-fantasy",
+      "name": "TourneyRun",
+      "project": "018ab4ae-889d-406f-b890-a26646d62816",
+      "environment": "d13d07fe-ddd4-47b0-afe5-9c3091697a91",
+      "environmentName": "production",
+      "service": null
+    },
+    "C:\\Users\\cwohl\\resume-cleaner": {
+      "projectPath": "C:\\Users\\cwohl\\resume-cleaner",
+      "name": "resume-cleaner",
+      "project": "7e559002-f69b-493a-a759-e1a395d2f42b",
+      "environment": "8f37bc0d-8dcc-47f9-bd65-7de47be8af99",
+      "environmentName": "production",
+      "service": null
+    }
+  },
+  "user": {
+    "token": null,
+    "accessToken": "foKOF-xDcc5hhg9UNrBYRL8_g9HxKA672x4RYpp6LCH",
+    "refreshToken": "ofEtSFr4JcU4U9Jn4JVN2o-ldpAn4yYby9gIU5gLbW5",
+    "tokenExpiresAt": 1774899757
+  },
+  "linkedFunctions": null
+}

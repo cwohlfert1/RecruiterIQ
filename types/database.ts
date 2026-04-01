@@ -278,7 +278,7 @@ export type Database = {
         Row: {
           id:         string
           user_id:    string
-          type:       'assessment_completed' | 'assessment_started' | 'invite_expired'
+          type:       'assessment_completed' | 'assessment_started' | 'invite_expired' | 'project_shared'
           title:      string
           message:    string | null
           link:       string | null
@@ -288,7 +288,7 @@ export type Database = {
         Insert: {
           id?:        string
           user_id:    string
-          type:       'assessment_completed' | 'assessment_started' | 'invite_expired'
+          type:       'assessment_completed' | 'assessment_started' | 'invite_expired' | 'project_shared'
           title:      string
           message?:   string | null
           link?:      string | null
@@ -297,6 +297,141 @@ export type Database = {
         Update: {
           read?: boolean
         }
+      }
+      projects: {
+        Row: {
+          id:          string
+          owner_id:    string
+          title:       string
+          client_name: string
+          jd_text:     string | null
+          status:      'active' | 'filled' | 'on_hold' | 'archived'
+          created_at:  string
+          updated_at:  string
+        }
+        Insert: {
+          id?:          string
+          owner_id:     string
+          title:        string
+          client_name:  string
+          jd_text?:     string | null
+          status?:      'active' | 'filled' | 'on_hold' | 'archived'
+        }
+        Update: {
+          title?:       string
+          client_name?: string
+          jd_text?:     string | null
+          status?:      'active' | 'filled' | 'on_hold' | 'archived'
+        }
+      }
+      project_members: {
+        Row: {
+          id:         string
+          project_id: string
+          user_id:    string
+          role:       'owner' | 'collaborator' | 'viewer'
+          added_by:   string | null
+          added_at:   string
+        }
+        Insert: {
+          id?:        string
+          project_id: string
+          user_id:    string
+          role:       'owner' | 'collaborator' | 'viewer'
+          added_by?:  string | null
+          added_at?:  string
+        }
+        Update: {
+          role?: 'owner' | 'collaborator' | 'viewer'
+        }
+      }
+      project_candidates: {
+        Row: {
+          id:                   string
+          project_id:           string
+          candidate_name:       string
+          candidate_email:      string
+          resume_text:          string
+          cqi_score:            number | null
+          cqi_breakdown_json:   BreakdownJson | null
+          red_flag_score:       number | null
+          red_flag_summary:     string | null
+          red_flags_json:       RedFlag[] | null
+          assessment_invite_id: string | null
+          added_by:             string | null
+          status:               'reviewing' | 'screening' | 'submitted' | 'rejected'
+          deleted_at:           string | null
+          created_at:           string
+          updated_at:           string
+        }
+        Insert: {
+          id?:                   string
+          project_id:            string
+          candidate_name:        string
+          candidate_email:       string
+          resume_text:           string
+          cqi_score?:            number | null
+          cqi_breakdown_json?:   BreakdownJson | null
+          red_flag_score?:       number | null
+          red_flag_summary?:     string | null
+          red_flags_json?:       RedFlag[] | null
+          assessment_invite_id?: string | null
+          added_by?:             string | null
+          status?:               'reviewing' | 'screening' | 'submitted' | 'rejected'
+        }
+        Update: {
+          candidate_name?:       string
+          cqi_score?:            number | null
+          cqi_breakdown_json?:   BreakdownJson | null
+          red_flag_score?:       number | null
+          red_flag_summary?:     string | null
+          red_flags_json?:       RedFlag[] | null
+          assessment_invite_id?: string | null
+          status?:               'reviewing' | 'screening' | 'submitted' | 'rejected'
+          deleted_at?:           string | null
+        }
+      }
+      project_boolean_strings: {
+        Row: {
+          id:              string
+          project_id:      string
+          user_id:         string
+          linkedin_string: string
+          indeed_string:   string
+          is_active:       boolean
+          created_by:      string | null
+          created_at:      string
+        }
+        Insert: {
+          id?:              string
+          project_id:       string
+          user_id:          string
+          linkedin_string:  string
+          indeed_string:    string
+          is_active?:       boolean
+          created_by?:      string | null
+        }
+        Update: {
+          is_active?: boolean
+        }
+      }
+      project_activity: {
+        Row: {
+          id:            string
+          project_id:    string
+          user_id:       string | null
+          action_type:   string
+          metadata_json: Json
+          created_at:    string
+        }
+        Insert: {
+          id?:            string
+          project_id:     string
+          user_id?:       string | null
+          action_type:    string
+          metadata_json?: Json
+        }
+        Update: never
       }
       team_members: {
         Row: {
@@ -604,3 +739,40 @@ export type ProctoringEvent          = Database['public']['Tables']['proctoring_
 export type AssessmentSnapshot       = Database['public']['Tables']['assessment_snapshots']['Row']
 export type Notification             = Database['public']['Tables']['notifications']['Row']
 export type RedFlagCheck             = Database['public']['Tables']['red_flag_checks']['Row']
+export type Project                  = Database['public']['Tables']['projects']['Row']
+export type ProjectMember            = Database['public']['Tables']['project_members']['Row']
+export type ProjectCandidate         = Database['public']['Tables']['project_candidates']['Row']
+export type ProjectBooleanString     = Database['public']['Tables']['project_boolean_strings']['Row']
+export type ProjectActivity          = Database['public']['Tables']['project_activity']['Row']
+
+// ─── Project domain types ──────────────────────────────────
+
+export type ProjectStatus      = 'active' | 'filled' | 'on_hold' | 'archived'
+export type ProjectMemberRole  = 'owner' | 'collaborator' | 'viewer'
+export type CandidateStatus    = 'reviewing' | 'screening' | 'submitted' | 'rejected'
+
+export type ProjectActivityType =
+  | 'project_created'
+  | 'candidate_added'
+  | 'candidate_scored'
+  | 'candidate_status_changed'
+  | 'red_flag_checked'
+  | 'boolean_generated'
+  | 'boolean_regenerated'
+  | 'assessment_sent'
+  | 'assessment_completed'
+  | 'project_shared'
+  | 'jd_updated'
+  | 'project_status_changed'
+  | 'member_added'
+  | 'batch_score_started'
+  | 'batch_score_completed'
+
+// Enriched project row returned by /api/projects/list
+export type ProjectListItem = Project & {
+  candidate_count: number
+  top_cqi:         number | null
+  last_activity_at: string | null
+  members:         Array<{ user_id: string; role: ProjectMemberRole }>
+  is_owner:        boolean
+}
