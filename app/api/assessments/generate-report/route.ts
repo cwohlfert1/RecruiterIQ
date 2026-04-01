@@ -96,6 +96,10 @@ export async function POST(req: NextRequest) {
     assessmentId: string
   }
 
+  if (!sessionId || !assessmentId) {
+    return NextResponse.json({ error: 'sessionId and assessmentId are required' }, { status: 400 })
+  }
+
   // Verify ownership
   const { data: session } = await db
     .from('assessment_sessions')

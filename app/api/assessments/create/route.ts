@@ -24,6 +24,10 @@ export async function POST(req: NextRequest) {
   const body = await req.json() as { draft: AssessmentDraft; status: 'draft' | 'published' }
   const { draft, status } = body
 
+  if (!draft || !status) {
+    return NextResponse.json({ error: 'draft and status are required' }, { status: 400 })
+  }
+
   if (!draft.title?.trim() || !draft.role?.trim()) {
     return NextResponse.json({ error: 'Title and role are required' }, { status: 400 })
   }
