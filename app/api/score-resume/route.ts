@@ -88,9 +88,6 @@ Return ONLY this JSON structure:
   }
 }`
 
-  console.log('[score-resume] api_key_exists:', !!process.env.ANTHROPIC_API_KEY, 'model:', MODEL)
-  console.log('[score-resume] input lengths — jd:', jd_text.length, 'resume:', resume_text.length)
-
   let claudeData: ClaudeResponse
   try {
     const response = await anthropic.messages.create({
@@ -100,22 +97,10 @@ Return ONLY this JSON structure:
       messages:   [{ role: 'user', content: userPrompt }],
     })
 
-    console.log('[score-resume] claude response ok — stop_reason:', response.stop_reason, 'content_type:', response.content[0]?.type)
-
     const rawText = response.content[0].type === 'text' ? response.content[0].text : ''
-    console.log('[score-resume] raw_text (first 200):', rawText.slice(0, 200))
     claudeData = JSON.parse(rawText) as ClaudeResponse
-  } catch (err: unknown) {
-    const e = err as { message?: string; status?: number; error?: unknown }
-    console.error('[score-resume] ERROR:', {
-      message: e.message,
-      status:  e.status,
-      error:   JSON.stringify(e.error),
-    })
-    return NextResponse.json(
-      { error: e.message || 'Failed to get or parse Claude response' },
-      { status: 500 }
-    )
+  } catch {
+    return NextResponse.json({ error: 'Failed to get or parse Claude response' }, { status: 500 })
   }
 
   const { overall_score, job_title, breakdown } = claudeData
