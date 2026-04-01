@@ -393,6 +393,30 @@ export type Database = {
         }
         Update: never
       }
+      red_flag_checks: {
+        Row: {
+          id:              string
+          user_id:         string
+          resume_text:     string
+          jd_text:         string | null
+          integrity_score: number
+          flags_json:      RedFlag[]
+          summary:         string
+          recommendation:  'proceed' | 'caution' | 'pass'
+          created_at:      string
+        }
+        Insert: {
+          id?:             string
+          user_id:         string
+          resume_text:     string
+          jd_text?:        string | null
+          integrity_score: number
+          flags_json:      RedFlag[]
+          summary:         string
+          recommendation:  'proceed' | 'caution' | 'pass'
+        }
+        Update: never
+      }
       stack_rankings: {
         Row: {
           id:         string
@@ -492,6 +516,13 @@ export type Database = {
 
 // ─── Domain types ─────────────────────────────────────────
 
+export type RedFlag = {
+  type:        string
+  severity:    'high' | 'medium' | 'low'
+  evidence:    string
+  explanation: string
+}
+
 export type ActivityFeature =
   | 'resume_scorer'
   | 'summary'
@@ -572,3 +603,4 @@ export type AssessmentQuestionResponse = Database['public']['Tables']['assessmen
 export type ProctoringEvent          = Database['public']['Tables']['proctoring_events']['Row']
 export type AssessmentSnapshot       = Database['public']['Tables']['assessment_snapshots']['Row']
 export type Notification             = Database['public']['Tables']['notifications']['Row']
+export type RedFlagCheck             = Database['public']['Tables']['red_flag_checks']['Row']

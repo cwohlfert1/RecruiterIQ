@@ -4,18 +4,18 @@ import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search, Trash2, ChevronDown, ChevronUp, Copy, Check,
-  FileSearch, FileText, Trophy, Clock, AlertTriangle,
+  FileSearch, FileText, Trophy, Clock, AlertTriangle, ShieldAlert,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn, formatRelativeTime, getScoreColor } from '@/lib/utils'
 import { toast } from 'sonner'
 import type {
-  ResumeScore, ClientSummary, BooleanSearch, StackRanking, StackCandidate,
+  ResumeScore, ClientSummary, BooleanSearch, StackRanking, StackCandidate, RedFlagCheck,
 } from '@/types/database'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-type Tab = 'scores' | 'summaries' | 'boolean' | 'rankings'
+type Tab = 'scores' | 'summaries' | 'boolean' | 'rankings' | 'redflags'
 
 type RankingRow = StackRanking & {
   stack_ranking_candidates: Pick<StackCandidate, 'id' | 'candidate_name' | 'score' | 'rank'>[]
@@ -24,10 +24,11 @@ type RankingRow = StackRanking & {
 const PAGE_SIZE = 20
 
 const TAB_CONFIG: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: 'scores',    label: 'Resume Scores',  icon: <FileSearch className="w-4 h-4" /> },
-  { id: 'summaries', label: 'Summaries',       icon: <FileText   className="w-4 h-4" /> },
-  { id: 'boolean',   label: 'Boolean Strings', icon: <Search     className="w-4 h-4" /> },
-  { id: 'rankings',  label: 'Stack Rankings',  icon: <Trophy     className="w-4 h-4" /> },
+  { id: 'scores',    label: 'Resume Scores',   icon: <FileSearch   className="w-4 h-4" /> },
+  { id: 'summaries', label: 'Summaries',        icon: <FileText     className="w-4 h-4" /> },
+  { id: 'boolean',   label: 'Boolean Strings',  icon: <Search       className="w-4 h-4" /> },
+  { id: 'rankings',  label: 'Stack Rankings',   icon: <Trophy       className="w-4 h-4" /> },
+  { id: 'redflags',  label: 'Red Flag Checks',  icon: <ShieldAlert  className="w-4 h-4" /> },
 ]
 
 // ─── Small helpers ───────────────────────────────────────────────────────────
@@ -220,6 +221,7 @@ export function HistoryClient() {
   const [summaries, setSummaries] = useState<ClientSummary[]>([])
   const [booleans,  setBooleans]  = useState<BooleanSearch[]>([])
   const [rankings,  setRankings]  = useState<RankingRow[]>([])
+  const [redflags,  setRedflags]  = useState<RedFlagCheck[]>([])
 
   // Debounce search
   const debRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -291,7 +293,7 @@ export function HistoryClient() {
         setTotalCount(count ?? 0)
         setLoading(false)
       })
-    } else {
+    } else if (activeTab === 'rankings') {
       let q = supabase
         .from('stack_rankings')
         .select('*, stack_ranking_candidates(id, candidate_name, score, rank)', { count: 'exact' })
@@ -304,6 +306,21 @@ export function HistoryClient() {
         setTotalCount(count ?? 0)
         setLoading(false)
       })
+    } else {
+      // redflags
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = supabase as any
+      db
+        .from('red_flag_checks')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to)
+        .then(({ data, count }: { data: RedFlagCheck[] | null; count: number | null }) => {
+          if (cancelled) return
+          setRedflags(data ?? [])
+          setTotalCount(count ?? 0)
+          setLoading(false)
+        })
     }
 
     return () => { cancelled = true }
@@ -319,7 +336,8 @@ export function HistoryClient() {
     if      (activeTab === 'scores')    setScores(p    => p.filter(r => r.id !== deleteId))
     else if (activeTab === 'summaries') setSummaries(p => p.filter(r => r.id !== deleteId))
     else if (activeTab === 'boolean')   setBooleans(p  => p.filter(r => r.id !== deleteId))
-    else                                setRankings(p  => p.filter(r => r.id !== deleteId))
+    else if (activeTab === 'rankings')  setRankings(p  => p.filter(r => r.id !== deleteId))
+    else                                setRedflags(p  => p.filter(r => r.id !== deleteId))
     setTotalCount(p => p - 1)
 
     const tableMap = {
@@ -327,6 +345,7 @@ export function HistoryClient() {
       summaries: 'client_summaries',
       boolean:   'boolean_searches',
       rankings:  'stack_rankings',
+      redflags:  'red_flag_checks',
     } as const
 
     const { error } = await supabase.from(tableMap[activeTab]).delete().eq('id', deleteId)
@@ -349,13 +368,15 @@ export function HistoryClient() {
   const currentData =
     activeTab === 'scores'    ? scores    :
     activeTab === 'summaries' ? summaries :
-    activeTab === 'boolean'   ? booleans  : rankings
+    activeTab === 'boolean'   ? booleans  :
+    activeTab === 'rankings'  ? rankings  : redflags
 
   const emptyLabels: Record<Tab, string> = {
     scores:    'resume scores',
     summaries: 'summaries',
     boolean:   'boolean strings',
     rankings:  'stack rankings',
+    redflags:  'red flag checks',
   }
 
   const thCls = 'text-left text-xs font-semibold text-slate-500 uppercase tracking-wide pb-3 pr-4'
@@ -659,6 +680,113 @@ export function HistoryClient() {
     )
   }
 
+  // ─── Red Flags table ──────────────────────────────────────
+
+  const RECOMMENDATION_BADGE: Record<string, string> = {
+    proceed: 'bg-green-500/20 text-green-400 border-green-500/30',
+    caution: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+    pass:    'bg-red-500/20 text-red-400 border-red-500/30',
+  }
+
+  const RECOMMENDATION_LABEL: Record<string, string> = {
+    proceed: 'Proceed',
+    caution: 'Ask About Flags',
+    pass:    'Consider Passing',
+  }
+
+  function RedFlagsTable() {
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-white/6">
+              <th className={thCls}>Date</th>
+              <th className={thCls}>Integrity</th>
+              <th className={thCls}>Flags</th>
+              <th className={thCls}>Recommendation</th>
+              <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wide pb-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/4">
+            {redflags.map(row => (
+              <React.Fragment key={row.id}>
+                <tr
+                  className="group cursor-pointer hover:bg-white/3 transition-colors"
+                  onClick={() => toggleExpand(row.id)}
+                >
+                  <td className="py-3 pr-4 text-sm text-slate-400 whitespace-nowrap">
+                    {formatRelativeTime(row.created_at)}
+                  </td>
+                  <td className="py-3 pr-4">
+                    <ScoreBadge score={row.integrity_score} />
+                  </td>
+                  <td className="py-3 pr-4 text-sm text-slate-400">
+                    {row.flags_json.length} flag{row.flags_json.length !== 1 ? 's' : ''}
+                  </td>
+                  <td className="py-3 pr-4">
+                    <span className={cn(
+                      'text-xs font-semibold px-2 py-0.5 rounded-full border',
+                      RECOMMENDATION_BADGE[row.recommendation] ?? 'bg-white/10 text-slate-400 border-white/10',
+                    )}>
+                      {RECOMMENDATION_LABEL[row.recommendation] ?? row.recommendation}
+                    </span>
+                  </td>
+                  <td className="py-3">
+                    <RowActions
+                      id={row.id}
+                      expanded={expandedId === row.id}
+                      onToggle={() => toggleExpand(row.id)}
+                      onDelete={() => setDeleteId(row.id)}
+                    />
+                  </td>
+                </tr>
+                {expandedId === row.id && (
+                  <tr>
+                    <td colSpan={5} className="pb-3">
+                      <ExpandPanel>
+                        {row.flags_json.length === 0 ? (
+                          <p className="text-sm text-slate-400 italic">No flags detected.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Flags</p>
+                            {row.flags_json.map((flag, i) => {
+                              const sevCls =
+                                flag.severity === 'high'   ? 'text-red-400'    :
+                                flag.severity === 'medium' ? 'text-yellow-400' : 'text-green-400'
+                              const sevDot =
+                                flag.severity === 'high'   ? '🔴' :
+                                flag.severity === 'medium' ? '🟡' : '🟢'
+                              return (
+                                <div key={i} className="flex items-start gap-2.5 p-3 rounded-lg bg-white/4 border border-white/6">
+                                  <span className="text-sm leading-5">{sevDot}</span>
+                                  <div className="min-w-0">
+                                    <p className={cn('text-xs font-semibold mb-0.5', sevCls)}>{flag.type}</p>
+                                    <p className="text-xs text-slate-400 leading-relaxed">{flag.evidence}</p>
+                                    <p className="text-xs text-slate-500 italic leading-relaxed mt-0.5">{flag.explanation}</p>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                        {row.summary && (
+                          <div>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Summary</p>
+                            <p className="text-sm text-slate-300 leading-relaxed">{row.summary}</p>
+                          </div>
+                        )}
+                      </ExpandPanel>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
   // ─── Pagination ───────────────────────────────────────────
 
   function Pagination() {
@@ -747,6 +875,7 @@ export function HistoryClient() {
             {activeTab === 'summaries' && <SummariesTable />}
             {activeTab === 'boolean'   && <BooleanTable   />}
             {activeTab === 'rankings'  && <RankingsTable  />}
+            {activeTab === 'redflags'  && <RedFlagsTable  />}
             <Pagination />
           </>
         )}
