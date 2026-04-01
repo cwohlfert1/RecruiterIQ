@@ -710,3 +710,312 @@ Supabase (writes bypass RLS)
 | 6 | `user_id` denormalized onto `assessment_sessions` | Avoids JOIN through invite → assessment for RLS without expensive nested EXISTS |
 | 7 | Auto-expiry handled at query time + scheduled Edge Function | pg_cron not available on all Supabase plans; query-time check is always accurate; batch UPDATE is cleanup only |
 | 8 | Judge0 (Java/C#/Go/Ruby) excluded from MVP | Client-side only for MVP: JS/TS (Function sandbox), React (iframe), Python (Pyodide). No JUDGE0_API_KEY needed yet |
+
+---
+
+---
+
+## Projects Module Tables (Migration 005)
+
+**Migration file:** `supabase/migrations/005_projects_schema.sql`
+**Last updated:** 2026-04-01
+
+### ERD additions
+
+```
+auth.users
+    │
+    ├─── projects                    (1:N)   Project definitions
+    │         │
+    │         ├─── project_members   (1:N)   Role-based team membership
+    │         │         user_id ──► auth.users
+    │         │
+    │         ├─── project_candidates (1:N)  Pipeline candidates + scores
+    │         │         assessment_invite_id ──► assessment_invites (SET NULL)
+    │         │         added_by ──► auth.users
+    │         │
+    │         ├─── project_boolean_strings (1:N)  Per-recruiter Boolean variations
+    │         │         user_id ──► auth.users
+    │         │         (history rows kept; is_active flag distinguishes current)
+    │         │
+    │         └─── project_activity  (1:N)   Append-only action log
+    │                   user_id ──► auth.users (SET NULL on delete)
+    │
+    └─── notifications               (modified: type CHECK extended to include 'project_shared')
+```
+
+---
+
+### `public.projects`
+
+One row per job opening / project. Owner is always inserted into `project_members` with `role = 'owner'` by the create API route.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | NOT NULL | `gen_random_uuid()` | PK |
+| `owner_id` | uuid | NOT NULL | — | FK → `auth.users(id)` CASCADE |
+| `title` | text | NOT NULL | — | Job title; 1–100 chars |
+| `client_name` | text | NOT NULL | — | Client company name; 1–100 chars |
+| `jd_text` | text | NULL | — | Full job description; optional at creation |
+| `status` | text | NOT NULL | `'active'` | `'active'` \| `'filled'` \| `'on_hold'` \| `'archived'` |
+| `created_at` | timestamptz | NOT NULL | `now()` | |
+| `updated_at` | timestamptz | NOT NULL | `now()` | Auto-updated by trigger |
+
+**Plan gating (enforced in app layer):**
+- Free: max 1 active project (`status IN ('active','on_hold')`)
+- Pro: max 10 active projects
+- Agency: unlimited
+
+**Indexes:**
+- `idx_projects_owner_id` — `owner_id`
+- `idx_projects_status` — `status`
+- `idx_projects_created_at` — `created_at DESC`
+
+**RLS:**
+- SELECT: `owner_id = auth.uid() OR is_project_member(id)`
+- INSERT: `auth.uid() IS NOT NULL AND owner_id = auth.uid()`
+- UPDATE: `owner_id = auth.uid() OR is_project_collaborator(id)`
+- DELETE: `owner_id = auth.uid()`
+
+---
+
+### `public.project_members`
+
+Role-based membership. One row per user per project. Owner inserted by API on project creation.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | NOT NULL | `gen_random_uuid()` | PK |
+| `project_id` | uuid | NOT NULL | — | FK → `projects(id)` CASCADE |
+| `user_id` | uuid | NOT NULL | — | FK → `auth.users(id)` CASCADE |
+| `role` | text | NOT NULL | — | `'owner'` \| `'collaborator'` \| `'viewer'` |
+| `added_by` | uuid | NULL | — | FK → `auth.users(id)` SET NULL |
+| `added_at` | timestamptz | NOT NULL | `now()` | |
+
+**Constraints:**
+- `UNIQUE (project_id, user_id)`
+
+**Roles:**
+| Role | Can do |
+|------|--------|
+| `owner` | All actions; delete project; manage members |
+| `collaborator` | Add candidates; run scoring/red flags/boolean/assessments |
+| `viewer` | Read-only access to all tabs |
+
+**Indexes:**
+- `idx_project_members_project_id` — `project_id`
+- `idx_project_members_user_id` — `user_id`
+
+**RLS:**
+- SELECT: `is_project_member(project_id)`
+- INSERT: `is_project_collaborator(project_id)`
+- UPDATE: `is_project_collaborator(project_id)`
+- DELETE: owner only (via JOIN to `projects` table)
+
+---
+
+### `public.project_candidates`
+
+Pipeline candidates within a project. Soft-deleted via `deleted_at` — app always queries `WHERE deleted_at IS NULL`.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | NOT NULL | `gen_random_uuid()` | PK |
+| `project_id` | uuid | NOT NULL | — | FK → `projects(id)` CASCADE |
+| `candidate_name` | text | NOT NULL | — | |
+| `candidate_email` | text | NOT NULL | — | |
+| `resume_text` | text | NOT NULL | — | Full resume paste |
+| `cqi_score` | integer | NULL | — | 0–100; null until scored |
+| `cqi_breakdown_json` | jsonb | NULL | — | Same shape as `resume_scores.breakdown_json` |
+| `red_flag_score` | integer | NULL | — | 0–100; null until red flag check run |
+| `red_flag_summary` | text | NULL | — | Human-readable red flag summary |
+| `red_flags_json` | jsonb | NULL | — | Array of `{severity, category, detail}` objects |
+| `assessment_invite_id` | uuid | NULL | — | FK → `assessment_invites(id)` SET NULL |
+| `added_by` | uuid | NULL | — | FK → `auth.users(id)` SET NULL |
+| `status` | text | NOT NULL | `'reviewing'` | `'reviewing'` \| `'screening'` \| `'submitted'` \| `'rejected'` |
+| `deleted_at` | timestamptz | NULL | — | Soft-delete timestamp; null = active |
+| `created_at` | timestamptz | NOT NULL | `now()` | |
+| `updated_at` | timestamptz | NOT NULL | `now()` | Auto-updated by trigger |
+
+**Constraints:**
+- `UNIQUE (project_id, candidate_email)` — prevents duplicate candidates within a project; same email allowed across different projects
+
+**Indexes:**
+- `idx_project_candidates_project_id` — `project_id`
+- `idx_project_candidates_status` — `(project_id, status)`
+- `idx_project_candidates_cqi_score` — `(project_id, cqi_score DESC NULLS LAST)` — table sort
+- `idx_project_candidates_created_at` — `(project_id, created_at)`
+- `idx_project_candidates_added_by` — `(project_id, added_by)`
+- Implicit unique index on `(project_id, candidate_email)` from constraint
+
+**RLS:**
+- SELECT: `is_project_member(project_id)`
+- INSERT: `is_project_collaborator(project_id)`
+- UPDATE: `is_project_collaborator(project_id)`
+- DELETE: owner only
+
+---
+
+### `public.project_boolean_strings`
+
+Per-recruiter Boolean search string variations. History is preserved when strings are regenerated.
+
+**Boolean String History Pattern:**
+- No `UNIQUE (project_id, user_id)` constraint — multiple rows per user/project allowed
+- A partial UNIQUE index `ON (project_id, user_id) WHERE is_active = true` enforces at most one active row per recruiter per project
+- On regeneration: `UPDATE SET is_active = false` on old rows → `INSERT` new row with `is_active = true`
+- "Show previous versions" toggle in UI queries all rows; normal view queries `WHERE is_active = true`
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | NOT NULL | `gen_random_uuid()` | PK |
+| `project_id` | uuid | NOT NULL | — | FK → `projects(id)` CASCADE |
+| `user_id` | uuid | NOT NULL | — | FK → `auth.users(id)` CASCADE; recruiter this variation belongs to |
+| `linkedin_string` | text | NOT NULL | — | LinkedIn Recruiter boolean string |
+| `indeed_string` | text | NOT NULL | — | Indeed boolean string |
+| `is_active` | boolean | NOT NULL | `true` | Only one active row per `(project_id, user_id)` |
+| `created_by` | uuid | NULL | — | FK → `auth.users(id)` SET NULL; manager who triggered generation |
+| `created_at` | timestamptz | NOT NULL | `now()` | |
+
+**Indexes:**
+- `idx_project_boolean_strings_project_id` — `project_id`
+- `idx_project_boolean_strings_user_id` — `(project_id, user_id)`
+- `idx_project_boolean_strings_created_at` — `(project_id, created_at DESC)`
+- `idx_project_boolean_strings_active_unique` — UNIQUE partial on `(project_id, user_id) WHERE is_active = true`
+
+**RLS:**
+- SELECT: `is_project_member(project_id) AND (is_project_collaborator(project_id) OR user_id = auth.uid())`
+  - Collaborator/owner sees all rows for the project
+  - Viewer sees only their own `user_id` row
+- INSERT: `is_project_collaborator(project_id)`
+- UPDATE: `is_project_collaborator(project_id)` (for archiving old rows)
+- DELETE: owner only
+
+---
+
+### `public.project_activity`
+
+Append-only action log. Inserted by server-side API routes via service role client. No user-facing INSERT policy.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | NOT NULL | `gen_random_uuid()` | PK |
+| `project_id` | uuid | NOT NULL | — | FK → `projects(id)` CASCADE |
+| `user_id` | uuid | NULL | — | FK → `auth.users(id)` SET NULL; null if user deleted |
+| `action_type` | text | NOT NULL | — | See action types below |
+| `metadata_json` | jsonb | NOT NULL | `{}` | Action-specific data (names, scores, etc.) |
+| `created_at` | timestamptz | NOT NULL | `now()` | |
+
+**Supported `action_type` values:**
+| Value | When logged |
+|-------|-------------|
+| `project_created` | Project creation |
+| `candidate_added` | Candidate added (with or without score) |
+| `candidate_scored` | Individual score after batch-score |
+| `candidate_status_changed` | Status dropdown changed |
+| `red_flag_checked` | Red flag check completed |
+| `boolean_generated` | Boolean variations generated for first time |
+| `boolean_regenerated` | "Regenerate All" or "Regenerate My String" |
+| `assessment_sent` | Assessment invite sent to candidate |
+| `assessment_completed` | Candidate submits assessment |
+| `project_shared` | Project shared with a team member |
+| `jd_updated` | Job description edited |
+| `project_status_changed` | Status changed (Active → Filled, etc.) |
+| `member_added` | Team member added via Share modal |
+| `batch_score_started` | "Score All" confirmed |
+| `batch_score_completed` | All scoring in batch finished |
+
+**Indexes:**
+- `idx_project_activity_project_created` — `(project_id, created_at DESC)` — Activity Feed tab
+- `idx_project_activity_user_id` — `user_id`
+
+**RLS:**
+- SELECT: `is_project_member(project_id)`
+- INSERT: none (service role bypasses RLS)
+- UPDATE: never
+- DELETE: never
+
+---
+
+### `public.notifications` modification (Migration 005)
+
+**Extended `type` CHECK constraint** to add `'project_shared'`:
+
+```sql
+-- Constraint was: ('assessment_completed', 'assessment_started', 'invite_expired')
+-- Now:
+CHECK (type IN (
+  'assessment_completed',
+  'assessment_started',
+  'invite_expired',
+  'project_shared'
+))
+```
+
+`'project_shared'` is inserted by `/api/projects/[id]/share` via service role when a project is shared with a team member.
+
+---
+
+### RLS Helper Functions (Migration 005)
+
+Two `SECURITY DEFINER` functions created to prevent RLS recursion. Both are `STABLE` (no side effects, same result within a transaction).
+
+```sql
+-- Returns true if auth.uid() is any member of the project
+is_project_member(p_id uuid) → boolean
+
+-- Returns true if auth.uid() is owner or collaborator
+is_project_collaborator(p_id uuid) → boolean
+```
+
+These functions read `project_members` directly (bypassing RLS via SECURITY DEFINER), which is required because the `project_members` RLS policies themselves call these functions — a plain SQL subquery in the policy would cause infinite recursion.
+
+---
+
+## Index Summary (Migration 005 additions)
+
+| Table | Index | Columns | Purpose |
+|-------|-------|---------|---------|
+| projects | idx_projects_owner_id | `owner_id` | My Projects page queries |
+| projects | idx_projects_status | `status` | Filter by status (active/archived) |
+| projects | idx_projects_created_at | `created_at DESC` | Default sort |
+| project_members | idx_project_members_project_id | `project_id` | Load all members for a project |
+| project_members | idx_project_members_user_id | `user_id` | "Shared with Me" filter |
+| project_candidates | idx_project_candidates_project_id | `project_id` | Load all candidates |
+| project_candidates | idx_project_candidates_status | `(project_id, status)` | Status filter |
+| project_candidates | idx_project_candidates_cqi_score | `(project_id, cqi_score DESC NULLS LAST)` | Rank sort (unscored last) |
+| project_candidates | idx_project_candidates_created_at | `(project_id, created_at)` | Date added sort |
+| project_candidates | idx_project_candidates_added_by | `(project_id, added_by)` | Filter by recruiter |
+| project_boolean_strings | idx_project_boolean_strings_project_id | `project_id` | Load all variations |
+| project_boolean_strings | idx_project_boolean_strings_user_id | `(project_id, user_id)` | Per-recruiter lookup |
+| project_boolean_strings | idx_project_boolean_strings_created_at | `(project_id, created_at DESC)` | History sort |
+| project_boolean_strings | idx_project_boolean_strings_active_unique | `(project_id, user_id)` WHERE `is_active = true` UNIQUE | One active row per recruiter |
+| project_activity | idx_project_activity_project_created | `(project_id, created_at DESC)` | Activity Feed tab |
+| project_activity | idx_project_activity_user_id | `user_id` | Filter by actor |
+
+---
+
+## RLS Policy Summary (Migration 005 additions)
+
+| Table | SELECT | INSERT | UPDATE | DELETE | Notes |
+|-------|--------|--------|--------|--------|-------|
+| projects | owner or member | own rows | owner or collaborator | owner only | Helper functions |
+| project_members | any member | collaborator+ | collaborator+ | owner only | |
+| project_candidates | any member | collaborator+ | collaborator+ | owner only | Soft-delete preferred |
+| project_boolean_strings | member + (collaborator OR own row) | collaborator+ | collaborator+ | owner only | Recruiter sees only own variation |
+| project_activity | any member | service role only | never | never | Append-only |
+
+---
+
+## Schema Notes — Migration 005
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 1 | `is_project_member` / `is_project_collaborator` as SECURITY DEFINER functions | Avoids RLS recursion: project_members policies call these functions, which need to read project_members — SECURITY DEFINER breaks the cycle |
+| 2 | No unique constraint on `(project_id, user_id)` in `project_boolean_strings` | History preservation requirement: multiple rows per recruiter per project, distinguished by `is_active`. UNIQUE partial index enforces the "one active" invariant at DB level |
+| 3 | `project_candidates.deleted_at` soft-delete instead of hard DELETE | Prevents accidental data loss; enables "undo" in future; keeps activity log coherent |
+| 4 | `project_activity` has no user INSERT policy | All activity logging goes through server-side API routes using service role client. Never allow clients to self-report activity (integrity risk) |
+| 5 | `assessment_invite_id` uses `ON DELETE SET NULL` not `ON DELETE CASCADE` | Deleting a project deletes project_candidates (cascade) but should not delete assessment_invites/sessions (those belong to the assessments module independently) |
+| 6 | `notifications.type` extended via DROP/ADD CONSTRAINT not ALTER TYPE | `notifications.type` is a CHECK constraint (not a PG ENUM) as created in migration 002 — CHECK constraints must be dropped and recreated to add values |
+| 7 | Migration numbered 005, skipping 004 | 004 is reserved per project numbering convention. This migration depends on 001–003 only |
+| 8 | `red_flags_json` on `project_candidates` stores flag array | Mirrors `red_flag_checks.flags_json` shape: `[{severity, category, detail}]`. Also saves to `red_flag_checks` table for history page |
