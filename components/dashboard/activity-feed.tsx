@@ -1,15 +1,16 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { FileSearch, FileText, Search, Trophy, Clock } from 'lucide-react'
+import { FileSearch, FileText, Search, Trophy, Clock, ClipboardList } from 'lucide-react'
 import { formatRelativeTime } from '@/lib/utils'
 import type { ActivityLog, ActivityFeature } from '@/types/database'
 
 const FEATURE_META: Record<ActivityFeature, { icon: React.ReactNode; color: string; label: string }> = {
-  resume_scorer:  { icon: <FileSearch className="w-4 h-4" />, color: 'text-indigo-400 bg-indigo-500/15', label: 'Resume Scorer'     },
-  summary:        { icon: <FileText   className="w-4 h-4" />, color: 'text-violet-400 bg-violet-500/15', label: 'Summary Generator' },
-  boolean:        { icon: <Search     className="w-4 h-4" />, color: 'text-blue-400   bg-blue-500/15',   label: 'Boolean Generator' },
-  stack_ranking:  { icon: <Trophy     className="w-4 h-4" />, color: 'text-yellow-400 bg-yellow-500/15', label: 'Stack Ranking'     },
+  resume_scorer:  { icon: <FileSearch     className="w-4 h-4" />, color: 'text-indigo-400 bg-indigo-500/15', label: 'Resume Scorer'     },
+  summary:        { icon: <FileText       className="w-4 h-4" />, color: 'text-violet-400 bg-violet-500/15', label: 'Summary Generator' },
+  boolean:        { icon: <Search         className="w-4 h-4" />, color: 'text-blue-400   bg-blue-500/15',   label: 'Boolean Generator' },
+  stack_ranking:  { icon: <Trophy         className="w-4 h-4" />, color: 'text-yellow-400 bg-yellow-500/15', label: 'Stack Ranking'     },
+  assessment:     { icon: <ClipboardList  className="w-4 h-4" />, color: 'text-green-400  bg-green-500/15',  label: 'Assessment'        },
 }
 
 interface ActivityFeedProps {

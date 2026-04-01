@@ -13,12 +13,14 @@ import {
   Settings,
   Brain,
   LogOut,
+  ClipboardList,
+  PlusCircle,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn, getPlanLabel } from '@/lib/utils'
 import type { UserProfile } from '@/types/database'
 
-const NAV_ITEMS = [
+const MAIN_NAV = [
   { label: 'Home',              href: '/dashboard',          icon: LayoutDashboard },
   { label: 'Resume Scorer',     href: '/dashboard/scorer',   icon: FileSearch      },
   { label: 'Summary Generator', href: '/dashboard/summary',  icon: FileText        },
@@ -26,6 +28,11 @@ const NAV_ITEMS = [
   { label: 'Stack Ranking',     href: '/dashboard/ranking',  icon: Trophy          },
   { label: 'History',           href: '/dashboard/history',  icon: Clock           },
   { label: 'Settings',          href: '/dashboard/settings', icon: Settings        },
+]
+
+const ASSESSMENT_NAV = [
+  { label: 'My Assessments',    href: '/dashboard/assessments',        icon: ClipboardList },
+  { label: 'Create Assessment', href: '/dashboard/assessments/create', icon: PlusCircle    },
 ]
 
 const containerVariants = {
@@ -61,6 +68,7 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
   }[profile.plan_tier]
 
   const initials = userEmail.slice(0, 2).toUpperCase()
+  const isManager = profile.role === 'manager'
 
   return (
     <aside className="flex flex-col w-64 min-h-screen bg-[#1A1D2E] border-r border-white/8 flex-shrink-0">
@@ -80,7 +88,7 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
           animate="visible"
           className="space-y-0.5"
         >
-          {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
+          {MAIN_NAV.map(({ label, href, icon: Icon }) => {
             const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
             return (
               <motion.li key={href} variants={itemVariants}>
@@ -90,7 +98,6 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />
                   <span>{label}</span>
-                  {/* Agency-only badge */}
                   {href === '/dashboard/ranking' && profile.plan_tier === 'free' && (
                     <span className="ml-auto text-[10px] font-semibold text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded-full">
                       PRO
@@ -100,13 +107,42 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
               </motion.li>
             )
           })}
+
+          {/* Assessments section — manager only */}
+          {isManager && (
+            <>
+              <motion.li variants={itemVariants}>
+                <div className="flex items-center gap-2 px-3 pt-4 pb-1.5">
+                  <div className="flex-1 h-px bg-white/8" />
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 whitespace-nowrap">
+                    Assessments
+                  </span>
+                  <div className="flex-1 h-px bg-white/8" />
+                </div>
+              </motion.li>
+
+              {ASSESSMENT_NAV.map(({ label, href, icon: Icon }) => {
+                const isActive = pathname === href || pathname.startsWith(href + '/')
+                return (
+                  <motion.li key={href} variants={itemVariants}>
+                    <Link
+                      href={href}
+                      className={cn('nav-item', isActive && 'nav-active')}
+                    >
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <span>{label}</span>
+                    </Link>
+                  </motion.li>
+                )
+              })}
+            </>
+          )}
         </motion.ul>
       </nav>
 
       {/* User section */}
       <div className="px-3 py-4 border-t border-white/8 space-y-1">
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/4">
-          {/* Avatar */}
           <div className="w-8 h-8 rounded-full bg-gradient-brand flex items-center justify-center text-xs font-semibold text-white flex-shrink-0">
             {initials}
           </div>

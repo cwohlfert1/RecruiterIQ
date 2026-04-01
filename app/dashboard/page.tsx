@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { FileSearch, FileText, Search, Trophy, Sparkles } from 'lucide-react'
+import { FileSearch, FileText, Search, Trophy, Sparkles, ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { ActivityFeed } from '@/components/dashboard/activity-feed'
@@ -28,8 +28,10 @@ export default async function DashboardPage() {
 
   const safeProfile = profile as UserProfile
 
+  const isManager = safeProfile.role === 'manager'
+
   // Remaining queries in parallel (all-time counts)
-  const [resumeCountRes, summaryCountRes, booleanCountRes, rankingCountRes, activityRes] =
+  const [resumeCountRes, summaryCountRes, booleanCountRes, rankingCountRes, activityRes, assessmentInviteRes] =
     await Promise.all([
       supabase.from('resume_scores').select('id', { count: 'exact', head: true })
         .eq('user_id', user.id),
@@ -41,13 +43,18 @@ export default async function DashboardPage() {
         .eq('user_id', user.id),
       supabase.from('activity_log').select('*')
         .eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
+      isManager
+        ? supabase.from('assessment_invites').select('id', { count: 'exact', head: true })
+            .eq('created_by', user.id)
+        : Promise.resolve({ count: 0, data: null, error: null }),
     ])
 
   const stats = {
-    resumes:  resumeCountRes.count  ?? 0,
-    summaries: summaryCountRes.count ?? 0,
-    booleans:  booleanCountRes.count ?? 0,
-    rankings:  rankingCountRes.count ?? 0,
+    resumes:     resumeCountRes.count     ?? 0,
+    summaries:   summaryCountRes.count    ?? 0,
+    booleans:    booleanCountRes.count    ?? 0,
+    rankings:    rankingCountRes.count    ?? 0,
+    assessments: assessmentInviteRes.count ?? 0,
   }
   const activities = (activityRes.data ?? []) as ActivityLog[]
 
@@ -61,7 +68,7 @@ export default async function DashboardPage() {
         <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-4">
           All time
         </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className={`grid gap-4 ${isManager ? 'grid-cols-2 lg:grid-cols-5' : 'grid-cols-2 lg:grid-cols-4'}`}>
           <StatCard
             label="Resumes Scored"
             value={stats.resumes}
@@ -90,6 +97,15 @@ export default async function DashboardPage() {
             color="yellow"
             delay={240}
           />
+          {isManager && (
+            <StatCard
+              label="Assessments Sent"
+              value={stats.assessments}
+              icon={<ClipboardList className="w-5 h-5" />}
+              color="indigo"
+              delay={320}
+            />
+          )}
         </div>
       </section>
 

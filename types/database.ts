@@ -20,6 +20,7 @@ export type Database = {
           last_reset_at:         string
           billing_period_end:    string | null
           grace_period_start:    string | null
+          role:                  'recruiter' | 'manager'
           created_at:            string
           updated_at:            string
         }
@@ -33,6 +34,7 @@ export type Database = {
           last_reset_at?:        string
           billing_period_end?:   string | null
           grace_period_start?:   string | null
+          role?:                 'recruiter' | 'manager'
         }
         Update: {
           plan_tier?:             'free' | 'pro' | 'agency'
@@ -43,6 +45,257 @@ export type Database = {
           last_reset_at?:        string
           billing_period_end?:   string | null
           grace_period_start?:   string | null
+          role?:                 'recruiter' | 'manager'
+        }
+      }
+      assessments: {
+        Row: {
+          id:                 string
+          user_id:            string
+          title:              string
+          description:        string | null
+          role:               string
+          time_limit_minutes: number
+          proctoring_config:  ProctoringConfig
+          question_order:     'sequential' | 'random'
+          presentation_mode:  'one_at_a_time' | 'all_at_once'
+          status:             'draft' | 'published' | 'archived'
+          created_at:         string
+          updated_at:         string
+        }
+        Insert: {
+          id?:                string
+          user_id:            string
+          title:              string
+          description?:       string | null
+          role:               string
+          time_limit_minutes: number
+          proctoring_config?: ProctoringConfig
+          question_order?:    'sequential' | 'random'
+          presentation_mode?: 'one_at_a_time' | 'all_at_once'
+          status?:            'draft' | 'published' | 'archived'
+        }
+        Update: {
+          title?:              string
+          description?:        string | null
+          role?:               string
+          time_limit_minutes?: number
+          proctoring_config?:  ProctoringConfig
+          question_order?:     'sequential' | 'random'
+          presentation_mode?:  'one_at_a_time' | 'all_at_once'
+          status?:             'draft' | 'published' | 'archived'
+        }
+      }
+      assessment_questions: {
+        Row: {
+          id:               string
+          assessment_id:    string
+          type:             'coding' | 'multiple_choice' | 'written'
+          prompt:           string
+          points:           number
+          sort_order:       number
+          language:         'javascript' | 'typescript' | 'react_jsx' | 'react_tsx' | 'python' | null
+          starter_code:     string | null
+          test_cases_json:  TestCase[] | null
+          instructions:     string | null
+          options_json:     MCOption[] | null
+          correct_option:   string | null
+          time_limit_secs:  number | null
+          length_hint:      'short' | 'medium' | 'long' | null
+          rubric_hints:     string | null
+          created_at:       string
+        }
+        Insert: {
+          id?:              string
+          assessment_id:    string
+          type:             'coding' | 'multiple_choice' | 'written'
+          prompt:           string
+          points?:          number
+          sort_order?:      number
+          language?:        'javascript' | 'typescript' | 'react_jsx' | 'react_tsx' | 'python' | null
+          starter_code?:    string | null
+          test_cases_json?: TestCase[] | null
+          instructions?:    string | null
+          options_json?:    MCOption[] | null
+          correct_option?:  string | null
+          time_limit_secs?: number | null
+          length_hint?:     'short' | 'medium' | 'long' | null
+          rubric_hints?:    string | null
+        }
+        Update: {
+          prompt?:          string
+          points?:          number
+          sort_order?:      number
+          language?:        'javascript' | 'typescript' | 'react_jsx' | 'react_tsx' | 'python' | null
+          starter_code?:    string | null
+          test_cases_json?: TestCase[] | null
+          instructions?:    string | null
+          options_json?:    MCOption[] | null
+          correct_option?:  string | null
+          time_limit_secs?: number | null
+          length_hint?:     'short' | 'medium' | 'long' | null
+          rubric_hints?:    string | null
+        }
+      }
+      assessment_invites: {
+        Row: {
+          id:              string
+          assessment_id:   string
+          created_by:      string
+          candidate_name:  string
+          candidate_email: string
+          token:           string
+          status:          'pending' | 'started' | 'completed' | 'expired'
+          expires_at:      string
+          sent_at:         string | null
+          created_at:      string
+        }
+        Insert: {
+          id?:             string
+          assessment_id:   string
+          created_by:      string
+          candidate_name:  string
+          candidate_email: string
+          token?:          string
+          status?:         'pending' | 'started' | 'completed' | 'expired'
+          expires_at?:     string
+          sent_at?:        string | null
+        }
+        Update: {
+          status?:   'pending' | 'started' | 'completed' | 'expired'
+          sent_at?:  string | null
+        }
+      }
+      assessment_sessions: {
+        Row: {
+          id:                   string
+          invite_id:            string
+          assessment_id:        string
+          user_id:              string | null
+          started_at:           string
+          completed_at:         string | null
+          time_spent_seconds:   number | null
+          trust_score:          number | null
+          skill_score:          number | null
+          ai_integrity_summary: string | null
+          status:               'in_progress' | 'completed' | 'abandoned'
+          created_at:           string
+        }
+        Insert: {
+          id?:                   string
+          invite_id:             string
+          assessment_id:         string
+          user_id?:              string | null
+          started_at?:           string
+          completed_at?:         string | null
+          time_spent_seconds?:   number | null
+          trust_score?:          number | null
+          skill_score?:          number | null
+          ai_integrity_summary?: string | null
+          status?:               'in_progress' | 'completed' | 'abandoned'
+        }
+        Update: {
+          completed_at?:         string | null
+          time_spent_seconds?:   number | null
+          trust_score?:          number | null
+          skill_score?:          number | null
+          ai_integrity_summary?: string | null
+          status?:               'in_progress' | 'completed' | 'abandoned'
+        }
+      }
+      assessment_question_responses: {
+        Row: {
+          id:               string
+          session_id:       string
+          question_id:      string
+          answer_text:      string | null
+          selected_option:  string | null
+          skill_score:      number | null
+          feedback_json:    Json | null
+          test_results_json: Json | null
+          graded_at:        string | null
+          saved_at:         string
+        }
+        Insert: {
+          id?:               string
+          session_id:        string
+          question_id:       string
+          answer_text?:      string | null
+          selected_option?:  string | null
+          skill_score?:      number | null
+          feedback_json?:    Json | null
+          test_results_json?: Json | null
+          graded_at?:        string | null
+          saved_at?:         string
+        }
+        Update: {
+          answer_text?:      string | null
+          selected_option?:  string | null
+          skill_score?:      number | null
+          feedback_json?:    Json | null
+          test_results_json?: Json | null
+          graded_at?:        string | null
+          saved_at?:         string
+        }
+      }
+      proctoring_events: {
+        Row: {
+          id:           string
+          session_id:   string
+          event_type:   ProctoringEventType
+          severity:     'low' | 'medium' | 'high' | 'info'
+          payload_json: Json
+          timestamp:    string
+        }
+        Insert: {
+          id?:          string
+          session_id:   string
+          event_type:   ProctoringEventType
+          severity:     'low' | 'medium' | 'high' | 'info'
+          payload_json?: Json
+          timestamp?:   string
+        }
+        Update: never
+      }
+      assessment_snapshots: {
+        Row: {
+          id:           string
+          session_id:   string
+          invite_id:    string
+          storage_path: string
+          taken_at:     string
+        }
+        Insert: {
+          id?:          string
+          session_id:   string
+          invite_id:    string
+          storage_path: string
+          taken_at?:    string
+        }
+        Update: never
+      }
+      notifications: {
+        Row: {
+          id:         string
+          user_id:    string
+          type:       'assessment_completed' | 'assessment_started' | 'invite_expired'
+          title:      string
+          message:    string | null
+          link:       string | null
+          read:       boolean
+          created_at: string
+        }
+        Insert: {
+          id?:        string
+          user_id:    string
+          type:       'assessment_completed' | 'assessment_started' | 'invite_expired'
+          title:      string
+          message?:   string | null
+          link?:      string | null
+          read?:      boolean
+        }
+        Update: {
+          read?: boolean
         }
       }
       team_members: {
@@ -244,6 +497,40 @@ export type ActivityFeature =
   | 'summary'
   | 'boolean'
   | 'stack_ranking'
+  | 'assessment'
+
+export type ProctoringEventType =
+  | 'tab_switch'
+  | 'paste_detected'
+  | 'gaze_off_screen'
+  | 'face_not_detected'
+  | 'eye_tracking_degraded'
+  | 'keystroke_anomaly'
+  | 'presence_challenge_passed'
+  | 'presence_challenge_failed'
+  | 'offline_detected'
+  | 'session_resumed'
+
+export type ProctoringConfig = {
+  tab_switching:                boolean
+  paste_detection:              boolean
+  eye_tracking:                 boolean
+  keystroke_dynamics:           boolean
+  presence_challenges:          boolean
+  presence_challenge_frequency: 2 | 3
+  snapshots:                    boolean
+}
+
+export type TestCase = {
+  input:          string
+  expectedOutput: string
+}
+
+export type MCOption = {
+  id:         string
+  text:       string
+  is_correct: boolean
+}
 
 export type BreakdownCategory = {
   score:    number
@@ -269,11 +556,19 @@ export type BooleanInputsJson = {
 
 // ─── Convenience row types ─────────────────────────────────
 
-export type UserProfile    = Database['public']['Tables']['user_profiles']['Row']
-export type TeamMember     = Database['public']['Tables']['team_members']['Row']
-export type ResumeScore    = Database['public']['Tables']['resume_scores']['Row']
-export type ClientSummary  = Database['public']['Tables']['client_summaries']['Row']
-export type BooleanSearch  = Database['public']['Tables']['boolean_searches']['Row']
-export type StackRanking   = Database['public']['Tables']['stack_rankings']['Row']
-export type StackCandidate = Database['public']['Tables']['stack_ranking_candidates']['Row']
-export type ActivityLog    = Database['public']['Tables']['activity_log']['Row']
+export type UserProfile              = Database['public']['Tables']['user_profiles']['Row']
+export type TeamMember               = Database['public']['Tables']['team_members']['Row']
+export type ResumeScore              = Database['public']['Tables']['resume_scores']['Row']
+export type ClientSummary            = Database['public']['Tables']['client_summaries']['Row']
+export type BooleanSearch            = Database['public']['Tables']['boolean_searches']['Row']
+export type StackRanking             = Database['public']['Tables']['stack_rankings']['Row']
+export type StackCandidate           = Database['public']['Tables']['stack_ranking_candidates']['Row']
+export type ActivityLog              = Database['public']['Tables']['activity_log']['Row']
+export type Assessment               = Database['public']['Tables']['assessments']['Row']
+export type AssessmentQuestion       = Database['public']['Tables']['assessment_questions']['Row']
+export type AssessmentInvite         = Database['public']['Tables']['assessment_invites']['Row']
+export type AssessmentSession        = Database['public']['Tables']['assessment_sessions']['Row']
+export type AssessmentQuestionResponse = Database['public']['Tables']['assessment_question_responses']['Row']
+export type ProctoringEvent          = Database['public']['Tables']['proctoring_events']['Row']
+export type AssessmentSnapshot       = Database['public']['Tables']['assessment_snapshots']['Row']
+export type Notification             = Database['public']['Tables']['notifications']['Row']

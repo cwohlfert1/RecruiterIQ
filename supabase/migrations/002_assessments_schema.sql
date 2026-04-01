@@ -5,7 +5,7 @@
 -- ============================================================
 
 -- ── 0. Reuse existing updated_at trigger function ────────────
--- handle_updated_at() is defined in 001_initial_schema.sql
+-- update_updated_at() is defined in 001_initial_schema.sql
 -- All tables that need updated_at auto-update will reference it.
 
 -- ============================================================
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS public.assessments (
 
 CREATE TRIGGER set_assessments_updated_at
   BEFORE UPDATE ON public.assessments
-  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
 -- ── 2b. assessment_questions ─────────────────────────────────
 -- One row per question within an assessment.

@@ -2,7 +2,7 @@
 -- Seed: RecruiterIQ Assessments Module
 -- Run AFTER 002_assessments_schema.sql.
 -- Requires an existing user in auth.users.
--- Replace REPLACE_WITH_YOUR_USER_ID with a real auth.users UUID.
+-- Replace 61d36a5a-b883-4aa1-9d90-229104ce44ec with a real auth.users UUID.
 -- ============================================================
 
 -- ── Seed variables ───────────────────────────────────────────
@@ -10,7 +10,7 @@
 
 DO $$
 DECLARE
-  v_manager_id     UUID := 'REPLACE_WITH_YOUR_USER_ID'::UUID;
+  v_manager_id     UUID := '61d36a5a-b883-4aa1-9d90-229104ce44ec'::UUID;
   v_assessment_id  UUID := gen_random_uuid();
   v_q_coding_id    UUID := gen_random_uuid();
   v_q_mc_id        UUID := gen_random_uuid();
