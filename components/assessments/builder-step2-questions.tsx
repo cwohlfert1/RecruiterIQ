@@ -31,11 +31,15 @@ import {
   X,
   Plus as PlusIcon,
   Sparkles,
+  RefreshCw,
+  ChevronDown,
+  LayoutTemplate,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { AssessmentDraft, QuestionDraft } from './assessment-builder'
 import type { TestCase, MCOption } from '@/types/database'
 import { GenerateQuestionsModal } from './generate-questions-modal'
+import { ROLE_TEMPLATES } from '@/lib/assessment-constants'
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 
@@ -105,10 +109,14 @@ function SortableQuestionRow({
   question,
   onEdit,
   onDelete,
+  onRegenerate,
+  regenerating,
 }: {
-  question: QuestionDraft
-  onEdit:   () => void
-  onDelete: () => void
+  question:     QuestionDraft
+  onEdit:       () => void
+  onDelete:     () => void
+  onRegenerate: () => void
+  regenerating: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: question.id })
@@ -140,6 +148,14 @@ function SortableQuestionRow({
       <span className="text-xs text-slate-500 flex-shrink-0">{question.points} pts</span>
 
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={onRegenerate}
+          disabled={regenerating}
+          title="Regenerate with AI"
+          className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/8 transition-colors disabled:opacity-40"
+        >
+          <RefreshCw className={cn('w-3.5 h-3.5', regenerating && 'animate-spin')} />
+        </button>
         <button
           onClick={onEdit}
           className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/8 transition-colors"
@@ -477,6 +493,9 @@ export function BuilderStep2Questions({ draft, onChange, onBack, onNext }: Props
   const [showTypeModal, setShowTypeModal]         = useState(false)
   const [editingQuestion, setEditingQuestion]     = useState<QuestionDraft | null>(null)
   const [showGenerateModal, setShowGenerateModal] = useState(false)
+  const [regeneratingId, setRegeneratingId]       = useState<string | null>(null)
+  const [showTemplateMenu, setShowTemplateMenu]   = useState(false)
+  const [templateLoading, setTemplateLoading]     = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -521,6 +540,95 @@ export function BuilderStep2Questions({ draft, onChange, onBack, onNext }: Props
     onChange({ questions: [...draft.questions, ...questions] })
   }
 
+  async function regenerateQuestion(question: QuestionDraft) {
+    setRegeneratingId(question.id)
+    try {
+      const res  = await fetch('/api/assessments/regenerate-question', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          question_type: question.type,
+          role:          draft.role || 'Software Engineer',
+          difficulty:    'mid',
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Failed to regenerate')
+
+      const raw = json.question as Record<string, unknown>
+      const updated: QuestionDraft = {
+        id:          question.id,
+        type:        question.type,
+        prompt:      (raw.prompt as string) ?? question.prompt,
+        points:      question.points,
+        sort_order:  question.sort_order,
+        rubric_hints: (raw.rubric_hints as string) ?? question.rubric_hints,
+        ...(question.type === 'coding' && {
+          language:     (raw.language as QuestionDraft['language']) ?? question.language,
+          starter_code: (raw.starter_code as string) ?? question.starter_code,
+          test_cases:   (raw.test_cases as import('@/types/database').TestCase[]) ?? question.test_cases,
+          instructions: (raw.instructions as string) ?? question.instructions,
+        }),
+        ...(question.type === 'multiple_choice' && {
+          options:        (raw.options as import('@/types/database').MCOption[]) ?? question.options,
+          correct_option: (raw.correct_option as string) ?? question.correct_option,
+        }),
+        ...(question.type === 'written' && {
+          length_hint: (raw.length_hint as QuestionDraft['length_hint']) ?? question.length_hint,
+        }),
+      }
+      onChange({ questions: draft.questions.map(q => q.id === question.id ? updated : q) })
+    } catch {
+      // silently fail — question stays unchanged
+    } finally {
+      setRegeneratingId(null)
+    }
+  }
+
+  async function loadTemplate(template: string) {
+    setShowTemplateMenu(false)
+    setTemplateLoading(true)
+    try {
+      const res  = await fetch('/api/assessments/template', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ template }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Failed to load template')
+
+      const mapped: QuestionDraft[] = (json.questions as Record<string, unknown>[]).map((raw, i) => {
+        const base: QuestionDraft = {
+          id:          genId(),
+          type:        raw.type as QuestionType,
+          prompt:      (raw.prompt as string) ?? '',
+          points:      100,
+          sort_order:  draft.questions.length + i + 1,
+          rubric_hints: (raw.rubric_hints as string) ?? '',
+        }
+        if (base.type === 'coding') return {
+          ...base,
+          language:     (raw.language as QuestionDraft['language']) ?? 'javascript',
+          starter_code: (raw.starter_code as string) ?? '',
+          test_cases:   (raw.test_cases as import('@/types/database').TestCase[]) ?? [],
+          instructions: (raw.instructions as string) ?? '',
+        }
+        if (base.type === 'multiple_choice') return {
+          ...base,
+          options:        (raw.options as import('@/types/database').MCOption[]) ?? [],
+          correct_option: (raw.correct_option as string) ?? '',
+        }
+        return { ...base, length_hint: (raw.length_hint as QuestionDraft['length_hint']) ?? 'medium' }
+      })
+
+      onChange({ questions: [...draft.questions, ...mapped] })
+    } catch {
+      // silently fail
+    } finally {
+      setTemplateLoading(false)
+    }
+  }
+
   const canProceed = draft.questions.length >= 1
 
   return (
@@ -532,6 +640,42 @@ export function BuilderStep2Questions({ draft, onChange, onBack, onNext }: Props
             <p className="text-sm text-slate-400">Add at least one question</p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Template dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowTemplateMenu(v => !v)}
+                disabled={templateLoading}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium text-slate-300 border border-white/10 hover:border-white/20 hover:text-white transition-all duration-150 disabled:opacity-50"
+              >
+                {templateLoading ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <LayoutTemplate className="w-3.5 h-3.5" />
+                )}
+                Templates
+                <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', showTemplateMenu && 'rotate-180')} />
+              </button>
+              {showTemplateMenu && (
+                <>
+                  <div className="fixed inset-0 z-20" onClick={() => setShowTemplateMenu(false)} />
+                  <div className="absolute right-0 top-full mt-1.5 z-30 w-56 bg-[#1A1D2E] border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+                  <div className="px-3 py-2 border-b border-white/8">
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Start from a template</p>
+                  </div>
+                  {ROLE_TEMPLATES.map(template => (
+                    <button
+                      key={template}
+                      onClick={() => loadTemplate(template)}
+                      className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+                    >
+                      {template}
+                    </button>
+                  ))}
+                </div>
+                </>
+              )}
+            </div>
+
             <button
               onClick={() => setShowGenerateModal(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-indigo-300 border border-indigo-500/40 hover:bg-indigo-500/10 hover:border-indigo-500/60 transition-all duration-150"
@@ -569,6 +713,8 @@ export function BuilderStep2Questions({ draft, onChange, onBack, onNext }: Props
                     question={q}
                     onEdit={() => setEditingQuestion(q)}
                     onDelete={() => deleteQuestion(q.id)}
+                    onRegenerate={() => regenerateQuestion(q)}
+                    regenerating={regeneratingId === q.id}
                   />
                 ))}
               </div>

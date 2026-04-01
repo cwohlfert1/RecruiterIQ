@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { UserProfile, ProctoringConfig, TestCase, MCOption } from '@/types/database'
 
+import { BuilderStep0JD } from './builder-step0-jd'
 import { BuilderStep1Details } from './builder-step1-details'
 import { BuilderStep2Questions } from './builder-step2-questions'
 import { BuilderStep3Proctoring } from './builder-step3-proctoring'
@@ -71,14 +72,21 @@ interface Props {
 
 export function AssessmentBuilder({ profile }: Props) {
   const router = useRouter()
-  const [step, setStep]       = useState(0)
-  const [draft, setDraft]     = useState<AssessmentDraft>(defaultDraft)
-  const [saving, setSaving]   = useState(false)
-  const [publishedId, setPublishedId] = useState<string | null>(null)
-  const [publishedToken, setPublishedToken] = useState<string | null>(null)
+  const [showEntry, setShowEntry]     = useState(true)
+  const [step, setStep]               = useState(0)
+  const [draft, setDraft]             = useState<AssessmentDraft>(defaultDraft)
+  const [saving, setSaving]           = useState(false)
+  const [publishedId, setPublishedId]         = useState<string | null>(null)
+  const [publishedToken, setPublishedToken]   = useState<string | null>(null)
 
   function updateDraft(patch: Partial<AssessmentDraft>) {
     setDraft(prev => ({ ...prev, ...patch }))
+  }
+
+  function handleJDConfirm(patch: Partial<AssessmentDraft>, jumpToQuestions: boolean) {
+    setDraft(prev => ({ ...prev, ...patch }))
+    setShowEntry(false)
+    setStep(jumpToQuestions ? 1 : 0)
   }
 
   async function handleSave(status: 'draft' | 'published') {
@@ -115,8 +123,16 @@ export function AssessmentBuilder({ profile }: Props) {
         <p className="text-sm text-slate-400 mt-0.5">Build a proctored skill assessment for candidates</p>
       </div>
 
-      {/* Step indicator */}
-      <div className="flex items-center gap-0">
+      {/* Step 0 — JD Import entry point */}
+      {showEntry && (
+        <BuilderStep0JD
+          onSkip={() => setShowEntry(false)}
+          onConfirm={handleJDConfirm}
+        />
+      )}
+
+      {/* Step indicator — only shown after entry */}
+      {!showEntry && <div className="flex items-center gap-0">
         {STEPS.map((label, i) => (
           <div key={label} className="flex items-center flex-1">
             <div className="flex flex-col items-center flex-1">
@@ -145,10 +161,10 @@ export function AssessmentBuilder({ profile }: Props) {
             )}
           </div>
         ))}
-      </div>
+      </div>}
 
-      {/* Step content */}
-      <AnimatePresence mode="wait">
+      {/* Step content — only shown after entry */}
+      {!showEntry && <AnimatePresence mode="wait">
         <motion.div
           key={step}
           initial={{ opacity: 0, x: 20 }}
@@ -193,7 +209,7 @@ export function AssessmentBuilder({ profile }: Props) {
             />
           )}
         </motion.div>
-      </AnimatePresence>
+      </AnimatePresence>}
     </div>
   )
 }
