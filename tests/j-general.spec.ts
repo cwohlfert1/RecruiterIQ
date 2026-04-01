@@ -16,7 +16,7 @@ test.describe('J — General', () => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
 
-    await expect(page).toHaveTitle(/RecruiterIQ/i)
+    await expect(page).toHaveTitle(/Candid\.ai/i)
     expect(errors).toHaveLength(0)
   })
 

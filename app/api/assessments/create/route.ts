@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
         assessment_id:   assessment.id,
         created_by:      user.id,
         candidate_name:  'Open Link',
-        candidate_email: 'open@recruiteriq.app',
+        candidate_email: 'open@candidai.app',
       })
       .select('token')
       .single()

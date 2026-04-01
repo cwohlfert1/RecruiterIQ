@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-export const metadata = { title: 'Privacy Policy | RecruiterIQ' }
+export const metadata = { title: 'Privacy Policy | Candid.ai' }
 
 export default function PrivacyPage() {
   const lastUpdated = 'March 27, 2025'
@@ -10,7 +10,7 @@ export default function PrivacyPage() {
       {/* Simple nav */}
       <nav className="border-b border-white/6 h-14 flex items-center px-6">
         <Link href="/" className="text-base font-bold gradient-text">
-          RecruiterIQ
+          Candid.ai
         </Link>
       </nav>
 
@@ -42,7 +42,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-base font-semibold text-white mb-3">5. Data deletion</h2>
-            <p>You can delete individual history records from the History page. To delete your account and all associated data, email us at <a href="mailto:privacy@recruiteriq.app" className="text-indigo-400 hover:text-indigo-300 transition-colors">privacy@recruiteriq.app</a> and we will process your request within 30 days.</p>
+            <p>You can delete individual history records from the History page. To delete your account and all associated data, email us at <a href="mailto:privacy@candidai.app" className="text-indigo-400 hover:text-indigo-300 transition-colors">privacy@candidai.app</a> and we will process your request within 30 days.</p>
           </section>
 
           <section>
@@ -52,14 +52,14 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-base font-semibold text-white mb-3">7. Contact</h2>
-            <p>Questions? Email <a href="mailto:privacy@recruiteriq.app" className="text-indigo-400 hover:text-indigo-300 transition-colors">privacy@recruiteriq.app</a>.</p>
+            <p>Questions? Email <a href="mailto:privacy@candidai.app" className="text-indigo-400 hover:text-indigo-300 transition-colors">privacy@candidai.app</a>.</p>
           </section>
 
         </div>
 
         <div className="mt-12 pt-8 border-t border-white/6">
           <Link href="/" className="text-sm text-slate-500 hover:text-slate-300 transition-colors">
-            &larr; Back to RecruiterIQ
+            &larr; Back to Candid.ai
           </Link>
         </div>
       </main>

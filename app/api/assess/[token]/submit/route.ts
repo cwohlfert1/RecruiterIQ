@@ -203,7 +203,7 @@ Events:\n${eventSummary}
   if (recruiterEmail) {
     try {
       await getResend().emails.send({
-        from:    'RecruiterIQ <noreply@recruiteriq.app>',
+        from:    'Candid.ai <noreply@candidai.app>',
         to:      recruiterEmail,
         subject: `${invite.candidate_name} completed their assessment`,
         html: `

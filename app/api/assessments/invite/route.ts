@@ -64,12 +64,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: inviteError?.message ?? 'Failed to create invite' }, { status: 500 })
   }
 
-  const candidateLink = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://recruiteriq-production.up.railway.app'}/assess/${invite.token}`
+  const candidateLink = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://candidai.app'}/assess/${invite.token}`
 
   // Send email via Resend
   try {
     await resend.emails.send({
-      from:    'RecruiterIQ <noreply@recruiteriq.app>',
+      from:    'Candid.ai <noreply@candidai.app>',
       to:      candidateEmail.trim(),
       subject: `You've been invited to complete an assessment: ${assessment.title}`,
       html: `

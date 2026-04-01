@@ -11,12 +11,12 @@ import {
   Trophy,
   Clock,
   Settings,
-  Brain,
   LogOut,
   ClipboardList,
   PlusCircle,
   FolderOpen,
 } from 'lucide-react'
+import { CandidLogo } from '@/components/candid-logo'
 import { createClient } from '@/lib/supabase/client'
 import { cn, getPlanLabel } from '@/lib/utils'
 import type { UserProfile } from '@/types/database'
@@ -100,11 +100,8 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
   return (
     <aside className="flex flex-col w-64 min-h-screen bg-[#1A1D2E] border-r border-white/8 flex-shrink-0">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 py-5 border-b border-white/8">
-        <div className="w-8 h-8 rounded-lg bg-gradient-brand flex items-center justify-center shadow-glow-sm">
-          <Brain className="w-4 h-4 text-white" />
-        </div>
-        <span className="text-base font-semibold gradient-text">RecruiterIQ</span>
+      <div className="flex items-center px-5 py-5 border-b border-white/8">
+        <CandidLogo variant="dark" className="h-8 w-auto" />
       </div>
 
       {/* Nav */}

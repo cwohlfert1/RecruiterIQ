@@ -140,7 +140,7 @@ export async function POST(
 
   const { data: sharerData } = await admin.auth.admin.getUserById(user.id)
   const sharerEmail = sharerData?.user?.email ?? 'A team member'
-  const appUrl      = process.env.NEXT_PUBLIC_APP_URL ?? 'https://recruiteriq-production.up.railway.app'
+  const appUrl      = process.env.NEXT_PUBLIC_APP_URL ?? 'https://candidai.app'
   const projectLink = `${appUrl}/dashboard/projects/${params.id}`
   const resend      = new Resend(process.env.RESEND_API_KEY ?? 'placeholder')
 
@@ -160,9 +160,9 @@ export async function POST(
     if (recipientEmail) {
       try {
         await resend.emails.send({
-          from:    'RecruiterIQ <noreply@recruiteriq.app>',
+          from:    'Candid.ai <noreply@candidai.app>',
           to:      recipientEmail,
-          subject: `${sharerEmail} invited you to a RecruiterIQ project`,
+          subject: `${sharerEmail} invited you to a Candid.ai project`,
           html: `
             <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; color: #1e293b;">
               <h2 style="margin-bottom: 8px;">You've been added to a project</h2>

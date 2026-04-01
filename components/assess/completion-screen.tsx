@@ -98,7 +98,7 @@ export function CompletionScreen() {
             You may now close this tab.
           </p>
           <p className="text-xs text-gray-300 mt-1">
-            Powered by RecruiterIQ — AI Talent Assessment Platform
+            Powered by Candid.ai — AI Recruiting Platform
           </p>
         </motion.div>
       </motion.div>

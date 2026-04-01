@@ -8,6 +8,7 @@ import {
   Check, ArrowRight, Menu, X, Clock, Users, Download,
   ChevronRight,
 } from 'lucide-react'
+import { CandidLogo } from '@/components/candid-logo'
 import { cn } from '@/lib/utils'
 
 // ─── Scroll fade helper ───────────────────────────────────────────────────────
@@ -157,8 +158,8 @@ function Nav() {
       )}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="text-lg font-bold gradient-text select-none">
-          RecruiterIQ
+        <Link href="/" className="select-none">
+          <CandidLogo variant="light" className="h-9 w-auto" />
         </Link>
 
         <div className="hidden md:flex items-center gap-7">
@@ -216,7 +217,7 @@ function HeroSection() {
               transition={{ duration: 0.4 }}
               className="text-xs font-semibold uppercase tracking-widest text-indigo-400 mb-4"
             >
-              AI Tools for Recruiters
+              AI Recruiting Platform
             </motion.p>
 
             <motion.h1
@@ -225,8 +226,8 @@ function HeroSection() {
               transition={{ duration: 0.5, delay: 0.08 }}
               className="text-4xl sm:text-5xl font-bold text-white leading-tight mb-5"
             >
-              Your desk runs on placements,{' '}
-              <span className="gradient-text">not resume review.</span>
+              The AI recruiting platform{' '}
+              <span className="gradient-text">agencies trust.</span>
             </motion.h1>
 
             <motion.p
@@ -235,9 +236,8 @@ function HeroSection() {
               transition={{ duration: 0.5, delay: 0.16 }}
               className="text-lg text-slate-400 mb-8 leading-relaxed max-w-lg"
             >
-              RecruiterIQ scores resumes, writes client summaries, builds Boolean strings,
-              and ranks your shortlist. The tools your desk actually needs — built for
-              recruiters, not HR generalists.
+              Score resumes, rank candidates, and verify skills — all in one place.
+              Built for recruiters who move fast and need tools that keep up.
             </motion.p>
 
             <motion.div
@@ -296,7 +296,7 @@ function ProofBar() {
       <Reveal className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8">
           <p className="text-xs font-medium text-slate-500 whitespace-nowrap flex-shrink-0">
-            Recruiters at these firms use RecruiterIQ:
+            Recruiters at these firms use Candid.ai:
           </p>
           <div className="flex flex-wrap items-center gap-x-8 gap-y-2 justify-center sm:justify-start">
             {AGENCIES.map(name => (
@@ -391,7 +391,7 @@ const FEATURES = [
     icon:  <Trophy className="w-5 h-5" />,
     color: 'bg-yellow-500/15 text-yellow-400',
     name:  'Stack Ranking',
-    desc:  'Add your entire shortlist to one session. RecruiterIQ scores every candidate and returns a ranked leaderboard with per-candidate breakdowns. Know who to call first without reading 10 resumes side by side.',
+    desc:  'Add your entire shortlist to one session. Candid.ai scores every candidate and returns a ranked leaderboard with per-candidate breakdowns. Know who to call first without reading 10 resumes side by side.',
     badge: 'Agency',
   },
 ]
@@ -450,8 +450,8 @@ const STEPS = [
   },
   {
     n:    '02',
-    head: 'RecruiterIQ scores and summarizes in seconds',
-    body: 'Claude AI runs a structured evaluation weighted across five dimensions. Score, breakdown, and summary ready in under 10 seconds.',
+    head: 'Candid.ai scores and summarizes in seconds',
+    body: 'Candid.ai runs a structured evaluation weighted across five dimensions. Score, breakdown, and summary ready in under 10 seconds.',
   },
   {
     n:    '03',
@@ -760,9 +760,9 @@ function Footer() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-8 mb-8">
           <div>
-            <p className="text-lg font-bold gradient-text mb-1">RecruiterIQ</p>
+            <p className="text-lg font-bold gradient-text mb-1">Candid.ai</p>
             <p className="text-xs text-slate-500 max-w-xs">
-              AI tools for agency recruiters and in-house recruiting teams.
+              AI-powered recruiting platform for modern agencies.
             </p>
           </div>
 
@@ -778,7 +778,7 @@ function Footer() {
 
         <div className="border-t border-white/6 pt-6">
           <p className="text-xs text-slate-600">
-            &copy; {new Date().getFullYear()} RecruiterIQ. All rights reserved.
+            &copy; 2026 Candid.ai. All rights reserved.
           </p>
         </div>
       </div>

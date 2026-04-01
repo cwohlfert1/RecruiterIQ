@@ -62,7 +62,7 @@ async function main() {
 
   const pro = await createPlan(
     'recruiteriq-pro-plan-v1',
-    'RecruiterIQ Pro',
+    'Candid.ai Pro',
     3900
   )
   console.log('✓ Pro plan created:')
@@ -71,7 +71,7 @@ async function main() {
 
   const agency = await createPlan(
     'recruiteriq-agency-plan-v1',
-    'RecruiterIQ Agency',
+    'Candid.ai Agency',
     9900
   )
   console.log('✓ Agency plan created:')

@@ -65,7 +65,7 @@ export function AssessLanding({
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
             <Shield className="w-4 h-4" />
-            RecruiterIQ Assessment
+            Candid.ai Assessment
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{assessment.title}</h1>
           {assessment.role && (
@@ -167,7 +167,7 @@ export function AssessLanding({
         )}
 
         <p className="text-center text-xs text-gray-400 mt-4">
-          Powered by RecruiterIQ — AI Talent Assessment Platform
+          Powered by Candid.ai — AI Recruiting Platform
         </p>
       </motion.div>
     </div>

@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { HistoryClient } from './history-client'
 
-export const metadata = { title: 'History | RecruiterIQ' }
+export const metadata = { title: 'History' }
 
 export default async function HistoryPage() {
   const supabase = createClient()

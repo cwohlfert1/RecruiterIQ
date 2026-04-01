@@ -4,7 +4,8 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { Loader2, Brain } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import { CandidLogo } from '@/components/candid-logo'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
@@ -44,11 +45,8 @@ export default function LoginPage() {
   return (
     <div className="glass-card rounded-2xl p-8 shadow-glass">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 mb-8">
-        <div className="w-9 h-9 rounded-xl bg-gradient-brand flex items-center justify-center shadow-glow-sm">
-          <Brain className="w-5 h-5 text-white" />
-        </div>
-        <span className="text-xl font-semibold gradient-text">RecruiterIQ</span>
+      <div className="flex items-center mb-8">
+        <CandidLogo variant="dark" className="h-9 w-auto" />
       </div>
 
       <h1 className="text-2xl font-semibold text-white mb-1">Welcome back</h1>

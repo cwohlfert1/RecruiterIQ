@@ -11,11 +11,11 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'RecruiterIQ — AI Toolkit for Recruiters',
-    template: '%s | RecruiterIQ',
+    default: 'Candid.ai — AI Recruiting Platform',
+    template: '%s | Candid.ai',
   },
-  description: 'Score resumes, generate client summaries, build Boolean strings, and stack rank candidates — powered by AI.',
-  keywords: ['recruiter', 'AI', 'resume scorer', 'boolean search', 'recruiting tools'],
+  description: 'AI-powered recruiting platform for modern agencies. Score resumes, rank candidates, and verify skills — all in one place.',
+  keywords: ['recruiter', 'AI', 'resume scorer', 'boolean search', 'recruiting tools', 'candid.ai'],
 }
 
 export default function RootLayout({

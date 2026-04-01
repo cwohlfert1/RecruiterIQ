@@ -3,9 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { LandingPage } from '@/components/landing/landing-page'
 
 export const metadata = {
-  title: 'RecruiterIQ — AI Tools Built for Recruiters',
+  title: 'Candid.ai — AI Recruiting Platform',
   description:
-    'Score resumes, write client summaries, build Boolean strings, and rank your shortlist. Faster than manual screening, built for desks that move fast.',
+    'The AI recruiting platform agencies trust. Score resumes, rank candidates, and verify skills — all in one place.',
 }
 
 export default async function HomePage() {

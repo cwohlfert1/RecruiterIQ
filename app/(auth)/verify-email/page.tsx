@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { Brain, Mail, ArrowLeft } from 'lucide-react'
+import { Mail, ArrowLeft } from 'lucide-react'
+import { CandidLogo } from '@/components/candid-logo'
 
 export const metadata = { title: 'Check Your Email' }
 
@@ -7,11 +8,8 @@ export default function VerifyEmailPage() {
   return (
     <div className="glass-card rounded-2xl p-8 shadow-glass text-center">
       {/* Logo */}
-      <div className="flex items-center justify-center gap-2.5 mb-8">
-        <div className="w-9 h-9 rounded-xl bg-gradient-brand flex items-center justify-center shadow-glow-sm">
-          <Brain className="w-5 h-5 text-white" />
-        </div>
-        <span className="text-xl font-semibold gradient-text">RecruiterIQ</span>
+      <div className="flex items-center justify-center mb-8">
+        <CandidLogo variant="dark" className="h-9 w-auto" />
       </div>
 
       {/* Icon */}

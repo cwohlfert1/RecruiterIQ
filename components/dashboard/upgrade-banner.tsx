@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Zap, X } from 'lucide-react'
 
-const STORAGE_KEY = 'recruiteriq_upgrade_banner_dismissed'
+const STORAGE_KEY = 'candid_upgrade_banner_dismissed'
 
 export function UpgradeBanner() {
   const [visible, setVisible] = useState(false)

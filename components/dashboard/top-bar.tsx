@@ -21,7 +21,7 @@ interface TopBarProps {
 
 export function TopBar({ profile }: TopBarProps) {
   const pathname = usePathname()
-  const title    = PAGE_TITLES[pathname] ?? 'RecruiterIQ'
+  const title    = PAGE_TITLES[pathname] ?? 'Candid.ai'
   const limit    = getPlanLimit(profile.plan_tier)
   const used     = profile.ai_calls_this_month
   const pct      = limit ? Math.min((used / limit) * 100, 100) : 0
