@@ -30,10 +30,12 @@ import {
   FileText,
   X,
   Plus as PlusIcon,
+  Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { AssessmentDraft, QuestionDraft } from './assessment-builder'
 import type { TestCase, MCOption } from '@/types/database'
+import { GenerateQuestionsModal } from './generate-questions-modal'
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 
@@ -472,8 +474,9 @@ interface Props {
 }
 
 export function BuilderStep2Questions({ draft, onChange, onBack, onNext }: Props) {
-  const [showTypeModal, setShowTypeModal]       = useState(false)
-  const [editingQuestion, setEditingQuestion]   = useState<QuestionDraft | null>(null)
+  const [showTypeModal, setShowTypeModal]         = useState(false)
+  const [editingQuestion, setEditingQuestion]     = useState<QuestionDraft | null>(null)
+  const [showGenerateModal, setShowGenerateModal] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -514,6 +517,10 @@ export function BuilderStep2Questions({ draft, onChange, onBack, onNext }: Props
     })
   }
 
+  function addGeneratedQuestions(questions: QuestionDraft[]) {
+    onChange({ questions: [...draft.questions, ...questions] })
+  }
+
   const canProceed = draft.questions.length >= 1
 
   return (
@@ -524,13 +531,22 @@ export function BuilderStep2Questions({ draft, onChange, onBack, onNext }: Props
             <h2 className="text-base font-semibold text-white mb-0.5">Questions</h2>
             <p className="text-sm text-slate-400">Add at least one question</p>
           </div>
-          <button
-            onClick={() => setShowTypeModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-brand hover-glow transition-all duration-150"
-          >
-            <Plus className="w-4 h-4" />
-            Add Question
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowGenerateModal(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-indigo-300 border border-indigo-500/40 hover:bg-indigo-500/10 hover:border-indigo-500/60 transition-all duration-150"
+            >
+              <Sparkles className="w-4 h-4" />
+              Generate with AI
+            </button>
+            <button
+              onClick={() => setShowTypeModal(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-brand hover-glow transition-all duration-150"
+            >
+              <Plus className="w-4 h-4" />
+              Add Question
+            </button>
+          </div>
         </div>
 
         {draft.questions.length === 0 ? (
@@ -630,6 +646,17 @@ export function BuilderStep2Questions({ draft, onChange, onBack, onNext }: Props
             question={editingQuestion}
             onSave={saveQuestion}
             onClose={() => setEditingQuestion(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* AI generate modal */}
+      <AnimatePresence>
+        {showGenerateModal && (
+          <GenerateQuestionsModal
+            draft={draft}
+            onAdd={addGeneratedQuestions}
+            onClose={() => setShowGenerateModal(false)}
           />
         )}
       </AnimatePresence>
