@@ -83,5 +83,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: questionsError.message }, { status: 500 })
   }
 
-  return NextResponse.json({ id: assessment.id, status })
+  // When publishing, create a generic shareable invite and return its token
+  let token: string | null = null
+  if (status === 'published') {
+    const { data: invite, error: inviteError } = await db
+      .from('assessment_invites')
+      .insert({
+        assessment_id:   assessment.id,
+        created_by:      user.id,
+        candidate_name:  'Open Link',
+        candidate_email: 'open@recruiteriq.app',
+      })
+      .select('token')
+      .single()
+
+    if (inviteError) {
+      // Assessment was created — don't roll back, just return without token
+      return NextResponse.json({ id: assessment.id, status, token: null })
+    }
+    token = invite.token
+  }
+
+  return NextResponse.json({ id: assessment.id, status, token })
 }
