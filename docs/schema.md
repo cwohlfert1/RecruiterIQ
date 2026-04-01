@@ -1,8 +1,8 @@
 # RecruiterIQ — Database Schema Reference
 
 **Database**: Supabase PostgreSQL
-**Migration**: `supabase/migrations/001_initial_schema.sql`
-**Last updated**: 2026-03-27
+**Migrations**: `supabase/migrations/001_initial_schema.sql`, `supabase/migrations/002_assessments_schema.sql`
+**Last updated**: 2026-03-31
 
 ---
 
@@ -11,26 +11,40 @@
 ```
 auth.users (Supabase managed)
     │
-    ├─── user_profiles          (1:1)   Plan tier, billing state, AI call counter
+    ├─── user_profiles                (1:1)   Plan tier, billing state, role, AI call counter
     │
-    ├─── team_members           (1:N)   Agency invite/membership records
+    ├─── team_members                 (1:N)   Agency invite/membership records
     │         owner_user_id ──► auth.users
     │         member_user_id ──► auth.users (nullable until accepted)
     │
-    ├─── resume_scores          (1:N)   Feature 1 history
+    ├─── resume_scores                (1:N)   Feature 1 history
     │
-    ├─── client_summaries       (1:N)   Feature 2 history
+    ├─── client_summaries             (1:N)   Feature 2 history
     │
-    ├─── boolean_searches       (1:N)   Feature 3 history
+    ├─── boolean_searches             (1:N)   Feature 3 history
     │
-    ├─── stack_rankings         (1:N)   Feature 4 session records
+    ├─── stack_rankings               (1:N)   Feature 4 session records
     │         │
     │         └─── stack_ranking_candidates  (1:N)  Per-candidate scores + notes
     │
-    ├─── activity_log           (1:N)   Dashboard "last 5 actions" feed
+    ├─── activity_log                 (1:N)   Dashboard "last 5 actions" feed
+    │
+    ├─── assessments                  (1:N)   Assessment definitions (manager-created)
+    │         │
+    │         ├─── assessment_questions      (1:N)  Questions per assessment
+    │         │
+    │         └─── assessment_invites        (1:N)  Per-candidate invite + token
+    │                   │
+    │                   └─── assessment_sessions    (1:1)  Candidate attempt record
+    │                             │
+    │                             ├─── assessment_question_responses  (1:N)  Per-question answers + scores
+    │                             ├─── proctoring_events              (1:N)  Proctoring signal log
+    │                             └─── assessment_snapshots           (1:N)  Webcam snapshot refs
+    │
+    ├─── notifications                (1:N)   In-app notification feed
     │
     └─── (no direct user FK)
-         square_webhook_events           Square billing event store (service role only)
+         square_webhook_events                Square billing event store (service role only)
 ```
 
 ---
@@ -398,6 +412,279 @@ ON CONFLICT (event_id) DO NOTHING;
 
 ---
 
+---
+
+## Assessments Module Tables (Migration 002)
+
+### `public.assessments`
+
+One row per assessment. Created and owned by a manager. Published assessments cannot be edited.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | NOT NULL | `gen_random_uuid()` | PK |
+| `user_id` | uuid | NOT NULL | — | FK → `auth.users(id)` CASCADE |
+| `title` | text | NOT NULL | — | 1–100 chars |
+| `description` | text | NULL | — | max 500 chars |
+| `role` | text | NOT NULL | — | Position being assessed |
+| `time_limit_minutes` | integer | NOT NULL | — | 10–180 |
+| `proctoring_config` | jsonb | NOT NULL | `{}` | Per-feature toggles (see shape below) |
+| `question_order` | text | NOT NULL | `'sequential'` | `'sequential'` \| `'random'` |
+| `presentation_mode` | text | NOT NULL | `'one_at_a_time'` | `'one_at_a_time'` \| `'all_at_once'` |
+| `status` | text | NOT NULL | `'draft'` | `'draft'` \| `'published'` \| `'archived'` |
+| `created_at` | timestamptz | NOT NULL | `now()` | |
+| `updated_at` | timestamptz | NOT NULL | `now()` | Auto-updated by trigger |
+
+**`proctoring_config` shape:**
+```json
+{
+  "tab_switching": true,
+  "paste_detection": true,
+  "eye_tracking": false,
+  "keystroke_dynamics": true,
+  "presence_challenges": true,
+  "presence_challenge_frequency": 2,
+  "snapshots": false
+}
+```
+
+**RLS:** Manager reads/writes own rows (`user_id = auth.uid()`).
+
+---
+
+### `public.assessment_questions`
+
+One row per question within an assessment. Type-specific columns are nullable.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | NOT NULL | `gen_random_uuid()` | PK |
+| `assessment_id` | uuid | NOT NULL | — | FK → `assessments(id)` CASCADE |
+| `type` | text | NOT NULL | — | `'coding'` \| `'multiple_choice'` \| `'written'` |
+| `prompt` | text | NOT NULL | — | Question text |
+| `points` | integer | NOT NULL | `100` | Point value, > 0 |
+| `sort_order` | integer | NOT NULL | `0` | Display order |
+| `language` | text | NULL | — | Coding only: `'javascript'` \| `'typescript'` \| `'react_jsx'` \| `'react_tsx'` \| `'python'` |
+| `starter_code` | text | NULL | — | Coding only: initial editor content |
+| `test_cases_json` | jsonb | NULL | — | Coding only: `[{input, expectedOutput}]` |
+| `instructions` | text | NULL | — | Coding only: markdown instructions |
+| `options_json` | jsonb | NULL | — | MC only: `[{id, text, is_correct}]` |
+| `correct_option` | text | NULL | — | MC only: correct option id |
+| `time_limit_secs` | integer | NULL | — | MC only: per-question timer |
+| `length_hint` | text | NULL | — | Written only: `'short'` \| `'medium'` \| `'long'` |
+| `rubric_hints` | text | NULL | — | Written only: grading context for Claude |
+| `created_at` | timestamptz | NOT NULL | `now()` | |
+
+**RLS:** Access via parent assessment ownership.
+
+---
+
+### `public.assessment_invites`
+
+One row per candidate invite. Token is the public URL identifier (`/assess/[token]`).
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | NOT NULL | `gen_random_uuid()` | PK |
+| `assessment_id` | uuid | NOT NULL | — | FK → `assessments(id)` CASCADE |
+| `created_by` | uuid | NOT NULL | — | FK → `auth.users(id)` CASCADE — manager who sent invite |
+| `candidate_name` | text | NOT NULL | — | 1–200 chars |
+| `candidate_email` | text | NOT NULL | — | Validated format |
+| `token` | text | NOT NULL | `gen_random_uuid()::text` | UNIQUE — used in public URL |
+| `status` | text | NOT NULL | `'pending'` | `'pending'` \| `'started'` \| `'completed'` \| `'expired'` |
+| `expires_at` | timestamptz | NOT NULL | `now() + 7 days` | 7-day expiry from creation |
+| `sent_at` | timestamptz | NULL | — | Set when Resend email delivered |
+| `created_at` | timestamptz | NOT NULL | `now()` | |
+
+**Expiry handling:** Checked at query time (`WHERE expires_at > now()`). Batch UPDATE to `'expired'` via scheduled Edge Function daily at 3am UTC.
+
+**RLS:** Manager reads/writes via `created_by = auth.uid()`. Candidate token validation is server-side only (service role).
+
+---
+
+### `public.assessment_sessions`
+
+One row per candidate attempt. One attempt per invite (UNIQUE on `invite_id`).
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | NOT NULL | `gen_random_uuid()` | PK |
+| `invite_id` | uuid | NOT NULL | — | FK → `assessment_invites(id)` CASCADE; UNIQUE |
+| `assessment_id` | uuid | NOT NULL | — | FK → `assessments(id)` CASCADE |
+| `user_id` | uuid | NULL | — | FK → `auth.users(id)` SET NULL — manager (denormalized for RLS) |
+| `started_at` | timestamptz | NOT NULL | `now()` | |
+| `completed_at` | timestamptz | NULL | — | Set on submit |
+| `time_spent_seconds` | integer | NULL | — | Calculated on completion |
+| `trust_score` | integer | NULL | — | 0–100; calculated post-completion |
+| `skill_score` | integer | NULL | — | 0–100; calculated post-completion |
+| `ai_integrity_summary` | text | NULL | — | Claude-generated 3-sentence summary |
+| `status` | text | NOT NULL | `'in_progress'` | `'in_progress'` \| `'completed'` \| `'abandoned'` |
+| `created_at` | timestamptz | NOT NULL | `now()` | |
+
+**Note:** No `overall_score` — Trust Score and Skill Score are always displayed separately. Blending them is explicitly excluded from scope.
+
+**Offline handling:** `status = 'abandoned'` set by server if candidate is offline > 10 minutes. localStorage progress synced to Supabase via service role API on reconnect.
+
+**RLS:** Manager reads sessions where `user_id = auth.uid()`. All candidate writes go through service role API.
+
+---
+
+### `public.assessment_question_responses`
+
+Per-question answers and Claude-generated scores. One row per question per session.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | NOT NULL | `gen_random_uuid()` | PK |
+| `session_id` | uuid | NOT NULL | — | FK → `assessment_sessions(id)` CASCADE |
+| `question_id` | uuid | NOT NULL | — | FK → `assessment_questions(id)` CASCADE |
+| `answer_text` | text | NULL | — | Written + coding: final submitted text |
+| `selected_option` | text | NULL | — | MC: selected option id |
+| `skill_score` | integer | NULL | — | 0–100; Claude grade or MC auto-score |
+| `feedback_json` | jsonb | NULL | — | Per-category feedback (coding/written) |
+| `test_results_json` | jsonb | NULL | — | Coding: per-test-case pass/fail |
+| `graded_at` | timestamptz | NULL | — | Set when Claude grading completes |
+| `saved_at` | timestamptz | NOT NULL | `now()` | Updated on every localStorage sync |
+
+**UNIQUE** on `(session_id, question_id)`.
+
+**RLS:** Manager reads via session ownership.
+
+---
+
+### `public.proctoring_events`
+
+Append-only log of all proctoring signals. 90-day retention.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | NOT NULL | `gen_random_uuid()` | PK |
+| `session_id` | uuid | NOT NULL | — | FK → `assessment_sessions(id)` CASCADE |
+| `event_type` | text | NOT NULL | — | See enum below |
+| `severity` | text | NOT NULL | — | `'low'` \| `'medium'` \| `'high'` \| `'info'` |
+| `payload_json` | jsonb | NOT NULL | `{}` | Event-specific data |
+| `timestamp` | timestamptz | NOT NULL | `now()` | |
+
+**Event types:** `tab_switch`, `paste_detected`, `gaze_off_screen`, `face_not_detected`, `eye_tracking_degraded`, `keystroke_anomaly`, `presence_challenge_passed`, `presence_challenge_failed`, `offline_detected`, `session_resumed`
+
+**Retention:** Deleted after 90 days by scheduled Edge Function.
+
+**RLS:** Manager reads via session → assessment ownership. All writes via service role API.
+
+---
+
+### `public.assessment_snapshots`
+
+Webcam snapshot metadata. Actual files in private Supabase storage bucket `assessment-snapshots`.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | NOT NULL | `gen_random_uuid()` | PK |
+| `session_id` | uuid | NOT NULL | — | FK → `assessment_sessions(id)` CASCADE |
+| `invite_id` | uuid | NOT NULL | — | FK → `assessment_invites(id)` CASCADE |
+| `storage_path` | text | NOT NULL | — | Relative path in bucket: `{session_id}/{unix_ts}.jpg` |
+| `taken_at` | timestamptz | NOT NULL | `now()` | |
+
+**Storage bucket:** `assessment-snapshots` — private, signed URLs only (60s expiry), max 2MB per file, MIME: `image/jpeg`.
+
+**Retention:** Metadata row + storage object deleted after 90 days by scheduled Edge Function.
+
+**RLS:** Manager reads metadata via session ownership. All writes (metadata + storage) via service role API.
+
+---
+
+### `public.notifications`
+
+In-app notification feed. One row per notification.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | NOT NULL | `gen_random_uuid()` | PK |
+| `user_id` | uuid | NOT NULL | — | FK → `auth.users(id)` CASCADE |
+| `type` | text | NOT NULL | — | `'assessment_completed'` \| `'assessment_started'` \| `'invite_expired'` |
+| `title` | text | NOT NULL | — | Bell dropdown headline |
+| `message` | text | NULL | — | Optional body text |
+| `link` | text | NULL | — | Dashboard URL to navigate to on click |
+| `read` | boolean | NOT NULL | `false` | Marked true when dropdown opened |
+| `created_at` | timestamptz | NOT NULL | `now()` | |
+
+**RLS:** Users read/update own rows. INSERT via service role only.
+
+---
+
+### `user_profiles` modification (Migration 002)
+
+**Added column:**
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `role` | text | NOT NULL | `'recruiter'` | `'recruiter'` \| `'manager'`; owner always treated as manager in app logic |
+
+---
+
+## Candidate-Facing Write Pattern
+
+Candidate pages (`/assess/*`) have no Supabase auth session. All database writes use this pattern:
+
+```
+Browser (no auth)
+    │
+    │  POST /api/assess/[token]/start
+    │  POST /api/assess/[token]/save
+    │  POST /api/assess/[token]/events   (batched, every 60s)
+    │  POST /api/assess/[token]/submit
+    ▼
+Next.js API Route (server-side)
+    1. Validate token → query assessment_invites WHERE token = $1 AND expires_at > now()
+    2. Confirm status = 'pending' or 'started'
+    3. Write using Supabase ADMIN client (SUPABASE_SERVICE_ROLE_KEY)
+       → service role bypasses RLS entirely
+    │
+    ▼
+Supabase (writes bypass RLS)
+```
+
+**Never expose `SUPABASE_SERVICE_ROLE_KEY` to the browser.**
+
+---
+
+## Index Summary (Migration 002 additions)
+
+| Table | Index | Columns | Purpose |
+|-------|-------|---------|---------|
+| assessments | idx_assessments_user_id | `user_id` | Manager's assessment list |
+| assessments | idx_assessments_user_created | `(user_id, created_at DESC)` | Sorted list |
+| assessments | idx_assessments_status | `(user_id, status)` | Filter by status |
+| assessment_questions | idx_assessment_questions_assessment | `(assessment_id, sort_order)` | Ordered question load |
+| assessment_invites | idx_assessment_invites_token | `token` UNIQUE | Token lookup on every candidate page load |
+| assessment_invites | idx_assessment_invites_assessment | `(assessment_id, created_at DESC)` | Invite table in detail page |
+| assessment_invites | idx_assessment_invites_created_by | `(created_by, created_at DESC)` | History tab |
+| assessment_invites | idx_assessment_invites_pending_expired | `expires_at` partial (status='pending') | Expiry cleanup job |
+| assessment_sessions | idx_assessment_sessions_invite | `invite_id` | Session lookup by invite |
+| assessment_sessions | idx_assessment_sessions_assessment | `(assessment_id, completed_at DESC)` | Results list |
+| assessment_sessions | idx_assessment_sessions_user | `(user_id, created_at DESC)` | Dashboard stat card |
+| assessment_question_responses | idx_aqr_session | `session_id` | Report: all responses |
+| proctoring_events | idx_proctoring_events_session_time | `(session_id, timestamp ASC)` | Chronological event timeline |
+| proctoring_events | idx_proctoring_events_type | `(session_id, event_type)` | Filter by type |
+| assessment_snapshots | idx_assessment_snapshots_session | `(session_id, taken_at ASC)` | Snapshot gallery |
+| notifications | idx_notifications_user_unread | `(user_id, created_at DESC)` partial (read=false) | Bell unread count |
+| notifications | idx_notifications_user_created | `(user_id, created_at DESC)` | Full notification list |
+
+---
+
+## RLS Policy Summary (Migration 002 additions)
+
+| Table | SELECT | INSERT | UPDATE | DELETE | Notes |
+|-------|--------|--------|--------|--------|-------|
+| assessments | own rows | own rows | own rows | own rows | `user_id = auth.uid()` |
+| assessment_questions | via assessment ownership | via assessment ownership | via assessment ownership | via assessment ownership | JOIN to assessments |
+| assessment_invites | own rows (created_by) | own rows | own rows | — | Candidate access: service role only |
+| assessment_sessions | own rows (user_id) | — | — | — | All candidate writes: service role only |
+| assessment_question_responses | via session ownership | — | — | — | Service role for candidate saves |
+| proctoring_events | via session ownership | — | — | — | Service role for candidate events |
+| assessment_snapshots | via session ownership | — | — | — | Service role for uploads |
+| notifications | own rows | — | own rows | — | INSERT: service role only |
+
 ## Schema Gaps Flagged (vs PRD)
 
 | # | Gap | Resolution |
@@ -410,3 +697,16 @@ ON CONFLICT (event_id) DO NOTHING;
 | 6 | No `square_webhook_events` table — PRD explicitly requires raw event storage | Added with `UNIQUE event_id` for idempotency |
 | 7 | No `invite_token` / `invite_expires_at` on `team_members` — needed for email invite link | Added both columns |
 | 8 | `client_summaries` has no searchable title — PRD says filter by "job title" but no JD input | Added `candidate_name` (nullable); History page for this tab should say "Candidate Name" not "Job Title" |
+
+## Schema Notes — Migration 002
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 1 | No `overall_score` on `assessment_sessions` | PRD explicitly excludes combined score — Trust and Skill always shown separately |
+| 2 | `assessment_question_responses` added (not in original PRD schema) | Needed for partial save sync, per-question Claude feedback, and test result display in report |
+| 3 | `activity_log.feature` CHECK constraint expanded to include `'assessment'` | Required for dashboard activity feed and History 5th tab |
+| 4 | Candidate writes use service role API pattern, not anon RLS policies | More secure; avoids crafting RLS policies that allow unauthenticated writes with only token validation |
+| 5 | `invite_id` denormalized onto `assessment_snapshots` | Avoids JOIN through session for snapshot → invite path in cleanup job |
+| 6 | `user_id` denormalized onto `assessment_sessions` | Avoids JOIN through invite → assessment for RLS without expensive nested EXISTS |
+| 7 | Auto-expiry handled at query time + scheduled Edge Function | pg_cron not available on all Supabase plans; query-time check is always accurate; batch UPDATE is cleanup only |
+| 8 | Judge0 (Java/C#/Go/Ruby) excluded from MVP | Client-side only for MVP: JS/TS (Function sandbox), React (iframe), Python (Pyodide). No JUDGE0_API_KEY needed yet |
