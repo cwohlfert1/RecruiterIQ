@@ -54,7 +54,7 @@ export function CandidatesTab({
 
   const hasJd      = !!project.jd_text
   const unscored   = candidates.filter(c => c.cqi_score === null)
-  const showBatch  = hasJd && unscored.length > 0 && !batchState?.done === false
+  const showBatch  = hasJd && unscored.length > 0 && !batchState?.done
 
   // ── Add candidate ────────────────────────────────────────────
 

@@ -1,10 +1,11 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search, Trash2, ChevronDown, ChevronUp, Copy, Check,
-  FileSearch, FileText, Trophy, Clock, AlertTriangle, ShieldAlert,
+  FileSearch, FileText, Trophy, Clock, AlertTriangle, ShieldAlert, FolderOpen,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn, formatRelativeTime, getScoreColor } from '@/lib/utils'
@@ -15,7 +16,16 @@ import type {
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-type Tab = 'scores' | 'summaries' | 'boolean' | 'rankings' | 'redflags'
+type Tab = 'scores' | 'summaries' | 'boolean' | 'rankings' | 'redflags' | 'projects'
+
+type ProjectRow = {
+  id: string
+  title: string
+  client_name: string | null
+  status: 'active' | 'filled' | 'on_hold' | 'archived'
+  created_at: string
+  updated_at: string
+}
 
 type RankingRow = StackRanking & {
   stack_ranking_candidates: Pick<StackCandidate, 'id' | 'candidate_name' | 'score' | 'rank'>[]
@@ -29,7 +39,15 @@ const TAB_CONFIG: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'boolean',   label: 'Boolean Strings',  icon: <Search       className="w-4 h-4" /> },
   { id: 'rankings',  label: 'Stack Rankings',   icon: <Trophy       className="w-4 h-4" /> },
   { id: 'redflags',  label: 'Red Flag Checks',  icon: <ShieldAlert  className="w-4 h-4" /> },
+  { id: 'projects',  label: 'Projects',          icon: <FolderOpen   className="w-4 h-4" /> },
 ]
+
+const STATUS_CONFIG: Record<ProjectRow['status'], { label: string; cls: string }> = {
+  active:   { label: 'Active',   cls: 'bg-green-500/20 text-green-400 border-green-500/30'    },
+  filled:   { label: 'Filled',   cls: 'bg-blue-500/20 text-blue-400 border-blue-500/30'       },
+  on_hold:  { label: 'On Hold',  cls: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
+  archived: { label: 'Archived', cls: 'bg-slate-500/20 text-slate-400 border-slate-500/30'    },
+}
 
 // ─── Small helpers ───────────────────────────────────────────────────────────
 
@@ -206,6 +224,7 @@ function ExpandPanel({ children }: { children: React.ReactNode }) {
 
 export function HistoryClient() {
   const supabase = useMemo(() => createClient(), [])
+  const router   = useRouter()
 
   const [activeTab,   setActiveTab]   = useState<Tab>('scores')
   const [searchInput, setSearchInput] = useState('')
@@ -222,6 +241,7 @@ export function HistoryClient() {
   const [booleans,  setBooleans]  = useState<BooleanSearch[]>([])
   const [rankings,  setRankings]  = useState<RankingRow[]>([])
   const [redflags,  setRedflags]  = useState<RedFlagCheck[]>([])
+  const [projects,  setProjects]  = useState<ProjectRow[]>([])
 
   // Debounce search
   const debRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -306,6 +326,21 @@ export function HistoryClient() {
         setTotalCount(count ?? 0)
         setLoading(false)
       })
+    } else if (activeTab === 'projects') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = supabase as any
+      let q = db
+        .from('projects')
+        .select('id,title,client_name,status,created_at,updated_at', { count: 'exact' })
+        .order('updated_at', { ascending: false })
+        .range(from, to)
+      if (debSearch) q = q.or(`title.ilike.%${debSearch}%,client_name.ilike.%${debSearch}%`)
+      q.then(({ data, count }: { data: ProjectRow[] | null; count: number | null }) => {
+        if (cancelled) return
+        setProjects(data ?? [])
+        setTotalCount(count ?? 0)
+        setLoading(false)
+      })
     } else {
       // redflags
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -340,15 +375,18 @@ export function HistoryClient() {
     else                                setRedflags(p  => p.filter(r => r.id !== deleteId))
     setTotalCount(p => p - 1)
 
-    const tableMap = {
+    const tableMap: Partial<Record<Tab, string>> = {
       scores:    'resume_scores',
       summaries: 'client_summaries',
       boolean:   'boolean_searches',
       rankings:  'stack_rankings',
       redflags:  'red_flag_checks',
-    } as const
+    }
 
-    const { error } = await supabase.from(tableMap[activeTab]).delete().eq('id', deleteId)
+    const tableName = tableMap[activeTab]
+    if (!tableName) { setDeleteId(null); setDeleting(false); return }
+
+    const { error } = await supabase.from(tableName).delete().eq('id', deleteId)
 
     if (error) {
       toast.error('Failed to delete — please try again')
@@ -369,7 +407,8 @@ export function HistoryClient() {
     activeTab === 'scores'    ? scores    :
     activeTab === 'summaries' ? summaries :
     activeTab === 'boolean'   ? booleans  :
-    activeTab === 'rankings'  ? rankings  : redflags
+    activeTab === 'rankings'  ? rankings  :
+    activeTab === 'projects'  ? projects  : redflags
 
   const emptyLabels: Record<Tab, string> = {
     scores:    'resume scores',
@@ -377,6 +416,7 @@ export function HistoryClient() {
     boolean:   'boolean strings',
     rankings:  'stack rankings',
     redflags:  'red flag checks',
+    projects:  'projects',
   }
 
   const thCls = 'text-left text-xs font-semibold text-slate-500 uppercase tracking-wide pb-3 pr-4'
@@ -787,6 +827,40 @@ export function HistoryClient() {
     )
   }
 
+  // ─── Projects grid ────────────────────────────────────────
+
+  function ProjectsGrid() {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {projects.map(project => {
+          const status = STATUS_CONFIG[project.status] ?? STATUS_CONFIG.archived
+          return (
+            <button
+              key={project.id}
+              onClick={() => router.push(`/dashboard/projects/${project.id}`)}
+              className="text-left p-4 rounded-xl border border-white/8 bg-white/3 hover:bg-white/6 hover:border-white/14 transition-all group"
+            >
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <p className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors line-clamp-1">
+                  {project.title}
+                </p>
+                <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full border flex-shrink-0', status.cls)}>
+                  {status.label}
+                </span>
+              </div>
+              {project.client_name && (
+                <p className="text-xs text-slate-500 mb-2 truncate">{project.client_name}</p>
+              )}
+              <p className="text-xs text-slate-600">
+                Updated {formatRelativeTime(project.updated_at)}
+              </p>
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
   // ─── Pagination ───────────────────────────────────────────
 
   function Pagination() {
@@ -858,7 +932,11 @@ export function HistoryClient() {
           type="text"
           value={searchInput}
           onChange={e => handleSearch(e.target.value)}
-          placeholder={activeTab === 'summaries' ? 'Search by candidate name…' : 'Search by job title…'}
+          placeholder={
+            activeTab === 'summaries' ? 'Search by candidate name…' :
+            activeTab === 'projects'  ? 'Search by title or client…' :
+            'Search by job title…'
+          }
           className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500/50 transition-colors"
         />
       </div>
@@ -876,6 +954,7 @@ export function HistoryClient() {
             {activeTab === 'boolean'   && <BooleanTable   />}
             {activeTab === 'rankings'  && <RankingsTable  />}
             {activeTab === 'redflags'  && <RedFlagsTable  />}
+            {activeTab === 'projects'  && <ProjectsGrid   />}
             <Pagination />
           </>
         )}
