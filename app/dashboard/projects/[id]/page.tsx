@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ArrowLeft, Calendar } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { ProjectTabs } from '@/components/projects/project-tabs'
 import { ProjectStatusDropdown } from '@/components/projects/project-status-dropdown'
 import type { ProjectMemberRole, ProjectStatus, ProjectCandidate } from '@/types/database'
@@ -35,7 +36,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Fetch project + members in parallel with candidates
+  // Fetch project + members in parallel with candidates + profile
   const [projectRes, candidatesRes, profileRes] = await Promise.all([
     supabase
       .from('projects')
@@ -50,25 +51,51 @@ export default async function ProjectDetailPage({ params }: PageProps) {
       .order('created_at', { ascending: false }),
     supabase
       .from('user_profiles')
-      .select('role')
+      .select('role, plan_tier')
       .eq('user_id', user.id)
       .single(),
   ])
 
   if (projectRes.error || !projectRes.data) notFound()
 
-  const project  = projectRes.data
+  const project    = projectRes.data
   const rawCands: ProjectCandidate[] = candidatesRes.data ?? []
-  const isManager = profileRes.data?.role === 'manager'
+  const isManager  = profileRes.data?.role === 'manager'
+  const planTier: 'free' | 'pro' | 'agency' = profileRes.data?.plan_tier ?? 'free'
 
   // Determine caller's role
-  const members: Array<{ id: string; user_id: string; role: string }> = project.project_members ?? []
-  const callerMember = members.find((m: { user_id: string }) => m.user_id === user.id)
+  const rawMembers: Array<{ id: string; user_id: string; role: string; added_at: string | null }> =
+    project.project_members ?? []
+  const callerMember = rawMembers.find((m) => m.user_id === user.id)
   const callerRole: ProjectMemberRole | 'owner' | null =
     (callerMember?.role as ProjectMemberRole) ?? (project.owner_id === user.id ? 'owner' : null)
 
   const isOwner = project.owner_id === user.id || callerRole === 'owner'
   const canEdit = isOwner || callerRole === 'collaborator'
+
+  // Resolve member emails via admin client (for Settings tab)
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  const memberUserIds = rawMembers.map(m => m.user_id)
+  const emailMap: Record<string, string> = {}
+
+  if (memberUserIds.length > 0) {
+    await Promise.all(memberUserIds.map(async uid => {
+      const { data } = await admin.auth.admin.getUserById(uid)
+      if (data?.user?.email) emailMap[uid] = data.user.email
+    }))
+  }
+
+  const members = rawMembers.map(m => ({
+    id:       m.id,
+    user_id:  m.user_id,
+    role:     m.role,
+    email:    emailMap[m.user_id] ?? null,
+    added_at: m.added_at,
+  }))
 
   // Fetch assessment invite + session data for candidates that have invite_id
   const inviteIds = rawCands
@@ -91,7 +118,6 @@ export default async function ProjectDetailPage({ params }: PageProps) {
       }
     }
 
-    // Any invite_id with no session is still pending
     for (const id of inviteIds) {
       if (!inviteMap[id]) {
         inviteMap[id] = { status: 'pending', trust_score: null, skill_score: null }
@@ -185,6 +211,8 @@ export default async function ProjectDetailPage({ params }: PageProps) {
           userId={user.id}
           canEdit={canEdit}
           isManager={isManager}
+          planTier={planTier}
+          members={members}
         />
       </div>
     </div>

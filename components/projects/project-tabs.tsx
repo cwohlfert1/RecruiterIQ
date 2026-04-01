@@ -2,11 +2,15 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Users, FileText, Search, Activity, Settings, Construction } from 'lucide-react'
+import { Users, FileText, Search, Activity, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { CandidateRow } from '@/app/dashboard/projects/[id]/page'
 import { CandidatesTab } from '@/components/projects/tabs/candidates-tab'
-import { JdTab }         from '@/components/projects/tabs/jd-tab'
+import { JdTab }          from '@/components/projects/tabs/jd-tab'
+import { BooleanTab }     from '@/components/projects/tabs/boolean-tab'
+import { ActivityTab }    from '@/components/projects/tabs/activity-tab'
+import { SettingsTab }    from '@/components/projects/tabs/settings-tab'
+import { ShareModal }     from '@/components/projects/share-modal'
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -26,12 +30,22 @@ interface ProjectRef {
   owner_id:    string
 }
 
+interface Member {
+  id:       string
+  user_id:  string
+  role:     string
+  email:    string | null
+  added_at?: string | null
+}
+
 interface Props {
   project:    ProjectRef
   candidates: CandidateRow[]
   userId:     string
   canEdit:    boolean
   isManager:  boolean
+  planTier:   'free' | 'pro' | 'agency'
+  members:    Member[]
 }
 
 // ─── Tabs Config ─────────────────────────────────────────────
@@ -44,29 +58,29 @@ const TABS: Tab[] = [
   { key: 'settings',   label: 'Settings',        icon: Settings },
 ]
 
-// ─── Stub Content ─────────────────────────────────────────────
-
-function TabStub({ label }: { label: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 text-center">
-      <div className="w-12 h-12 rounded-2xl bg-slate-800 border border-white/8 flex items-center justify-center mb-4">
-        <Construction className="w-6 h-6 text-slate-600" />
-      </div>
-      <p className="text-sm font-medium text-slate-400 mb-1">{label}</p>
-      <p className="text-xs text-slate-600 max-w-xs">
-        This tab is coming soon as part of the full projects module.
-      </p>
-    </div>
-  )
-}
-
 // ─── Component ───────────────────────────────────────────────
 
-export function ProjectTabs({ project, candidates, userId, canEdit, isManager }: Props) {
-  const [active,  setActive]  = useState<TabKey>('candidates')
-  const [jdText,  setJdText]  = useState<string | null>(project.jd_text)
+export function ProjectTabs({
+  project,
+  candidates,
+  userId,
+  canEdit,
+  isManager,
+  planTier,
+  members: initialMembers,
+}: Props) {
+  const [active,              setActive]              = useState<TabKey>('candidates')
+  const [jdText,              setJdText]              = useState<string | null>(project.jd_text)
+  const [jdUpdatedThisSession, setJdUpdatedThisSession] = useState(false)
+  const [members,             setMembers]             = useState<Member[]>(initialMembers)
+  const [showShareModal,      setShowShareModal]      = useState(false)
 
   const isOwner = project.owner_id === userId
+
+  function handleJdSaved(text: string | null) {
+    setJdText(text)
+    setJdUpdatedThisSession(true)
+  }
 
   return (
     <div>
@@ -113,12 +127,54 @@ export function ProjectTabs({ project, candidates, userId, canEdit, isManager }:
           projectId={project.id}
           jdText={jdText}
           canEdit={canEdit}
-          onJdSaved={setJdText}
+          onJdSaved={handleJdSaved}
         />
       )}
 
-      {(active === 'boolean' || active === 'activity' || active === 'settings') && (
-        <TabStub label={TABS.find(t => t.key === active)!.label} />
+      {active === 'boolean' && (
+        <BooleanTab
+          projectId={project.id}
+          hasJd={!!jdText}
+          isOwner={isOwner}
+          isManager={isManager}
+          jdUpdatedThisSession={jdUpdatedThisSession}
+        />
+      )}
+
+      {active === 'activity' && (
+        <ActivityTab projectId={project.id} />
+      )}
+
+      {active === 'settings' && (
+        <SettingsTab
+          projectId={project.id}
+          projectTitle={project.title}
+          canEdit={canEdit}
+          isOwner={isOwner}
+          members={members}
+          onMembersChange={setMembers}
+          onShareClick={() => setShowShareModal(true)}
+        />
+      )}
+
+      {/* Share modal */}
+      {showShareModal && (
+        <ShareModal
+          projectId={project.id}
+          planTier={planTier}
+          onClose={() => setShowShareModal(false)}
+          onShared={() => {
+            // Refresh members list
+            fetch(`/api/projects/${project.id}`)
+              .then(r => r.json())
+              .then(json => {
+                if (json.project?.project_members) {
+                  setMembers(json.project.project_members)
+                }
+              })
+              .catch(() => {})
+          }}
+        />
       )}
     </div>
   )
