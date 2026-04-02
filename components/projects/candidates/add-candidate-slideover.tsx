@@ -5,6 +5,7 @@ import { X, UserPlus, Loader2, Sparkles, Plus, AlertOctagon } from 'lucide-react
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { FileDropTextarea } from '@/components/ui/file-drop-textarea'
+import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import type { CandidateRow } from '@/app/dashboard/projects/[id]/page'
 import type { PipelineStage } from '@/types/database'
@@ -40,6 +41,7 @@ function emptyParsed(): ParsedFields {
 
 export function AddCandidateSlideover({ open, projectId, hasJd, isManager = false, initialStage, onClose, onAdded }: Props) {
   const [resume,       setResume]       = useState('')
+  const [originalFile, setOriginalFile] = useState<File | null>(null)
   const [parsing,      setParsing]      = useState(false)
   const [parsed,       setParsed]       = useState<ParsedFields | null>(null)
   const [name,         setName]         = useState('')
@@ -54,7 +56,7 @@ export function AddCandidateSlideover({ open, projectId, hasJd, isManager = fals
   // Reset on open
   useEffect(() => {
     if (open) {
-      setResume(''); setParsed(null); setName(''); setEmail('')
+      setResume(''); setOriginalFile(null); setParsed(null); setName(''); setEmail('')
       setSubmitting(false); setParsing(false); setAddedCount(0)
       setNameError(false); setEmailError(false)
     }
@@ -144,11 +146,32 @@ export function AddCandidateSlideover({ open, projectId, hasJd, isManager = fals
         return
       }
 
-      const cqi = data.candidate?.cqi_score
+      const candidate = data.candidate as CandidateRow
+
+      // Upload original file to Supabase Storage if one was dropped
+      if (originalFile && candidate?.id) {
+        const ext    = originalFile.name.split('.').pop()?.toLowerCase() ?? 'bin'
+        const path   = `${projectId}/${candidate.id}.${ext}`
+        const supabase = createClient()
+        const { error: uploadError } = await supabase.storage
+          .from('resumes')
+          .upload(path, originalFile, { upsert: true })
+
+        if (!uploadError) {
+          await fetch(`/api/projects/${projectId}/candidates/${candidate.id}`, {
+            method:  'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ resume_file_url: path }),
+          })
+          candidate.resume_file_url = path
+        }
+      }
+
+      const cqi = candidate?.cqi_score
       toast.success(`${name.trim()} added${cqi != null ? ` — CQI: ${cqi}/100` : ''}`)
-      onAdded(data.candidate as CandidateRow)
+      onAdded(candidate)
       setFlagWarning(null)
-      return data.candidate as CandidateRow
+      return candidate
     } catch {
       toast.error('Something went wrong. Please try again.')
       setSubmitting(false)
@@ -165,7 +188,7 @@ export function AddCandidateSlideover({ open, projectId, hasJd, isManager = fals
     const result = await submitCandidate()
     if (result) {
       setAddedCount(c => c + 1)
-      setResume(''); setParsed(null); setName(''); setEmail('')
+      setResume(''); setOriginalFile(null); setParsed(null); setName(''); setEmail('')
       setParsing(false); setSubmitting(false)
       setNameError(false); setEmailError(false)
     }
@@ -268,6 +291,7 @@ export function AddCandidateSlideover({ open, projectId, hasJd, isManager = fals
                 <FileDropTextarea
                   value={resume}
                   onChange={handleResumeChange}
+                  onFile={setOriginalFile}
                   placeholder="Paste or drag and drop the candidate's resume here..."
                   minHeight="220px"
                   rows={10}

@@ -400,6 +400,7 @@ export type Database = {
           reaction:             string | null
           hired:                boolean
           flag_type:            string | null
+          resume_file_url:      string | null
           deleted_at:           string | null
           created_at:           string
           updated_at:           string
@@ -438,6 +439,7 @@ export type Database = {
           reaction?:             string | null
           hired?:                boolean
           flag_type?:            string | null
+          resume_file_url?:      string | null
           deleted_at?:           string | null
         }
       }

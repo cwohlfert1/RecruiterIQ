@@ -47,7 +47,7 @@ export async function PATCH(
   const canEdit = isOwner || role === 'owner' || role === 'collaborator'
   if (!canEdit) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  let body: { status?: unknown; assessment_invite_id?: unknown; deleted_at?: unknown }
+  let body: { status?: unknown; assessment_invite_id?: unknown; deleted_at?: unknown; resume_file_url?: unknown }
   try {
     body = await req.json()
   } catch {
@@ -69,6 +69,10 @@ export async function PATCH(
 
   if ('deleted_at' in body && body.deleted_at === 'now') {
     updates.deleted_at = new Date().toISOString()
+  }
+
+  if ('resume_file_url' in body && typeof body.resume_file_url === 'string') {
+    updates.resume_file_url = body.resume_file_url
   }
 
   if (Object.keys(updates).length === 0) {

@@ -67,6 +67,7 @@ async function parseFile(file: File): Promise<string> {
 export interface FileDropTextareaProps {
   value:        string
   onChange:     (value: string) => void
+  onFile?:      (file: File | null) => void
   placeholder?: string
   maxWords?:    number
   label?:       string
@@ -83,6 +84,7 @@ export interface FileDropTextareaProps {
 export function FileDropTextarea({
   value,
   onChange,
+  onFile,
   placeholder = 'Type or paste text here, or drag and drop a PDF, DOCX, or TXT file…',
   maxWords,
   label,
@@ -150,6 +152,7 @@ export function FileDropTextarea({
       }
       onChange(text)
       setFileName(file.name)
+      onFile?.(file)
     } catch (err) {
       console.error('[parsePdf] error:', err)
       toast.error('Failed to read file. Please try copy-pasting the text instead.')
@@ -177,7 +180,8 @@ export function FileDropTextarea({
   const handleClearFile = useCallback(() => {
     setFileName(null)
     onChange('')
-  }, [onChange])
+    onFile?.(null)
+  }, [onChange, onFile])
 
   // ── Render ───────────────────────────────────────────────────────────────
 

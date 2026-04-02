@@ -590,7 +590,20 @@ export function CandidateSlideout({
                 </button>
                 <button
                   className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 bg-white/5 border border-white/10 hover:bg-white/8 transition-colors"
-                  onClick={() => {
+                  onClick={async () => {
+                    if (candidate.resume_file_url) {
+                      // Download original file via signed URL
+                      const res = await fetch(`/api/projects/${projectId}/candidates/${candidate.id}/resume`)
+                      if (res.ok) {
+                        const { url } = await res.json()
+                        const a = document.createElement('a')
+                        a.href = url
+                        a.target = '_blank'
+                        a.click()
+                        return
+                      }
+                    }
+                    // Fallback: download extracted text as .txt
                     if (!candidate.resume_text) return
                     const blob = new Blob([candidate.resume_text], { type: 'text/plain' })
                     const url  = URL.createObjectURL(blob)
