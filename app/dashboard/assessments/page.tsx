@@ -53,7 +53,11 @@ export default async function AssessmentsPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const assessmentIds = ((assessments ?? []) as any[]).map((a: any) => a.id)
 
-  const [questionsRes, invitesRes, sessionsRes] = await Promise.all([
+  // Collect template_types for benchmark lookup
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const templateTypes = Array.from(new Set(((assessments ?? []) as any[]).map((a: any) => a.template_type).filter(Boolean))) as string[]
+
+  const [questionsRes, invitesRes, sessionsRes, benchmarksRes] = await Promise.all([
     assessmentIds.length > 0
       ? db
           .from('assessment_questions')
@@ -72,6 +76,12 @@ export default async function AssessmentsPage() {
           .select('assessment_id, trust_score, skill_score, recruiter_decision')
           .in('assessment_id', assessmentIds)
           .eq('status', 'completed')
+      : Promise.resolve({ data: [] }),
+    templateTypes.length > 0
+      ? db
+          .from('assessment_benchmarks')
+          .select('template_type, avg_skill_score, total_assessments')
+          .in('template_type', templateTypes)
       : Promise.resolve({ data: [] }),
   ])
 
@@ -110,17 +120,33 @@ export default async function AssessmentsPage() {
     avgSkill[id] = skill.length > 0 ? Math.round(skill.reduce((a, b) => a + b, 0) / skill.length) : null
   }
 
+  // Build benchmark map by template_type
+  const benchmarkMap: Record<string, { avg_skill_score: number; total_assessments: number }> = {}
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows = ((assessments ?? []) as any[]).map((a: any) => ({
-    ...a,
-    questionCount:       questionCounts[a.id]    ?? 0,
-    inviteCount:         inviteCounts[a.id]      ?? 0,
-    avgTrust:            avgTrust[a.id]          ?? null,
-    avgSkill:            avgSkill[a.id]          ?? null,
-    approvedCount:       approvedCounts[a.id]    ?? 0,
-    doNotSubmitCount:    doNotSubmitCounts[a.id] ?? 0,
-    proctoring_intensity: a.proctoring_intensity ?? null,
-  }))
+  for (const bm of ((benchmarksRes.data ?? []) as any[])) {
+    benchmarkMap[bm.template_type] = { avg_skill_score: bm.avg_skill_score, total_assessments: bm.total_assessments }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows = ((assessments ?? []) as any[]).map((a: any) => {
+    const bm = a.template_type ? benchmarkMap[a.template_type] : null
+    const aSkill = avgSkill[a.id] ?? null
+    const vsBenchmark = (bm && bm.total_assessments >= 3 && aSkill !== null)
+      ? Math.round(aSkill - bm.avg_skill_score)
+      : null
+
+    return {
+      ...a,
+      questionCount:       questionCounts[a.id]    ?? 0,
+      inviteCount:         inviteCounts[a.id]      ?? 0,
+      avgTrust:            avgTrust[a.id]          ?? null,
+      avgSkill:            aSkill,
+      approvedCount:       approvedCounts[a.id]    ?? 0,
+      doNotSubmitCount:    doNotSubmitCounts[a.id] ?? 0,
+      proctoring_intensity: a.proctoring_intensity ?? null,
+      vsBenchmark,
+    }
+  })
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">

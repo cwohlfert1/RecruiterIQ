@@ -50,6 +50,21 @@ export async function POST(req: NextRequest) {
   const expiryHours = (assessment.expiry_hours as number | null) ?? 48
   const expiresAt   = new Date(Date.now() + expiryHours * 60 * 60 * 1000).toISOString()
 
+  // Fetch question counts for time estimate in email
+  const { data: questionRows } = await db
+    .from('assessment_questions')
+    .select('type')
+    .eq('assessment_id', assessmentId) as { data: { type: string }[] | null }
+
+  const allQs      = questionRows ?? []
+  const codingCnt  = allQs.filter(q => q.type === 'coding').length
+  const mcCnt      = allQs.filter(q => q.type === 'multiple_choice').length
+  const writtenCnt = allQs.filter(q => q.type === 'written').length
+  const baseMin    = codingCnt * 15 + mcCnt * 2 + writtenCnt * 5
+  const loMin      = Math.round(baseMin * 0.8)
+  const hiMin      = Math.round(baseMin * 1.2)
+  const timeRange  = baseMin > 0 ? `${loMin}–${hiMin} minutes` : 'varies'
+
   // Create invite
   const { data: invite, error: inviteError } = await db
     .from('assessment_invites')
@@ -91,7 +106,17 @@ export async function POST(req: NextRequest) {
             text-decoration: none;
             border-radius: 10px;
             font-weight: 600;
-          ">Start Assessment</a>
+          ">Start Assessment →</a>
+          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+          <p style="color: #475569; font-size: 14px; font-weight: 600; margin-bottom: 10px;">Before you begin:</p>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 4px 0; color: #64748b; font-size: 13px;">⏱&nbsp; Set aside approximately <strong>${timeRange}</strong> of uninterrupted time</td></tr>
+            <tr><td style="padding: 4px 0; color: #64748b; font-size: 13px;">💻&nbsp; Use a desktop or laptop computer</td></tr>
+            <tr><td style="padding: 4px 0; color: #64748b; font-size: 13px;">🔇&nbsp; Find a quiet, well-lit space</td></tr>
+            <tr><td style="padding: 4px 0; color: #64748b; font-size: 13px;">📶&nbsp; Ensure a stable internet connection</td></tr>
+            <tr><td style="padding: 4px 0; color: #64748b; font-size: 13px;">🗂&nbsp; Close other browser tabs and applications</td></tr>
+          </table>
+          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
           <p style="color: #64748b; font-size: 13px;">Or copy this link: ${candidateLink}</p>
         </div>
       `,

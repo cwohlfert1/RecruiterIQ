@@ -30,6 +30,8 @@ function calculateTrustScore(events: ProctoringEvent[]): number {
       case 'keystroke_anomaly':
         score -= e.severity === 'high' ? 10 : e.severity === 'medium' ? 3 : 0
         break
+      case 'automated_input_detected': score -= 30; break
+      case 'code_without_typing':      score -= 25; break
       case 'face_not_detected': score -= 8; break
       case 'offline_detected':  score -= 5; break
     }
@@ -183,9 +185,36 @@ Events:\n${eventSummary}
   // Create in-app notification
   const { data: assessment } = await admin
     .from('assessments')
-    .select('title, id, notification_recipients')
+    .select('title, id, template_type, notification_recipients')
     .eq('id', invite.assessment_id)
-    .single() as { data: { title: string; id: string; notification_recipients: Array<{ email: string; name: string; user_id?: string | null }> | null } | null }
+    .single() as { data: { title: string; id: string; template_type: string | null; notification_recipients: Array<{ email: string; name: string; user_id?: string | null }> | null } | null }
+
+  // Upsert benchmark scores for this template_type
+  if (assessment?.template_type) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existing } = await (admin as any)
+      .from('assessment_benchmarks')
+      .select('avg_skill_score, avg_trust_score, total_assessments')
+      .eq('template_type', assessment.template_type)
+      .single() as { data: { avg_skill_score: number; avg_trust_score: number; total_assessments: number } | null }
+
+    if (existing) {
+      const n = existing.total_assessments
+      await (admin as any).from('assessment_benchmarks').update({
+        avg_skill_score:   ((existing.avg_skill_score * n) + skillScore)  / (n + 1),
+        avg_trust_score:   ((existing.avg_trust_score  * n) + trustScore) / (n + 1),
+        total_assessments: n + 1,
+        updated_at:        new Date().toISOString(),
+      }).eq('template_type', assessment.template_type)
+    } else {
+      await (admin as any).from('assessment_benchmarks').insert({
+        template_type:     assessment.template_type,
+        avg_skill_score:   skillScore,
+        avg_trust_score:   trustScore,
+        total_assessments: 1,
+      })
+    }
+  }
 
   const reportUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/dashboard/assessments/${invite.assessment_id}/report/${session.id}`
 

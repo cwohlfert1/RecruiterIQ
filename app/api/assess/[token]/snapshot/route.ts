@@ -8,7 +8,6 @@ export async function POST(
   const admin     = createAdminClient()
   const { token } = params
 
-  // Validate token + snapshots enabled
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: inviteRaw } = await (admin as any)
     .from('assessment_invites')
@@ -29,7 +28,8 @@ export async function POST(
 
   const assessment = assessmentRaw as { proctoring_config: Record<string, unknown> | null } | null
   const config = assessment?.proctoring_config
-  if (!config?.snapshots) {
+  // Allow snapshots when either snapshots or eye_tracking is enabled
+  if (!config?.snapshots && !config?.eye_tracking) {
     return NextResponse.json({ error: 'Snapshots not enabled for this assessment' }, { status: 400 })
   }
 
@@ -44,7 +44,11 @@ export async function POST(
   const session = sessionRaw as { id: string } | null
   if (!session) return NextResponse.json({ error: 'No active session' }, { status: 403 })
 
-  const body = await req.json() as { image: string } // base64 data URL
+  const body = await req.json() as {
+    image:                string   // base64 data URL
+    triggered_by_event?:  string
+    event_severity?:      string
+  }
   if (!body.image) return NextResponse.json({ error: 'No image provided' }, { status: 400 })
 
   // Convert base64 to buffer
@@ -67,10 +71,12 @@ export async function POST(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (admin as any).from('assessment_snapshots').insert({
-    session_id:   session.id,
-    invite_id:    invite.id,
-    storage_path: path,
-    taken_at:     new Date(timestamp).toISOString(),
+    session_id:          session.id,
+    invite_id:           invite.id,
+    storage_path:        path,
+    taken_at:            new Date(timestamp).toISOString(),
+    triggered_by_event:  body.triggered_by_event  ?? null,
+    event_severity:      body.event_severity       ?? null,
   })
 
   return NextResponse.json({ ok: true, path })

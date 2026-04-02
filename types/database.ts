@@ -730,6 +730,8 @@ export type ProctoringEventType =
   | 'presence_challenge_failed'
   | 'offline_detected'
   | 'session_resumed'
+  | 'automated_input_detected'
+  | 'code_without_typing'
 
 export type ProctoringConfig = {
   tab_switching:                boolean

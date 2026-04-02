@@ -1,5 +1,6 @@
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { ProctoringReport } from '@/components/assessments/proctoring-report'
 import type { UserProfile } from '@/types/database'
 
@@ -77,6 +78,31 @@ export default async function ReportPage({
       .order('taken_at'),
   ])
 
+  // Fetch benchmark if assessment has a template_type
+  let benchmark: { avg_skill_score: number; avg_trust_score: number; total_assessments: number; template_type: string } | null = null
+  if (assessment.template_type) {
+    const { data: bm } = await db
+      .from('assessment_benchmarks')
+      .select('avg_skill_score, avg_trust_score, total_assessments, template_type')
+      .eq('template_type', assessment.template_type)
+      .single()
+    benchmark = bm ?? null
+  }
+
+  // Fetch signed URLs for all snapshots
+  const admin = createAdminClient()
+  const snapshots = snapshotsRes.data ?? []
+  const signedUrls: Record<string, string> = {}
+
+  await Promise.allSettled(
+    snapshots.map(async (snap: { id: string; storage_path: string }) => {
+      const { data } = await admin.storage
+        .from('assessment-snapshots')
+        .createSignedUrl(snap.storage_path, 3600)
+      if (data?.signedUrl) signedUrls[snap.id] = data.signedUrl
+    })
+  )
+
   return (
     <ProctoringReport
       assessment={assessment}
@@ -85,7 +111,9 @@ export default async function ReportPage({
       questions={questionsRes.data ?? []}
       responses={responsesRes.data ?? []}
       events={eventsRes.data ?? []}
-      snapshots={snapshotsRes.data ?? []}
+      snapshots={snapshots}
+      benchmark={benchmark}
+      snapshotUrls={signedUrls}
     />
   )
 }

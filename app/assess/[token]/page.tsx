@@ -28,17 +28,26 @@ export default async function AssessLandingPage({
 
   if (!assessment) notFound()
 
-  const { count: questionCount } = await admin
+  const { data: questionRows } = await admin
     .from('assessment_questions')
-    .select('*', { count: 'exact', head: true })
-    .eq('assessment_id', invite.assessment_id) as { count: number | null }
+    .select('type')
+    .eq('assessment_id', invite.assessment_id) as { data: { type: string }[] | null }
+
+  const allQuestions   = questionRows ?? []
+  const questionCount  = allQuestions.length
+  const codingCount    = allQuestions.filter(q => q.type === 'coding').length
+  const mcCount        = allQuestions.filter(q => q.type === 'multiple_choice').length
+  const writtenCount   = allQuestions.filter(q => q.type === 'written').length
 
   return (
     <AssessLanding
       token={params.token}
       candidateName={invite.candidate_name}
       assessment={assessment}
-      questionCount={questionCount ?? 0}
+      questionCount={questionCount}
+      codingCount={codingCount}
+      mcCount={mcCount}
+      writtenCount={writtenCount}
       expired={expired}
       alreadyStarted={invite.status === 'started'}
       expiresAt={invite.expires_at ?? null}

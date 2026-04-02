@@ -1,35 +1,46 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Clock, FileText, Shield, AlertCircle, ChevronRight, Timer } from 'lucide-react'
+import { Clock, FileText, Shield, AlertCircle, ChevronRight, Timer, ChevronDown, CheckCircle2 } from 'lucide-react'
 import type { ProctoringConfig } from '@/types/database'
 
 interface Props {
-  token: string
-  candidateName: string
+  token:           string
+  candidateName:   string
   assessment: {
-    title: string
-    description: string | null
-    role: string | null
-    time_limit_minutes: number | null
-    question_display: string | null
-    proctoring_config: unknown
+    title:               string
+    description:         string | null
+    role:                string | null
+    time_limit_minutes:  number | null
+    question_display:    string | null
+    proctoring_config:   unknown
   }
-  questionCount: number
-  expired: boolean
+  questionCount:  number
+  codingCount:    number
+  mcCount:        number
+  writtenCount:   number
+  expired:        boolean
   alreadyStarted: boolean
-  expiresAt: string | null
+  expiresAt:      string | null
 }
 
 function formatCountdown(expiresAt: string): string {
-  const ms       = new Date(expiresAt).getTime() - Date.now()
-  if (ms <= 0) return 'Expired'
-  const hours    = Math.floor(ms / (1000 * 60 * 60))
-  const minutes  = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60))
+  const ms      = new Date(expiresAt).getTime() - Date.now()
+  if (ms <= 0)  return 'Expired'
+  const hours   = Math.floor(ms / (1000 * 60 * 60))
+  const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60))
   if (hours >= 48) return `${Math.floor(hours / 24)} days`
   if (hours >= 1)  return `${hours}h ${minutes}m`
   return `${minutes} minutes`
+}
+
+function calcTimeEstimate(coding: number, mc: number, written: number) {
+  const base = coding * 15 + mc * 2 + written * 5
+  const lo   = Math.round(base * 0.8)
+  const hi   = Math.round(base * 1.2)
+  return { lo, hi, base }
 }
 
 export function AssessLanding({
@@ -37,21 +48,34 @@ export function AssessLanding({
   candidateName,
   assessment,
   questionCount,
+  codingCount,
+  mcCount,
+  writtenCount,
   expired,
   alreadyStarted,
   expiresAt,
 }: Props) {
-  const router = useRouter()
-  const config = assessment.proctoring_config as ProctoringConfig | null
+  const router     = useRouter()
+  const [tipsOpen, setTipsOpen] = useState(false)
+
+  const config        = assessment.proctoring_config as ProctoringConfig | null
   const hasProctoring = config && Object.values(config).some(Boolean)
 
   const monitoringItems: string[] = []
-  if (config?.tab_switching) monitoringItems.push('Tab and window switching')
-  if (config?.paste_detection) monitoringItems.push('Copy and paste activity')
-  if (config?.eye_tracking) monitoringItems.push('Eye/gaze tracking via webcam')
+  if (config?.tab_switching)     monitoringItems.push('Tab and window switching')
+  if (config?.paste_detection)   monitoringItems.push('Copy and paste activity')
+  if (config?.eye_tracking)      monitoringItems.push('Eye/gaze tracking via webcam')
   if (config?.keystroke_dynamics) monitoringItems.push('Keystroke patterns')
   if (config?.presence_challenges) monitoringItems.push('Live presence challenges')
-  if (config?.snapshots) monitoringItems.push('Periodic webcam snapshots')
+  if (config?.snapshots)         monitoringItems.push('Periodic webcam snapshots')
+
+  const { lo, hi } = calcTimeEstimate(codingCount, mcCount, writtenCount)
+  const hasEstimate = questionCount > 0 && (lo > 0 || hi > 0)
+
+  const breakdown: string[] = []
+  if (codingCount > 0)  breakdown.push(`${codingCount} coding challenge${codingCount !== 1 ? 's' : ''}`)
+  if (mcCount > 0)      breakdown.push(`${mcCount} multiple choice`)
+  if (writtenCount > 0) breakdown.push(`${writtenCount} written response${writtenCount !== 1 ? 's' : ''}`)
 
   if (expired) {
     return (
@@ -106,7 +130,7 @@ export function AssessLanding({
         )}
 
         {/* Info cards */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
             <FileText className="w-5 h-5 text-gray-400 mb-2" />
             <div className="text-2xl font-bold text-gray-900">{questionCount}</div>
@@ -118,14 +142,28 @@ export function AssessLanding({
               {assessment.time_limit_minutes ?? '—'}
             </div>
             <div className="text-sm text-gray-500">
-              {assessment.time_limit_minutes ? 'Minutes' : 'No time limit'}
+              {assessment.time_limit_minutes ? 'Minutes limit' : 'No time limit'}
             </div>
           </div>
         </div>
 
+        {/* Time estimate card */}
+        {hasEstimate && (
+          <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Clock className="w-4 h-4 text-indigo-500" />
+              <span className="text-sm font-semibold text-indigo-800">Time required</span>
+            </div>
+            <p className="text-2xl font-bold text-indigo-700 mb-1">~{lo}–{hi} minutes</p>
+            {breakdown.length > 0 && (
+              <p className="text-xs text-indigo-500">{breakdown.join(' · ')}</p>
+            )}
+          </div>
+        )}
+
         {/* Proctoring notice */}
         {hasProctoring && monitoringItems.length > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
             <div className="flex items-start gap-3">
               <Shield className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
               <div>
@@ -144,29 +182,31 @@ export function AssessLanding({
           </div>
         )}
 
-        {/* Instructions */}
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-2">Before you begin</h3>
-          <ul className="text-sm text-gray-600 space-y-1.5">
-            <li className="flex items-start gap-2">
-              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mt-1.5 flex-shrink-0" />
-              Find a quiet place with a stable internet connection
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mt-1.5 flex-shrink-0" />
-              Keep this browser tab open throughout the assessment
-            </li>
-            {assessment.time_limit_minutes && (
-              <li className="flex items-start gap-2">
-                <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mt-1.5 flex-shrink-0" />
-                The timer starts when you click Start — complete within {assessment.time_limit_minutes} minutes
-              </li>
-            )}
-            <li className="flex items-start gap-2">
-              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mt-1.5 flex-shrink-0" />
-              Do not refresh or close the browser during the assessment
-            </li>
-          </ul>
+        {/* Collapsible tips */}
+        <div className="bg-gray-50 border border-gray-200 rounded-xl mb-6 overflow-hidden">
+          <button
+            onClick={() => setTipsOpen(v => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <span>Tips for best results</span>
+            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${tipsOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {tipsOpen && (
+            <div className="px-4 pb-4 space-y-2 border-t border-gray-200 pt-3">
+              {[
+                'Use a desktop or laptop computer',
+                'Find a quiet, well-lit space',
+                'Close other browser tabs first',
+                'Ensure a stable internet connection',
+                hasEstimate ? `Set aside ${lo}–${hi} minutes of focused time` : 'Set aside enough focused time',
+              ].map(tip => (
+                <div key={tip} className="flex items-start gap-2 text-sm text-gray-600">
+                  <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  {tip}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* CTA */}
@@ -179,13 +219,18 @@ export function AssessLanding({
             <ChevronRight className="w-5 h-5" />
           </button>
         ) : (
-          <button
-            onClick={() => router.push(`/assess/${token}/consent`)}
-            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-4 rounded-xl transition-all text-lg shadow-lg shadow-indigo-200"
-          >
-            Start Assessment
-            <ChevronRight className="w-5 h-5" />
-          </button>
+          <>
+            <button
+              onClick={() => router.push(`/assess/${token}/consent`)}
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-4 rounded-xl transition-all text-lg shadow-lg shadow-indigo-200"
+            >
+              I&apos;m Ready — Begin Assessment
+              <ChevronRight className="w-5 h-5" />
+            </button>
+            <p className="text-center text-xs text-gray-400 mt-3">
+              By clicking, you agree to the monitoring terms outlined on the next screen
+            </p>
+          </>
         )}
 
         <p className="text-center text-xs text-gray-400 mt-4">

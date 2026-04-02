@@ -172,6 +172,85 @@ export function AssessmentTaker({
     }).catch(() => {})
   }, [token])
 
+  // ─── Snapshots ────────────────────────────────────────────────────────
+  // Violation snapshot ref — set by webcam effect, called by event handlers
+  const snapshotFnRef = useRef<((eventType: string, severity: string) => void) | null>(null)
+  const takeViolationSnapshot = useCallback((eventType: string, severity = 'high') => {
+    snapshotFnRef.current?.(eventType, severity)
+  }, [])
+
+  // Ghost typist detection state (all refs to avoid re-renders)
+  const ghostRef = useRef({
+    recentIntervals:          [] as number[],
+    lastKeyTime:              null as number | null,
+    automatedFlagged:         false,
+    lastFlaggedTime:          null as number | null,
+    keystrokesInWindow:       0,
+    lastCodeLength:           0,
+    codeWithoutTypingFlagged: false,
+  })
+
+  // Monaco keydown handler for ghost typist (passed to CodingQuestion)
+  const onMonacoKeydown = useCallback(() => {
+    const now = Date.now()
+    const gt  = ghostRef.current
+    gt.keystrokesInWindow++
+
+    if (gt.lastKeyTime !== null) {
+      const interval = now - gt.lastKeyTime
+      gt.recentIntervals.push(interval)
+      if (gt.recentIntervals.length > 50) gt.recentIntervals.shift()
+
+      if (gt.recentIntervals.length >= 30 && !gt.automatedFlagged) {
+        const avg = gt.recentIntervals.slice(-30).reduce((a, b) => a + b, 0) / 30
+        if (avg < 30) {
+          gt.automatedFlagged   = true
+          gt.lastFlaggedTime    = now
+          postEvent('automated_input_detected', 'high', { avgIntervalMs: Math.round(avg), sampleSize: 30 })
+          takeViolationSnapshot('automated_input_detected', 'high')
+        }
+      }
+      // Reset flag after 60s of normal typing
+      if (gt.automatedFlagged && gt.lastFlaggedTime && now - gt.lastFlaggedTime > 60000) {
+        gt.automatedFlagged = false
+      }
+    }
+    gt.lastKeyTime = now
+  }, [postEvent, takeViolationSnapshot])
+
+  // Code-without-typing detection (5-second polling, coding questions only)
+  useEffect(() => {
+    if (currentQuestion?.type !== 'coding') return
+    const gt = ghostRef.current
+    gt.lastCodeLength           = (answers[currentQuestion.id]?.text ?? '').length
+    gt.keystrokesInWindow       = 0
+    gt.codeWithoutTypingFlagged = false
+
+    const timer = setInterval(() => {
+      const currentLen = (answers[currentQuestion.id]?.text ?? '').length
+      const charDiff   = currentLen - gt.lastCodeLength
+
+      if (charDiff > 80 && gt.keystrokesInWindow < 8) {
+        if (!gt.codeWithoutTypingFlagged) {
+          gt.codeWithoutTypingFlagged = true
+          postEvent('code_without_typing', 'high', {
+            charsAdded:         charDiff,
+            keystrokesDetected: gt.keystrokesInWindow,
+          })
+          takeViolationSnapshot('code_without_typing', 'high')
+        }
+      } else if (charDiff <= 80 || gt.keystrokesInWindow >= 8) {
+        gt.codeWithoutTypingFlagged = false
+      }
+
+      gt.lastCodeLength     = currentLen
+      gt.keystrokesInWindow = 0
+    }, 5000)
+
+    return () => clearInterval(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestion?.id, currentQuestion?.type])
+
   // ─── Tab switching ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!proctoringConfig.tab_switching) return
@@ -181,29 +260,33 @@ export function AssessmentTaker({
       if (document.hidden) {
         hiddenAt = Date.now()
       } else if (hiddenAt !== null) {
-        const ms = Date.now() - hiddenAt
-        postEvent('tab_switch', ms > 60000 ? 'high' : ms > 15000 ? 'medium' : 'low', { duration_away_ms: ms })
+        const ms  = Date.now() - hiddenAt
+        const sev = ms > 60000 ? 'high' : ms > 15000 ? 'medium' : 'low'
+        postEvent('tab_switch', sev, { duration_away_ms: ms })
+        takeViolationSnapshot('tab_switch', sev)
         hiddenAt = null
       }
     }
 
     document.addEventListener('visibilitychange', onVisibilityChange)
     return () => document.removeEventListener('visibilitychange', onVisibilityChange)
-  }, [proctoringConfig.tab_switching, postEvent])
+  }, [proctoringConfig.tab_switching, postEvent, takeViolationSnapshot])
 
   // ─── Paste detection ──────────────────────────────────────────────────
   useEffect(() => {
     if (!proctoringConfig.paste_detection) return
 
     const onPaste = (e: ClipboardEvent) => {
-      const text = e.clipboardData?.getData('text') ?? ''
+      const text  = e.clipboardData?.getData('text') ?? ''
       const chars = text.length
-      postEvent('paste_detected', chars > 500 ? 'high' : chars > 100 ? 'medium' : 'low', { char_count: chars })
+      const sev   = chars > 500 ? 'high' : chars > 100 ? 'medium' : 'low'
+      postEvent('paste_detected', sev, { char_count: chars })
+      if (chars > 100) takeViolationSnapshot('paste_detected', sev)
     }
 
     document.addEventListener('paste', onPaste)
     return () => document.removeEventListener('paste', onPaste)
-  }, [proctoringConfig.paste_detection, postEvent])
+  }, [proctoringConfig.paste_detection, postEvent, takeViolationSnapshot])
 
   // ─── Keystroke dynamics ────────────────────────────────────────────────
   const keystrokeRef = useRef<{ times: number[]; baseline: number | null }>({ times: [], baseline: null })
@@ -223,13 +306,15 @@ export function AssessmentTaker({
         // Flag anomaly after baseline established
         if (ref.baseline && ref.times.length > 20) {
           const recent = ref.times.slice(-5).reduce((a, b) => a + b, 0) / 5
-          const ratio = recent / ref.baseline
+          const ratio  = recent / ref.baseline
           if (ratio < 0.3 || ratio > 5) {
-            postEvent('keystroke_anomaly', ratio < 0.3 ? 'high' : 'medium', {
-              baseline_ms: ref.baseline,
+            const sev = ratio < 0.3 ? 'high' : 'medium'
+            postEvent('keystroke_anomaly', sev, {
+              baseline_ms:   ref.baseline,
               recent_avg_ms: recent,
               ratio,
             })
+            takeViolationSnapshot('keystroke_anomaly', sev)
           }
         }
       } else {
@@ -239,7 +324,7 @@ export function AssessmentTaker({
 
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [proctoringConfig.keystroke_dynamics, postEvent])
+  }, [proctoringConfig.keystroke_dynamics, postEvent, takeViolationSnapshot])
 
   // ─── Presence challenges ──────────────────────────────────────────────
   useEffect(() => {
@@ -267,12 +352,12 @@ export function AssessmentTaker({
   const onChallengeFail = () => {
     setShowChallenge(false)
     postEvent('presence_challenge_failed', 'high', { word: challengeWord })
+    takeViolationSnapshot('presence_challenge_failed', 'high')
   }
 
-  // ─── Snapshots ────────────────────────────────────────────────────────
   const snapshotVideoRef = useRef<HTMLVideoElement | null>(null)
   useEffect(() => {
-    if (!proctoringConfig.snapshots) return
+    if (!proctoringConfig.snapshots && !proctoringConfig.eye_tracking) return
 
     let stream: MediaStream | null = null
     const video = document.createElement('video')
@@ -286,27 +371,37 @@ export function AssessmentTaker({
       video.play()
     }).catch(() => {})
 
-    const takeSnapshot = () => {
+    const captureFrame = (extraBody?: Record<string, string>) => {
       if (!stream || !video.videoWidth) return
       const canvas = document.createElement('canvas')
-      canvas.width = video.videoWidth
+      canvas.width  = video.videoWidth
       canvas.height = video.videoHeight
       canvas.getContext('2d')?.drawImage(video, 0, 0)
       const image = canvas.toDataURL('image/jpeg', 0.7)
       fetch(`/api/assess/${token}/snapshot`, {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image }),
+        body:    JSON.stringify({ image, ...extraBody }),
       }).catch(() => {})
     }
 
-    const t = setInterval(takeSnapshot, 5 * 60 * 1000) // every 5 minutes
+    // Expose violation snapshot function via ref
+    snapshotFnRef.current = (eventType: string, severity: string) => {
+      captureFrame({ triggered_by_event: eventType, event_severity: severity })
+    }
+
+    // Periodic snapshots only when explicitly enabled
+    const t = proctoringConfig.snapshots
+      ? setInterval(() => captureFrame(), 5 * 60 * 1000)
+      : null
+
     return () => {
-      clearInterval(t)
+      if (t) clearInterval(t)
+      snapshotFnRef.current = null
       stream?.getTracks().forEach(t => t.stop())
       video.remove()
     }
-  }, [proctoringConfig.snapshots, token])
+  }, [proctoringConfig.snapshots, proctoringConfig.eye_tracking, token])
 
   // ─── Navigation ────────────────────────────────────────────────────────
   const goTo = (newIdx: number) => {
@@ -433,6 +528,7 @@ export function AssessmentTaker({
                   question={currentQuestion}
                   code={currentAnswer.text ?? currentQuestion.starter_code ?? ''}
                   onCodeChange={text => setAnswers(prev => ({ ...prev, [currentQuestion.id]: { ...prev[currentQuestion.id], text } }))}
+                  onEditorKeydown={onMonacoKeydown}
                 />
               )}
             </motion.div>
@@ -556,10 +652,12 @@ function CodingQuestion({
   question,
   code,
   onCodeChange,
+  onEditorKeydown,
 }: {
-  question: AssessmentQuestion
-  code: string
-  onCodeChange: (code: string) => void
+  question:         AssessmentQuestion
+  code:             string
+  onCodeChange:     (code: string) => void
+  onEditorKeydown?: () => void
 }) {
   const testCases = (question.test_cases_json ?? []) as { input: string; expectedOutput: string; description?: string }[]
 
@@ -587,6 +685,9 @@ function CodingQuestion({
           language={question.language ?? 'javascript'}
           value={code}
           onChange={v => onCodeChange(v ?? '')}
+          onMount={editor => {
+            if (onEditorKeydown) editor.onKeyDown(() => onEditorKeydown())
+          }}
           theme="vs-dark"
           options={{
             minimap: { enabled: false },

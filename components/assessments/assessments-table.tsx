@@ -29,6 +29,7 @@ type AssessmentRow = {
   approvedCount:       number
   doNotSubmitCount:    number
   proctoring_intensity?: string | null
+  vsBenchmark?:          number | null
 }
 
 const statusBadge: Record<AssessmentRow['status'], string> = {
@@ -123,6 +124,7 @@ export function AssessmentsTable({ rows }: { rows: AssessmentRow[] }) {
               <th className="text-center px-4 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">Invites</th>
               <th className="text-center px-4 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">Avg Trust</th>
               <th className="text-center px-4 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">Avg Skill</th>
+              <th className="text-center px-4 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">vs Benchmark</th>
               <th className="text-center px-4 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">Decision</th>
               <th className="text-left px-4 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">Created</th>
               <th className="text-right px-5 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">Actions</th>
@@ -171,6 +173,18 @@ export function AssessmentsTable({ rows }: { rows: AssessmentRow[] }) {
                 <td className="px-4 py-3.5 text-center text-slate-300">{row.inviteCount}</td>
                 <td className="px-4 py-3.5 text-center"><ScorePill value={row.avgTrust} /></td>
                 <td className="px-4 py-3.5 text-center"><ScorePill value={row.avgSkill} /></td>
+                <td className="px-4 py-3.5 text-center">
+                  {row.vsBenchmark !== null && row.vsBenchmark !== undefined ? (
+                    <span className={cn(
+                      'text-sm font-semibold tabular-nums',
+                      row.vsBenchmark > 0 ? 'text-green-400' : row.vsBenchmark < 0 ? 'text-red-400' : 'text-slate-400'
+                    )}>
+                      {row.vsBenchmark > 0 ? '+' : ''}{row.vsBenchmark}
+                    </span>
+                  ) : (
+                    <span className="text-slate-600 text-xs">—</span>
+                  )}
+                </td>
                 <td className="px-4 py-3.5 text-center">
                   <div className="flex items-center justify-center gap-1.5">
                     {row.approvedCount > 0 && (
