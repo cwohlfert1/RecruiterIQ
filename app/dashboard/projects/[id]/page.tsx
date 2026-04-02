@@ -13,9 +13,10 @@ export const metadata = { title: 'Project' }
 // ─── Shared candidate row type (server → client) ────────────────
 
 export type CandidateRow = ProjectCandidate & {
-  invite_status: 'pending' | 'completed' | null
-  trust_score:   number | null
-  skill_score:   number | null
+  invite_status:      'pending' | 'completed' | null
+  trust_score:        number | null
+  skill_score:        number | null
+  assessment_session_id: string | null
 }
 
 const STATUS_BADGE: Record<ProjectStatus, { label: string; className: string }> = {
@@ -118,12 +119,12 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     .map((c: ProjectCandidate) => c.assessment_invite_id)
     .filter(Boolean) as string[]
 
-  let inviteMap: Record<string, { status: 'pending' | 'completed'; trust_score: number | null; skill_score: number | null }> = {}
+  let inviteMap: Record<string, { status: 'pending' | 'completed'; trust_score: number | null; skill_score: number | null; session_id: string | null }> = {}
 
   if (inviteIds.length > 0) {
     const { data: sessions } = await supabase
       .from('assessment_sessions')
-      .select('invite_id, trust_score, skill_score, status')
+      .select('id, invite_id, trust_score, skill_score, status')
       .in('invite_id', inviteIds)
 
     for (const s of sessions ?? []) {
@@ -131,21 +132,23 @@ export default async function ProjectDetailPage({ params }: PageProps) {
         status:      s.status === 'completed' ? 'completed' : 'pending',
         trust_score: s.trust_score ?? null,
         skill_score: s.skill_score ?? null,
+        session_id:  s.status === 'completed' ? s.id : null,
       }
     }
 
     for (const id of inviteIds) {
       if (!inviteMap[id]) {
-        inviteMap[id] = { status: 'pending', trust_score: null, skill_score: null }
+        inviteMap[id] = { status: 'pending', trust_score: null, skill_score: null, session_id: null }
       }
     }
   }
 
   const candidates: CandidateRow[] = rawCands.map((c: ProjectCandidate) => ({
     ...c,
-    invite_status: c.assessment_invite_id ? (inviteMap[c.assessment_invite_id]?.status ?? 'pending') : null,
-    trust_score:   c.assessment_invite_id ? (inviteMap[c.assessment_invite_id]?.trust_score ?? null) : null,
-    skill_score:   c.assessment_invite_id ? (inviteMap[c.assessment_invite_id]?.skill_score ?? null) : null,
+    invite_status:         c.assessment_invite_id ? (inviteMap[c.assessment_invite_id]?.status ?? 'pending') : null,
+    trust_score:           c.assessment_invite_id ? (inviteMap[c.assessment_invite_id]?.trust_score ?? null) : null,
+    skill_score:           c.assessment_invite_id ? (inviteMap[c.assessment_invite_id]?.skill_score ?? null) : null,
+    assessment_session_id: c.assessment_invite_id ? (inviteMap[c.assessment_invite_id]?.session_id ?? null) : null,
   }))
 
   const badge       = STATUS_BADGE[project.status as ProjectStatus] ?? STATUS_BADGE.active

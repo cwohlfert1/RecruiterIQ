@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X, Copy, Check, Loader2, FileText } from 'lucide-react'
+import { X, Copy, Check, Loader2, FileText, ClipboardCheck } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import type { CandidateRow } from '@/app/dashboard/projects/[id]/page'
@@ -18,6 +18,10 @@ export function GenerateSummaryModal({ open, candidate, project, onClose }: Prop
   const [streaming, setStreaming]  = useState(false)
   const [copied,    setCopied]    = useState(false)
   const abortRef                  = useRef<AbortController | null>(null)
+
+  // Auto-detect completed assessment session
+  const sessionId = candidate?.assessment_session_id ?? null
+  const hasAssessment = !!sessionId
 
   useEffect(() => {
     if (open && candidate) {
@@ -43,17 +47,18 @@ export function GenerateSummaryModal({ open, candidate, project, onClose }: Prop
     abortRef.current = new AbortController()
 
     // Truncate resume to ~400 words for the notes field
-    const words       = candidate.resume_text.trim().split(/\s+/)
-    const truncated   = words.slice(0, 400).join(' ')
+    const words     = candidate.resume_text.trim().split(/\s+/)
+    const truncated = words.slice(0, 400).join(' ')
 
     try {
       const res = await fetch('/api/generate-summary', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          jobTitle:    project.title,
-          companyName: project.client_name,
-          notes:       truncated,
+          jobTitle:             project.title,
+          companyName:          project.client_name,
+          notes:                truncated,
+          assessmentSessionId:  sessionId ?? undefined,
         }),
         signal: abortRef.current.signal,
       })
@@ -130,13 +135,22 @@ export function GenerateSummaryModal({ open, candidate, project, onClose }: Prop
             <div className="w-full max-w-xl bg-[#12141F] border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[80vh]">
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-indigo-400" />
-                  <h2 className="text-sm font-semibold text-white">
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText className="w-4 h-4 text-indigo-400 shrink-0" />
+                  <h2 className="text-sm font-semibold text-white truncate">
                     Client Summary — {candidate?.candidate_name}
                   </h2>
+                  {hasAssessment && (
+                    <span className="shrink-0 flex items-center gap-1 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                      <ClipboardCheck className="w-3 h-3" />
+                      Assessment included
+                    </span>
+                  )}
                 </div>
-                <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-200 hover:bg-white/8 transition-colors">
+                <button
+                  onClick={onClose}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-200 hover:bg-white/8 transition-colors ml-2 shrink-0"
+                >
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -146,7 +160,9 @@ export function GenerateSummaryModal({ open, candidate, project, onClose }: Prop
                 {streaming && !text && (
                   <div className="flex items-center gap-2 text-sm text-slate-500">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Generating summary…
+                    {hasAssessment
+                      ? 'Generating summary with assessment results…'
+                      : 'Generating summary…'}
                   </div>
                 )}
                 {text && (
