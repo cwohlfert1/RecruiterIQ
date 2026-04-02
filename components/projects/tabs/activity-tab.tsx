@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { Activity } from 'lucide-react'
 import type { ProjectActivityType } from '@/types/database'
+import { UserAvatar } from '@/components/ui/user-avatar'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -133,26 +134,6 @@ function getActivityMessage(
   }
 }
 
-// ─── Avatar ───────────────────────────────────────────────────
-
-const AVATAR_COLORS = [
-  'bg-indigo-500', 'bg-emerald-500', 'bg-purple-500',
-  'bg-cyan-500',   'bg-rose-500',    'bg-amber-500',
-]
-
-function Avatar({ email }: { email: string | null }) {
-  const char  = email ? email[0].toUpperCase() : '?'
-  const color = email
-    ? AVATAR_COLORS[email.charCodeAt(0) % AVATAR_COLORS.length]
-    : 'bg-slate-600'
-
-  return (
-    <div className={`w-8 h-8 rounded-full ${color} flex items-center justify-center text-xs font-bold text-white flex-shrink-0`}>
-      {char}
-    </div>
-  )
-}
-
 // ─── Single item ──────────────────────────────────────────────
 
 function ActivityItemRow({ item }: { item: ActivityItem }) {
@@ -164,7 +145,11 @@ function ActivityItemRow({ item }: { item: ActivityItem }) {
 
   return (
     <div className="flex items-start gap-3 py-3 border-b border-white/5 last:border-0">
-      <Avatar email={item.user_email} />
+      <UserAvatar
+        userId={item.user_id ?? item.user_email ?? 'unknown'}
+        email={item.user_email}
+        size={32}
+      />
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-medium ${accent}`}>{text}</p>
         <p className="text-xs text-slate-500 mt-0.5">

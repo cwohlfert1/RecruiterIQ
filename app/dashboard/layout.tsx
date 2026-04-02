@@ -8,6 +8,7 @@ import { Sidebar } from '@/components/dashboard/sidebar'
 import { TopBar } from '@/components/dashboard/top-bar'
 import { MobileNav } from '@/components/dashboard/mobile-nav'
 import { GracePeriodBanner } from '@/components/dashboard/grace-period-banner'
+import { ProfileNudge } from '@/components/dashboard/profile-nudge'
 
 const GRACE_PERIOD_DAYS = 3
 
@@ -79,7 +80,9 @@ export default async function DashboardLayout({
     }
   }
 
-  const showGraceBanner = profile.subscription_status === 'grace'
+  const showGraceBanner  = profile.subscription_status === 'grace'
+  const showProfileNudge = !(profile as typeof profile & { avatar_url?: string | null }).avatar_url
+                        && !(profile as typeof profile & { linkedin_id?: string | null }).linkedin_id
 
   return (
     <div className="flex h-screen bg-[#0F1117]">
@@ -92,6 +95,7 @@ export default async function DashboardLayout({
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopBar profile={profile} />
         {showGraceBanner && <GracePeriodBanner />}
+        <ProfileNudge show={showProfileNudge} />
         <main className="flex-1 p-6 pb-24 md:pb-6 overflow-y-auto">
           {children}
         </main>

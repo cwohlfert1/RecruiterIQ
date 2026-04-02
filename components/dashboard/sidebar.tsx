@@ -20,6 +20,7 @@ import {
   AlertOctagon,
 } from 'lucide-react'
 import { CandidLogo } from '@/components/candid-logo'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import { createClient } from '@/lib/supabase/client'
 import { cn, getPlanLabel } from '@/lib/utils'
 import type { UserProfile } from '@/types/database'
@@ -228,20 +229,32 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
 
       {/* User section */}
       <div className="px-3 py-4 border-t border-white/8 space-y-1">
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/4">
-          <div className="w-8 h-8 rounded-full bg-gradient-brand flex items-center justify-center text-xs font-semibold text-white flex-shrink-0">
-            {initials}
-          </div>
+        <Link href="/dashboard/settings/profile" className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/4 hover:bg-white/6 transition-colors">
+          <UserAvatar
+            userId={profile.user_id}
+            avatarUrl={(profile as UserProfile & { avatar_url?: string | null }).avatar_url ?? null}
+            displayName={(profile as UserProfile & { display_name?: string | null }).display_name ?? null}
+            email={userEmail}
+            size={32}
+          />
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-white truncate">{userEmail}</p>
-            <span className={cn(
-              'inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full border mt-0.5',
-              planBadgeClass
-            )}>
-              {getPlanLabel(profile.plan_tier)}
-            </span>
+            <p className="text-xs font-medium text-white truncate">
+              {(profile as UserProfile & { display_name?: string | null }).display_name ?? userEmail}
+            </p>
+            {(profile as UserProfile & { job_title?: string | null }).job_title ? (
+              <p className="text-[10px] text-slate-500 truncate">
+                {(profile as UserProfile & { job_title?: string | null }).job_title}
+              </p>
+            ) : (
+              <span className={cn(
+                'inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full border mt-0.5',
+                planBadgeClass
+              )}>
+                {getPlanLabel(profile.plan_tier)}
+              </span>
+            )}
           </div>
-        </div>
+        </Link>
 
         <button
           onClick={handleLogout}

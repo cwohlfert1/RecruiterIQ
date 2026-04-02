@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { CreditCard, Users, Building2 } from 'lucide-react'
+import { CreditCard, Users, Building2, UserCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getPlanLabel } from '@/lib/utils'
 import type { UserProfile } from '@/types/database'
+import { UserAvatar } from '@/components/ui/user-avatar'
 
 export const metadata = { title: 'Settings' }
 
@@ -24,6 +25,12 @@ export default async function SettingsPage() {
 
   const sections = [
     {
+      href:        '/dashboard/settings/profile',
+      icon:        UserCircle2,
+      title:       'My Profile',
+      description: 'Connect LinkedIn to sync your photo and title. Visible on notes, activity, and team views.',
+    },
+    {
       href:        '/dashboard/settings/billing',
       icon:        CreditCard,
       title:       'Billing & Plan',
@@ -43,8 +50,6 @@ export default async function SettingsPage() {
     }] : []),
   ]
 
-  const initials = (user.email ?? 'U').slice(0, 2).toUpperCase()
-
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
@@ -55,12 +60,23 @@ export default async function SettingsPage() {
       {/* Profile card */}
       <div className="glass-card rounded-2xl p-6">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-gradient-brand flex items-center justify-center text-base font-bold text-white flex-shrink-0">
-            {initials}
-          </div>
+          <UserAvatar
+            userId={user.id}
+            avatarUrl={(profile as UserProfile & { avatar_url?: string | null }).avatar_url ?? null}
+            displayName={(profile as UserProfile & { display_name?: string | null }).display_name ?? null}
+            email={user.email}
+            size={48}
+          />
           <div>
-            <p className="text-sm font-semibold text-white">{user.email}</p>
-            <p className="text-xs text-slate-400 mt-0.5 capitalize">
+            <p className="text-sm font-semibold text-white">
+              {(profile as UserProfile & { display_name?: string | null }).display_name ?? user.email}
+            </p>
+            {(profile as UserProfile & { job_title?: string | null }).job_title && (
+              <p className="text-xs text-slate-400 mt-0.5">
+                {(profile as UserProfile & { job_title?: string | null }).job_title}
+              </p>
+            )}
+            <p className="text-xs text-slate-500 mt-0.5 capitalize">
               {profile.role} &middot; {getPlanLabel(profile.plan_tier)} plan
             </p>
           </div>

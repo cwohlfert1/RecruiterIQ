@@ -5,6 +5,7 @@ import { Trash2, Loader2, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { UserAvatar } from '@/components/ui/user-avatar'
 
 interface Note {
   id:         string
@@ -27,20 +28,6 @@ interface Props {
   members?:    MemberOption[]
 }
 
-const AVATAR_COLORS = [
-  'bg-indigo-500', 'bg-emerald-500', 'bg-purple-500',
-  'bg-cyan-500',   'bg-rose-500',    'bg-amber-500',
-]
-
-function NoteAvatar({ email }: { email: string | null }) {
-  const char  = email ? email[0].toUpperCase() : '?'
-  const color = email ? AVATAR_COLORS[email.charCodeAt(0) % AVATAR_COLORS.length] : 'bg-slate-600'
-  return (
-    <div className={cn('w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0', color)}>
-      {char}
-    </div>
-  )
-}
 
 // Render note content, turning @[userId:Name] tokens into indigo badges
 function NoteContent({ content }: { content: string }) {
@@ -211,9 +198,7 @@ export function CandidateNotes({ candidateId, projectId, userId, canEdit, member
                       onMouseDown={e => { e.preventDefault(); insertMention(m) }}
                       className="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-white/5 hover:text-white flex items-center gap-2 transition-colors"
                     >
-                      <div className={cn('w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0',
-                        AVATAR_COLORS[(m.email ?? '').charCodeAt(0) % AVATAR_COLORS.length]
-                      )}>
+                      <div className="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0">
                         {name[0]?.toUpperCase() ?? '?'}
                       </div>
                       @{name}
@@ -240,7 +225,11 @@ export function CandidateNotes({ candidateId, projectId, userId, canEdit, member
         <div className="space-y-3">
           {notes.map(note => (
             <div key={note.id} className="flex gap-2.5">
-              <NoteAvatar email={note.user_email} />
+              <UserAvatar
+                userId={note.user_id}
+                email={note.user_email}
+                size={24}
+              />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-[11px] font-medium text-slate-400">

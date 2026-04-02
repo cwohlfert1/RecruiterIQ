@@ -11,41 +11,62 @@ export type Database = {
     Tables: {
       user_profiles: {
         Row: {
-          user_id:                string
-          plan_tier:              'free' | 'pro' | 'agency'
-          subscription_status:   'free' | 'active' | 'grace' | 'cancelling' | 'cancelled'
-          square_customer_id:    string | null
-          square_subscription_id: string | null
-          ai_calls_this_month:   number
-          last_reset_at:         string
-          billing_period_end:    string | null
-          grace_period_start:    string | null
-          role:                  'recruiter' | 'manager'
-          created_at:            string
-          updated_at:            string
+          user_id:                  string
+          plan_tier:                'free' | 'pro' | 'agency'
+          subscription_status:     'free' | 'active' | 'grace' | 'cancelling' | 'cancelled'
+          square_customer_id:      string | null
+          square_subscription_id:  string | null
+          ai_calls_this_month:     number
+          last_reset_at:           string
+          billing_period_end:      string | null
+          grace_period_start:      string | null
+          role:                    'recruiter' | 'manager'
+          created_at:              string
+          updated_at:              string
+          avatar_url:              string | null
+          display_name:            string | null
+          job_title:               string | null
+          linkedin_url:            string | null
+          linkedin_id:             string | null
+          linkedin_connected_at:   string | null
+          phone:                   string | null
         }
         Insert: {
-          user_id:                string
-          plan_tier?:             'free' | 'pro' | 'agency'
-          subscription_status?:  'free' | 'active' | 'grace' | 'cancelling' | 'cancelled'
-          square_customer_id?:   string | null
+          user_id:                  string
+          plan_tier?:               'free' | 'pro' | 'agency'
+          subscription_status?:    'free' | 'active' | 'grace' | 'cancelling' | 'cancelled'
+          square_customer_id?:     string | null
           square_subscription_id?: string | null
-          ai_calls_this_month?:  number
-          last_reset_at?:        string
-          billing_period_end?:   string | null
-          grace_period_start?:   string | null
-          role?:                 'recruiter' | 'manager'
+          ai_calls_this_month?:    number
+          last_reset_at?:          string
+          billing_period_end?:     string | null
+          grace_period_start?:     string | null
+          role?:                   'recruiter' | 'manager'
+          avatar_url?:             string | null
+          display_name?:           string | null
+          job_title?:              string | null
+          linkedin_url?:           string | null
+          linkedin_id?:            string | null
+          linkedin_connected_at?:  string | null
+          phone?:                  string | null
         }
         Update: {
-          plan_tier?:             'free' | 'pro' | 'agency'
-          subscription_status?:  'free' | 'active' | 'grace' | 'cancelling' | 'cancelled'
-          square_customer_id?:   string | null
+          plan_tier?:               'free' | 'pro' | 'agency'
+          subscription_status?:    'free' | 'active' | 'grace' | 'cancelling' | 'cancelled'
+          square_customer_id?:     string | null
           square_subscription_id?: string | null
-          ai_calls_this_month?:  number
-          last_reset_at?:        string
-          billing_period_end?:   string | null
-          grace_period_start?:   string | null
-          role?:                 'recruiter' | 'manager'
+          ai_calls_this_month?:    number
+          last_reset_at?:          string
+          billing_period_end?:     string | null
+          grace_period_start?:     string | null
+          role?:                   'recruiter' | 'manager'
+          avatar_url?:             string | null
+          display_name?:           string | null
+          job_title?:              string | null
+          linkedin_url?:           string | null
+          linkedin_id?:            string | null
+          linkedin_connected_at?:  string | null
+          phone?:                  string | null
         }
       }
       assessments: {

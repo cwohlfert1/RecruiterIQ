@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { UserPlus, Trash2, Crown, Loader2, Users } from 'lucide-react'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { TeamMember } from '@/types/database'
@@ -162,9 +163,7 @@ export function TeamClient({ ownerEmail, members: initialMembers, callsByUser }:
             animate={{ opacity: 1 }}
             className="flex items-center gap-4 px-5 py-4"
           >
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-              {ownerEmail.slice(0, 2).toUpperCase()}
-            </div>
+            <UserAvatar userId="owner" email={ownerEmail} size={36} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium text-white truncate">{ownerEmail}</p>
@@ -193,9 +192,11 @@ export function TeamClient({ ownerEmail, members: initialMembers, callsByUser }:
                   m.status === 'pending' && 'opacity-60'
                 )}
               >
-                <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 flex-shrink-0">
-                  {m.invited_email.slice(0, 2).toUpperCase()}
-                </div>
+                <UserAvatar
+                  userId={m.member_user_id ?? m.invited_email}
+                  email={m.invited_email}
+                  size={36}
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium text-white truncate">{m.invited_email}</p>
