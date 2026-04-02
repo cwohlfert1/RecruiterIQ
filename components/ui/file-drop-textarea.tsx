@@ -30,8 +30,9 @@ async function parsePdf(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer()
 
   // Dynamic import to avoid SSR issues
+  // Use unpkg CDN which serves directly from npm — guaranteed to have any published version
   const pdfjsLib = await import('pdfjs-dist')
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
 
   const pdf   = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
   const pages: string[] = []
@@ -149,7 +150,8 @@ export function FileDropTextarea({
       }
       onChange(text)
       setFileName(file.name)
-    } catch {
+    } catch (err) {
+      console.error('[parsePdf] error:', err)
       toast.error('Failed to read file. Please try copy-pasting the text instead.')
     } finally {
       setParsing(false)

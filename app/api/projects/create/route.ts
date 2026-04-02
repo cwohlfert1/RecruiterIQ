@@ -92,8 +92,15 @@ export async function POST(req: NextRequest) {
 
   const projectId = project.id
 
-  // Insert owner as 'owner' member
-  await supabase.from('project_members').insert({
+  // Insert owner as 'owner' member via admin client — the project_members_insert
+  // RLS policy checks is_project_collaborator(), which requires an existing row,
+  // creating a chicken-and-egg problem for the very first insert on a new project.
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  await admin.from('project_members').insert({
     project_id: projectId,
     user_id:    user.id,
     role:       'owner',
@@ -112,16 +119,11 @@ export async function POST(req: NextRequest) {
       }))
 
     if (memberRows.length > 0) {
-      await supabase.from('project_members').insert(memberRows)
+      await admin.from('project_members').insert(memberRows)
     }
   }
 
   // Log project_created via admin client (bypasses project_activity INSERT RLS)
-  const admin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-
   await admin.from('project_activity').insert({
     project_id:    projectId,
     user_id:       user.id,
