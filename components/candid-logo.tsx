@@ -66,7 +66,7 @@ export function CandidLogo({ variant = 'dark', className = 'h-9 w-auto' }: Props
       <text
         x="76" y="48"
         fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-        fontSize="32" fontWeight="500"
+        fontSize="34" fontWeight="500"
         fill={textFill}
       >
         candid<tspan fill="#a855f7">.ai</tspan>

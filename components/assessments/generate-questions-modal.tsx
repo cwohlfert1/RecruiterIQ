@@ -244,7 +244,7 @@ export function GenerateQuestionsModal({ draft, onAdd, onClose }: Props) {
                     {([
                       { type: 'coding'          as QuestionType, label: 'Coding Challenge',  desc: 'Monaco editor with test cases'  },
                       { type: 'multiple_choice' as QuestionType, label: 'Multiple Choice',   desc: 'Auto-scored 4-option question'  },
-                      { type: 'written'         as QuestionType, label: 'Written Response',  desc: 'AI-graded open-ended answer'    },
+                      { type: 'written'         as QuestionType, label: 'Written Response',  desc: 'Cortex-scored open-ended answer' },
                     ]).map(({ type, label, desc }) => (
                       <label
                         key={type}
@@ -316,7 +316,7 @@ export function GenerateQuestionsModal({ draft, onAdd, onClose }: Props) {
                   <Sparkles className="w-6 h-6 text-indigo-400 animate-pulse" />
                 </div>
                 <div className="text-center">
-                  <p className="text-white font-medium">Claude is thinking...</p>
+                  <p className="text-white font-medium">Cortex is processing...</p>
                   <p className="text-sm text-slate-500 mt-1">
                     Generating {count} question{count !== 1 ? 's' : ''}
                   </p>

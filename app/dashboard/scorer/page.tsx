@@ -338,7 +338,7 @@ export default function ScorerPage() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold gradient-text mb-1">Resume Scorer</h1>
           <p className="text-slate-400 text-sm">
-            AI-powered resume analysis to help you make faster, better hiring decisions.
+            Cortex-powered resume analysis to help you make faster, better hiring decisions.
           </p>
         </div>
 
@@ -527,7 +527,7 @@ export default function ScorerPage() {
                 <div className="glass-card rounded-2xl p-6 space-y-6">
                   <div>
                     <h2 className="text-sm font-semibold text-white mb-0.5">Resume Red Flag Check</h2>
-                    <p className="text-xs text-slate-400">Claude scans for employment gaps, vague claims, inconsistencies, and more.</p>
+                    <p className="text-xs text-slate-400">Cortex AI scans for employment gaps, vague claims, inconsistencies, and more.</p>
                   </div>
 
                   <div className="space-y-2">

@@ -148,7 +148,7 @@ export function BuilderStep0JD({ onSkip, onConfirm }: Props) {
               <div>
                 <p className="text-sm font-semibold text-white mb-0.5">Generate from Job Description</p>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Paste a JD and Claude will create your entire assessment — questions, settings, and proctoring — automatically.
+                  Paste a JD and Cortex AI will create your entire assessment — questions, settings, and proctoring — automatically.
                 </p>
               </div>
               <span className="text-xs font-medium text-indigo-400 group-hover:text-indigo-300 transition-colors">
@@ -167,7 +167,7 @@ export function BuilderStep0JD({ onSkip, onConfirm }: Props) {
               <div>
                 <p className="text-sm font-semibold text-white mb-0.5">Browse Templates</p>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Pick from 15 role-specific templates. Claude generates starter questions tailored to the position.
+                  Pick from 15 role-specific templates. Cortex AI generates starter questions tailored to the position.
                 </p>
               </div>
               <span className="text-xs font-medium text-violet-400 group-hover:text-violet-300 transition-colors">
@@ -216,7 +216,7 @@ export function BuilderStep0JD({ onSkip, onConfirm }: Props) {
             </button>
             <div>
               <h2 className="text-base font-semibold text-white mb-0.5">Paste Job Description</h2>
-              <p className="text-sm text-slate-400">Claude will analyze it and build your assessment</p>
+              <p className="text-sm text-slate-400">Cortex AI will analyze it and build your assessment</p>
             </div>
           </div>
 
@@ -254,7 +254,7 @@ export function BuilderStep0JD({ onSkip, onConfirm }: Props) {
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-brand hover-glow transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none"
             >
               <Sparkles className="w-4 h-4" />
-              Analyze with Claude →
+              Analyze with Cortex AI →
             </button>
           </div>
         </motion.div>
@@ -278,7 +278,7 @@ export function BuilderStep0JD({ onSkip, onConfirm }: Props) {
           </div>
           <div className="text-center">
             <p className="text-base font-semibold text-white mb-1">Analyzing job description</p>
-            <p className="text-sm text-slate-400">Claude is reading the JD and building your assessment...</p>
+            <p className="text-sm text-slate-400">Cortex AI is building your assessment...</p>
           </div>
           <div className="flex gap-1.5">
             {[0, 1, 2].map(i => (
@@ -309,7 +309,7 @@ export function BuilderStep0JD({ onSkip, onConfirm }: Props) {
                 <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
                 <h2 className="text-base font-semibold text-white">Assessment Ready</h2>
               </div>
-              <p className="text-sm text-slate-400">Claude built an assessment from your job description</p>
+              <p className="text-sm text-slate-400">Cortex AI built an assessment from your job description</p>
             </div>
             <button
               onClick={() => setPhase('input')}

@@ -18,6 +18,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/dashboard/assessments/create': 'Create Assessment',
   '/dashboard/settings':           'Settings',
   '/dashboard/settings/billing':   'Billing & Plan',
+  '/dashboard/settings/branding':  'Agency Branding',
   '/dashboard/settings/team':      'Team',
 }
 
@@ -54,7 +55,7 @@ export function TopBar({ profile }: TopBarProps) {
       {limit !== null && (
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <p className="text-xs text-slate-500">AI calls this month</p>
+            <p className="text-xs text-slate-500">Screenings this month</p>
             <p className="text-sm font-semibold text-white">
               {used}
               <span className="text-slate-500 font-normal"> / {limit}</span>
@@ -72,7 +73,7 @@ export function TopBar({ profile }: TopBarProps) {
       {limit === null && (
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-green-500" />
-          <span className="text-xs text-slate-400">Unlimited AI calls</span>
+          <span className="text-xs text-slate-400">Unlimited Screenings</span>
         </div>
       )}
     </header>

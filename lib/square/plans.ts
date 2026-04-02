@@ -20,7 +20,7 @@ export const PLAN_CONFIG = {
     planId: process.env.SQUARE_PRO_PLAN_ID ?? '',
     planVariationId: process.env.SQUARE_PRO_PLAN_VARIATION_ID ?? '',
     features: [
-      'Unlimited AI calls',
+      'Unlimited Screenings',
       'Resume Scorer',
       'Client Summary Generator',
       'Boolean String Generator',

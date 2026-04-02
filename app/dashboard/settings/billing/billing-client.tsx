@@ -109,7 +109,7 @@ export function BillingClient({ profile: initialProfile }: BillingClientProps) {
         {/* AI call usage meter */}
         <div>
           <div className="flex items-center justify-between text-xs mb-2">
-            <span className="text-slate-400">AI calls this month</span>
+            <span className="text-slate-400">Screenings this month</span>
             <span className="text-white font-medium">
               {profile.ai_calls_this_month}
               {callLimit ? ` / ${callLimit}` : ' / Unlimited'}
@@ -187,7 +187,7 @@ const PLAN_ICONS: Record<PaidPlanKey, React.ElementType> = {
 }
 
 const FEATURE_ICONS: Record<string, React.ElementType> = {
-  'Unlimited AI calls': Zap,
+  'Unlimited Screenings': Zap,
   'Stack Ranking': BarChart3,
   'Team management (5 seats)': Users,
   'CSV export': FileDown,

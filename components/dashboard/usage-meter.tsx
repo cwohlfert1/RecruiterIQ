@@ -18,13 +18,13 @@ export function UsageMeter({ profile }: UsageMeterProps) {
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-slate-400">AI calls this month</span>
+          <span className="text-sm text-slate-400">Screenings this month</span>
           <span className="text-sm font-semibold text-white tabular-nums">{used} used</span>
         </div>
         <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-green-500/8 border border-green-500/20">
           <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
           <span className="text-sm font-semibold text-green-300">Unlimited</span>
-          <span className="text-xs text-slate-500 ml-auto">No call limit on your plan</span>
+          <span className="text-xs text-slate-500 ml-auto">No screening limit on your plan</span>
         </div>
       </div>
     )
@@ -37,7 +37,7 @@ export function UsageMeter({ profile }: UsageMeterProps) {
   return (
     <div className="space-y-2.5">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-slate-400">AI calls this month</span>
+        <span className="text-sm text-slate-400">Screenings this month</span>
         <span className="text-sm font-semibold text-white tabular-nums">
           {used}
           <span className="text-slate-500 font-normal"> / {limit}</span>
@@ -58,8 +58,8 @@ export function UsageMeter({ profile }: UsageMeterProps) {
         remaining === 0 ? 'text-red-400' : remaining <= 2 ? 'text-yellow-400' : 'text-slate-500'
       )}>
         {remaining === 0
-          ? 'You\'ve used all your free calls this month'
-          : `${remaining} call${remaining === 1 ? '' : 's'} remaining`}
+          ? 'You\'ve used all your free screenings this month'
+          : `${remaining} screening${remaining === 1 ? '' : 's'} remaining`}
       </p>
     </div>
   )

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { CreditCard, Users } from 'lucide-react'
+import { CreditCard, Users, Building2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getPlanLabel } from '@/lib/utils'
 import type { UserProfile } from '@/types/database'
@@ -35,6 +35,12 @@ export default async function SettingsPage() {
       title:       'Team',
       description: 'Invite team members, manage roles, and collaborate on projects.',
     },
+    ...(profile.plan_tier === 'agency' ? [{
+      href:        '/dashboard/settings/branding',
+      icon:        Building2,
+      title:       'Agency Branding',
+      description: 'Upload your agency logo and name to white-label the sidebar for your team.',
+    }] : []),
   ]
 
   const initials = (user.email ?? 'U').slice(0, 2).toUpperCase()

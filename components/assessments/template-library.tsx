@@ -131,7 +131,7 @@ export function TemplateLibrary() {
             <h1 className="text-2xl font-semibold text-white">Template Library</h1>
           </div>
           <p className="text-sm text-slate-400 ml-6">
-            Choose a role template — Claude will generate a tailored assessment with starter questions
+            Choose a role template — Cortex AI will generate a tailored assessment with starter questions
           </p>
         </div>
         <Link

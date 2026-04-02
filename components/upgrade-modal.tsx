@@ -16,7 +16,7 @@ const PLAN_META = {
   pro: {
     name:     'Pro',
     price:    '$39/month',
-    features: ['Unlimited AI calls', 'Resume Scorer', 'Summary Generator', 'Boolean Generator'],
+    features: ['Unlimited Screenings', 'Resume Scorer', 'Summary Generator', 'Boolean Generator'],
     icon:     <Zap className="w-5 h-5" />,
     color:    'from-indigo-500/20 to-indigo-600/10 border-indigo-500/30',
     badge:    'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
@@ -85,7 +85,7 @@ export function UpgradeModal({ isOpen, onClose, reason, requiredPlan }: UpgradeM
               <p className="text-sm text-slate-400 mb-5">
                 {isLocked
                   ? `This feature is only available on the ${plan.name} plan.`
-                  : 'Free plan includes 10 AI calls/month. Upgrade to unlock unlimited access.'}
+                  : 'Free plan includes 10 screenings/month. Upgrade to unlock unlimited access.'}
               </p>
 
               {/* Plan features */}

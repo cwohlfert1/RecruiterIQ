@@ -648,7 +648,7 @@ export default function RankingPage() {
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Analyzing candidates with Claude…
+                  Cortex is analyzing candidates…
                 </>
               ) : (
                 <>

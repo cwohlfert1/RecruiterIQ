@@ -28,10 +28,10 @@ export function UpgradeBanner() {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-white">
-          Upgrade to Pro for unlimited AI calls
+          Upgrade to Pro for unlimited screenings
         </p>
         <p className="text-xs text-slate-400 mt-0.5">
-          Free plan includes 10 AI calls/month. Pro starts at $39/month.
+          Free plan includes 10 screenings/month. Pro starts at $39/month.
         </p>
       </div>
       <Link

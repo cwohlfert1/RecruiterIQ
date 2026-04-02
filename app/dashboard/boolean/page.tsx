@@ -433,7 +433,7 @@ export default function BooleanPage() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-500">
-                  Paste or upload a job description and Claude will extract the title, skills, and generate both strings.
+                  Paste or upload a job description and Cortex AI will extract the title, skills, and generate both strings.
                 </p>
               </div>
 
@@ -542,7 +542,7 @@ export default function BooleanPage() {
                       <FileText className="w-7 h-7 text-slate-500" />
                     </div>
                     <p className="text-slate-500 text-sm">
-                      Paste a job description and Claude will generate<br />both LinkedIn and Indeed strings for you.
+                      Paste a job description and Cortex AI will generate<br />both LinkedIn and Indeed strings for you.
                     </p>
                   </div>
                 )}

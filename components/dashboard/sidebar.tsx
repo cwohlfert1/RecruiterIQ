@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import {
   LayoutDashboard,
   FileSearch,
@@ -103,7 +104,22 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
     <aside className="flex flex-col w-64 h-full bg-[#1A1D2E] border-r border-white/8 flex-shrink-0">
       {/* Logo */}
       <div className="flex items-center px-5 py-5 border-b border-white/8">
-        <CandidLogo variant="dark" className="h-8 w-auto" />
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        {(profile as any).agency_logo_url ? (
+          <div className="flex flex-col gap-0.5">
+            <Image
+              src={(profile as any).agency_logo_url as string}
+              alt={(profile as any).agency_name ?? 'Agency logo'}
+              width={120}
+              height={36}
+              className="object-contain max-h-9 w-auto"
+              unoptimized
+            />
+            <span className="text-[10px] text-slate-600 leading-none">Powered by Candid.ai</span>
+          </div>
+        ) : (
+          <CandidLogo variant="dark" className="h-10 w-auto" />
+        )}
       </div>
 
       {/* Nav */}

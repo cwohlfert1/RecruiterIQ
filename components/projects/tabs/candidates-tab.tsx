@@ -496,7 +496,7 @@ export function CandidatesTab({
           <div className="bg-[#12141F] border border-white/10 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
             <h3 className="text-sm font-semibold text-white">Score {unscored.length} candidates?</h3>
             <p className="text-xs text-slate-400">
-              This will use {unscored.length} AI credit{unscored.length !== 1 ? 's' : ''} to score all unscored candidates.
+              This will use {unscored.length} screening{unscored.length !== 1 ? 's' : ''} to score all unscored candidates.
             </p>
             <div className="flex justify-end gap-3">
               <button onClick={() => setConfirmBatch(false)} className="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 border border-white/10 hover:text-white transition-colors">Cancel</button>

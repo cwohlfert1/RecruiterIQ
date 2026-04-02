@@ -103,8 +103,12 @@ Return ONLY valid JSON array, no explanation:
       messages:   [{ role: 'user', content: prompt }],
     })
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : ''
-    const jsonMatch = text.match(/\[[\s\S]*\]/)
+    const rawText = response.content[0].type === 'text' ? response.content[0].text : ''
+    const cleaned = rawText
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/, '')
+      .trim()
+    const jsonMatch = cleaned.match(/\[[\s\S]*\]/)
     if (!jsonMatch) throw new Error('No JSON array')
 
     const parsed = JSON.parse(jsonMatch[0])

@@ -231,7 +231,7 @@ export function BooleanTab({ projectId, hasJd, isOwner, isManager, jdUpdatedThis
         {generating ? (
           <div className="flex items-center gap-2 text-sm text-indigo-300">
             <Loader2 className="w-4 h-4 animate-spin" />
-            Claude is generating unique search strings for each recruiter
+            Cortex is crafting your search strings
             <span className="animate-pulse">...</span>
           </div>
         ) : (
@@ -267,7 +267,7 @@ export function BooleanTab({ projectId, hasJd, isOwner, isManager, jdUpdatedThis
         <div className="rounded-xl bg-indigo-500/10 border border-indigo-500/20 px-4 py-6 text-center">
           <Loader2 className="w-6 h-6 animate-spin text-indigo-400 mx-auto mb-3" />
           <p className="text-sm text-indigo-300 font-medium">
-            Claude is generating unique search strings for each recruiter
+            Cortex is crafting your search strings
             <span className="animate-pulse">...</span>
           </p>
           <p className="text-xs text-slate-500 mt-1">This takes 10–30 seconds</p>
