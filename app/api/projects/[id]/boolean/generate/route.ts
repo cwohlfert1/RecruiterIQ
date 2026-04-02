@@ -37,17 +37,15 @@ export async function POST(
     return NextResponse.json({ error: 'Job description required' }, { status: 400 })
   }
 
-  // Admin client — used for activity logging AND inserts (bypasses RLS for service-level writes)
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // All user IDs to generate for (owner + all project members, minimum 1)
   const allUserIds = Array.from(new Set([project.owner_id, ...members.map(m => m.user_id)]))
   const n = Math.max(allUserIds.length, 1)
 
-  // Generate N variations via Claude
+  // Generate N × 2 variations (targeted + broad per recruiter)
   const prompt = `You are a Boolean search string expert for technical recruiting.
 
 Job Title: ${project.title}
@@ -56,37 +54,55 @@ Client: ${project.client_name}
 Job Description:
 ${project.jd_text.slice(0, 3000)}
 
-Generate ${n} unique Boolean search string variation${n !== 1 ? 's' : ''}.
-Each variation must use DIFFERENT combinations of:
-- Title synonyms (e.g., "Software Engineer" vs "Developer" vs "Programmer")
-- Skill permutations (different aliases and groupings of the same core skills)
-- Seniority expressions (e.g., "Senior" vs "5+ years" vs "Lead" vs "Principal")
-- Exclusion terms (NOT intern vs NOT junior vs NOT "entry level")
+Generate ${n} recruiter variation${n !== 1 ? 's' : ''}, each with TWO Boolean search strings:
 
-Return ONLY valid JSON array, no explanation, no markdown:
+VARIANT 1 — TARGETED (strict):
+- Use AND logic throughout
+- Exact job title matches only
+- All required skills ANDed together
+- Designed to return 50–200 results on LinkedIn
+- variant_type: "targeted"
+
+VARIANT 2 — BROAD (inclusive):
+- Use OR groups for title variations and synonyms
+- Nice-to-have skills as OR alternatives
+- More flexible seniority expressions
+- Designed to return 500–2000 results
+- variant_type: "broad"
+
+Each recruiter's strings must be genuinely distinct (different title synonyms, skill permutations, seniority expressions) to avoid candidate overlap between team members.
+
+Return ONLY valid JSON array — no explanation, no markdown:
 [
   {
-    "linkedin_string": "(title OR synonym) AND (skill1 OR skill2) AND (Senior OR \"5+ years\") NOT junior",
-    "indeed_string": "title skill1 skill2 -junior -intern"
+    "targeted": {
+      "linkedin_string": "...",
+      "indeed_string": "..."
+    },
+    "broad": {
+      "linkedin_string": "...",
+      "indeed_string": "..."
+    }
   }
 ]
 
 Generate exactly ${n} variation${n !== 1 ? 's' : ''}.
 LinkedIn strings: use AND, OR, NOT, parentheses, quoted phrases.
-Indeed strings: space-separated terms, minus sign for exclusions (no AND/OR).
-Make each variation genuinely distinct so recruiters using different strings find different candidate pools.`
+Indeed strings: space-separated terms, minus sign for exclusions.`
 
-  let variations: Array<{ linkedin_string: string; indeed_string: string }> = []
+  let variations: Array<{
+    targeted: { linkedin_string: string; indeed_string: string }
+    broad:    { linkedin_string: string; indeed_string: string }
+  }> = []
 
   try {
     const response = await anthropic.messages.create({
       model:      MODEL,
-      max_tokens: Math.max(800, n * 300),
+      max_tokens: Math.max(1200, n * 500),
       messages:   [{ role: 'user', content: prompt }],
     })
 
     const rawText = response.content[0].type === 'text' ? response.content[0].text : ''
-    // Strip markdown fences if Claude wraps the response
     const cleaned = rawText
       .replace(/^```(?:json)?\s*/i, '')
       .replace(/\s*```$/, '')
@@ -98,7 +114,6 @@ Make each variation genuinely distinct so recruiters using different strings fin
     if (!Array.isArray(parsed) || parsed.length === 0) throw new Error('Invalid response format')
 
     variations = parsed.slice(0, n)
-    // Pad if Claude returned fewer than expected
     while (variations.length < n) {
       variations.push({ ...variations[variations.length - 1] })
     }
@@ -109,37 +124,47 @@ Make each variation genuinely distinct so recruiters using different strings fin
 
   await incrementAICallCount(user.id)
 
-  // Archive all existing active strings for this project (admin bypasses RLS)
-  const { error: archiveError } = await admin
+  // Archive all existing active strings for this project
+  await admin
     .from('project_boolean_strings')
     .update({ is_active: false })
     .eq('project_id', params.id)
     .eq('is_active', true)
 
-  if (archiveError) {
-    console.error('[boolean-generate] archive error:', archiveError.message, JSON.stringify(archiveError))
+  // Insert targeted + broad rows per user
+  const inserts: Array<Record<string, unknown>> = []
+  for (let i = 0; i < allUserIds.length; i++) {
+    const uid = allUserIds[i]
+    const v   = variations[i]
+    inserts.push({
+      project_id:      params.id,
+      user_id:         uid,
+      linkedin_string: v.targeted.linkedin_string,
+      indeed_string:   v.targeted.indeed_string,
+      variant_type:    'targeted',
+      is_active:       true,
+      created_by:      user.id,
+    })
+    inserts.push({
+      project_id:      params.id,
+      user_id:         uid,
+      linkedin_string: v.broad.linkedin_string,
+      indeed_string:   v.broad.indeed_string,
+      variant_type:    'broad',
+      is_active:       true,
+      created_by:      user.id,
+    })
   }
-
-  // Insert new active strings via admin client (bypasses RLS — auth already validated above)
-  const inserts = allUserIds.map((uid, i) => ({
-    project_id:      params.id,
-    user_id:         uid,
-    linkedin_string: variations[i].linkedin_string,
-    indeed_string:   variations[i].indeed_string,
-    is_active:       true,
-    created_by:      user.id,
-  }))
 
   const { error: insertError } = await admin
     .from('project_boolean_strings')
     .insert(inserts)
 
   if (insertError) {
-    console.error('[boolean-generate] insert error:', insertError.message, JSON.stringify(insertError))
+    console.error('[boolean-generate] insert error:', insertError.message)
     return NextResponse.json({ error: 'Failed to save variations' }, { status: 500 })
   }
 
-  // Log activity
   await admin.from('project_activity').insert({
     project_id:    params.id,
     user_id:       user.id,
@@ -147,15 +172,12 @@ Make each variation genuinely distinct so recruiters using different strings fin
     metadata_json: { count: n },
   })
 
-  // Return the requesting user's variation
   const myIdx      = allUserIds.indexOf(user.id)
-  const myVariation = inserts[myIdx >= 0 ? myIdx : 0]
+  const myV        = variations[myIdx >= 0 ? myIdx : 0]
 
   return NextResponse.json({
-    variation: {
-      linkedin_string: myVariation.linkedin_string,
-      indeed_string:   myVariation.indeed_string,
-    },
+    targeted: { linkedin_string: myV.targeted.linkedin_string, indeed_string: myV.targeted.indeed_string },
+    broad:    { linkedin_string: myV.broad.linkedin_string,    indeed_string: myV.broad.indeed_string    },
     count: n,
   })
 }

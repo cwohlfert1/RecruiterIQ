@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
     client_name?: unknown
     jd_text?: unknown
     member_ids?: unknown
+    company_id?: unknown
   }
   try {
     body = await req.json()
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { title, client_name, jd_text, member_ids } = body
+  const { title, client_name, jd_text, member_ids, company_id } = body
 
   if (typeof title !== 'string' || !title.trim()) {
     return NextResponse.json({ error: 'title is required' }, { status: 400 })
@@ -80,6 +81,7 @@ export async function POST(req: NextRequest) {
       title:       title.trim(),
       client_name: client_name.trim(),
       jd_text:     typeof jd_text === 'string' && jd_text.trim() ? jd_text.trim() : null,
+      company_id:  typeof company_id === 'string' && company_id.trim() ? company_id.trim() : null,
     })
     .select('id')
     .single()

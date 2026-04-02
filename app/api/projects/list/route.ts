@@ -12,7 +12,7 @@ export async function GET() {
   // Fetch all projects visible to this user (RLS handles owner + member filtering)
   const { data: projects, error: projectsError } = await supabase
     .from('projects')
-    .select('*, project_members(user_id, role)')
+    .select('*, project_members(user_id, role), companies(logo_url)')
     .order('updated_at', { ascending: false })
 
   if (projectsError) {
@@ -68,6 +68,7 @@ export async function GET() {
     created_at: string
     updated_at: string
     project_members: Array<{ user_id: string; role: string }>
+    companies: { logo_url: string | null } | null
   }) => ({
     id:               p.id,
     owner_id:         p.owner_id,
@@ -84,7 +85,8 @@ export async function GET() {
       user_id: m.user_id,
       role:    m.role as ProjectListItem['members'][number]['role'],
     })),
-    is_owner: p.owner_id === user.id,
+    is_owner:         p.owner_id === user.id,
+    company_logo_url: p.companies?.logo_url ?? null,
   }))
 
   return NextResponse.json({ projects: enriched })

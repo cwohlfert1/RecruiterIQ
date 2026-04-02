@@ -175,6 +175,7 @@ export function ProjectTabs({
           hasJd={!!jdText}
           isOwner={isOwner}
           isManager={isManager}
+          jdText={jdText ?? ''}
           jdUpdatedThisSession={jdUpdatedThisSession}
         />
       )}

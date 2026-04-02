@@ -1,5 +1,6 @@
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowLeft, Calendar } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { createClient } from '@/lib/supabase/server'
@@ -41,7 +42,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   const [projectRes, candidatesRes, profileRes] = await Promise.all([
     supabase
       .from('projects')
-      .select('*, project_members(id, user_id, role, added_by, added_at)')
+      .select('*, project_members(id, user_id, role, added_by, added_at), companies(logo_url)')
       .eq('id', params.id)
       .single(),
     supabase
@@ -151,9 +152,10 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     assessment_session_id: c.assessment_invite_id ? (inviteMap[c.assessment_invite_id]?.session_id ?? null) : null,
   }))
 
-  const badge       = STATUS_BADGE[project.status as ProjectStatus] ?? STATUS_BADGE.active
-  const memberCount = members.length
-  const shownCount  = Math.min(memberCount, 3)
+  const badge           = STATUS_BADGE[project.status as ProjectStatus] ?? STATUS_BADGE.active
+  const memberCount     = members.length
+  const shownCount      = Math.min(memberCount, 3)
+  const companyLogoUrl: string | null = (project.companies as { logo_url: string | null } | null)?.logo_url ?? null
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -186,7 +188,19 @@ export default async function ProjectDetailPage({ params }: PageProps) {
               )}
             </div>
 
-            <p className="text-sm text-slate-400 mb-4">{project.client_name}</p>
+            <div className="flex items-center gap-2 mb-4">
+              {companyLogoUrl && (
+                <Image
+                  src={companyLogoUrl}
+                  alt={project.client_name}
+                  width={20}
+                  height={20}
+                  className="rounded object-contain bg-white"
+                  unoptimized
+                />
+              )}
+              <p className="text-sm text-slate-400">{project.client_name}</p>
+            </div>
 
             <div className="flex items-center gap-5 text-xs text-slate-500 flex-wrap">
               {/* Member avatars */}

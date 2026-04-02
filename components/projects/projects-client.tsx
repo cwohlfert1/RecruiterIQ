@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search,
@@ -11,6 +12,7 @@ import {
   PlusCircle,
   TrendingUp,
   Star,
+  Building2,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -63,6 +65,28 @@ function CqiBadge({ score }: { score: number }) {
   )
 }
 
+// ─── Company Logo ─────────────────────────────────────────────
+
+function CompanyLogoSmall({ name, logoUrl }: { name: string; logoUrl: string | null }) {
+  const [imgError, setImgError] = useState(false)
+
+  if (logoUrl && !imgError) {
+    return (
+      <Image
+        src={logoUrl}
+        alt={name}
+        width={16}
+        height={16}
+        className="rounded object-contain bg-white shrink-0"
+        onError={() => setImgError(true)}
+        unoptimized
+      />
+    )
+  }
+
+  return <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+}
+
 // ─── Project Card ─────────────────────────────────────────────
 
 function ProjectCard({ project }: { project: ProjectListItem }) {
@@ -92,8 +116,11 @@ function ProjectCard({ project }: { project: ProjectListItem }) {
           </span>
         </div>
 
-        {/* Client name */}
-        <p className="text-xs text-slate-400 mb-4 line-clamp-1">{project.client_name}</p>
+        {/* Client name + logo */}
+        <div className="flex items-center gap-1.5 mb-4">
+          <CompanyLogoSmall name={project.client_name} logoUrl={project.company_logo_url} />
+          <p className="text-xs text-slate-400 line-clamp-1">{project.client_name}</p>
+        </div>
 
         {/* Stats row */}
         <div className="flex items-center gap-4 text-xs text-slate-500">
@@ -130,13 +157,20 @@ function ProjectCard({ project }: { project: ProjectListItem }) {
 // ─── Main Component ───────────────────────────────────────────
 
 export function ProjectsClient({ projects, userId }: ProjectsClientProps) {
-  const [filter,      setFilter]      = useState<FilterTab>('all')
-  const [query,       setQuery]       = useState('')
-  const [debouncedQ,  setDebouncedQ]  = useState('')
-  const [sort,        setSort]        = useState<SortKey>('recent')
-  const [sortOpen,    setSortOpen]    = useState(false)
-  const sortRef                       = useRef<HTMLDivElement>(null)
-  const debounceRef                   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [filter,         setFilter]         = useState<FilterTab>('all')
+  const [query,          setQuery]          = useState('')
+  const [debouncedQ,     setDebouncedQ]     = useState('')
+  const [sort,           setSort]           = useState<SortKey>('recent')
+  const [sortOpen,       setSortOpen]       = useState(false)
+  const [companyFilter,  setCompanyFilter]  = useState<string>('')  // client_name filter
+  const sortRef                             = useRef<HTMLDivElement>(null)
+  const debounceRef                         = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Unique client names for company filter
+  const uniqueClients = useMemo(() => {
+    const names = Array.from(new Set(projects.map(p => p.client_name))).sort()
+    return names
+  }, [projects])
 
   // Debounce search query
   const handleSearch = useCallback((value: string) => {
@@ -169,6 +203,11 @@ export function ProjectsClient({ projects, userId }: ProjectsClientProps) {
       list = list.filter(p => p.status === 'archived' || p.status === 'filled')
     }
 
+    // Company filter
+    if (companyFilter) {
+      list = list.filter(p => p.client_name === companyFilter)
+    }
+
     // Search
     if (debouncedQ.trim()) {
       const q = debouncedQ.toLowerCase()
@@ -192,7 +231,7 @@ export function ProjectsClient({ projects, userId }: ProjectsClientProps) {
     }
 
     return list
-  }, [projects, filter, debouncedQ, sort])
+  }, [projects, filter, companyFilter, debouncedQ, sort])
 
   const currentSortLabel = SORT_OPTIONS.find(o => o.key === sort)?.label ?? 'Most Recent'
 
@@ -211,6 +250,30 @@ export function ProjectsClient({ projects, userId }: ProjectsClientProps) {
             className="w-full pl-9 pr-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all"
           />
         </div>
+
+        {/* Company filter */}
+        {uniqueClients.length > 1 && (
+          <div className="relative flex-shrink-0">
+            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
+            <select
+              value={companyFilter}
+              onChange={e => setCompanyFilter(e.target.value)}
+              className={cn(
+                'pl-8 pr-8 py-2 rounded-xl bg-white/5 border text-sm appearance-none cursor-pointer transition-colors',
+                'focus:outline-none focus:ring-2 focus:ring-indigo-500/50',
+                companyFilter
+                  ? 'border-indigo-500/40 text-indigo-300'
+                  : 'border-white/10 text-slate-300 hover:border-white/20',
+              )}
+            >
+              <option value="">All Companies</option>
+              {uniqueClients.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
+          </div>
+        )}
 
         {/* Sort dropdown */}
         <div ref={sortRef} className="relative flex-shrink-0">

@@ -2,7 +2,10 @@
 
 import { useState, useRef, KeyboardEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, X, Loader2, Copy, Check, Plus, FileText, PenLine, Sparkles } from 'lucide-react'
+import {
+  Search, X, Loader2, Copy, Check, Plus, FileText, PenLine, Sparkles,
+  Target, Globe, ChevronDown, ChevronUp,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { FileDropTextarea } from '@/components/ui/file-drop-textarea'
 import { UpgradeModal } from '@/components/upgrade-modal'
@@ -10,8 +13,10 @@ import { cn } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────
 
-type InputMode     = 'jd' | 'manual'
-type GenerateStatus = 'idle' | 'generating' | 'complete' | 'error'
+type InputMode       = 'jd' | 'manual'
+type GenerateStatus  = 'idle' | 'generating' | 'complete' | 'error'
+type ActiveVariant   = 'targeted' | 'broad'
+type FeedbackBucket  = '< 100' | '100-500' | '500-2000' | '2000+'
 
 interface GateErrorBody {
   error:     string
@@ -19,11 +24,16 @@ interface GateErrorBody {
   planTier?: 'free' | 'pro' | 'agency'
 }
 
-interface JdResult {
-  extracted_title:  string
-  extracted_skills: string[]
-  linkedin_string:  string
-  indeed_string:    string
+interface VariantStrings {
+  linkedin_string: string
+  indeed_string:   string
+}
+
+interface GenerateResult {
+  extracted_title?:  string
+  extracted_skills?: string[]
+  targeted: VariantStrings
+  broad:    VariantStrings
 }
 
 // ─── Syntax-highlighted Boolean output ───────────────────
@@ -102,7 +112,7 @@ function CopyBtn({ text, label }: { text: string; label?: string }) {
   )
 }
 
-// ─── JD mode string card ──────────────────────────────────
+// ─── String display card ──────────────────────────────────
 
 function StringCard({ platform, emoji, string }: { platform: string; emoji: string; string: string }) {
   return (
@@ -117,6 +127,213 @@ function StringCard({ platform, emoji, string }: { platform: string; emoji: stri
       <div className="px-4 py-3 bg-[#0D0F1A]">
         <HighlightedBoolean text={string} />
       </div>
+    </div>
+  )
+}
+
+// ─── Feedback panel ───────────────────────────────────────
+
+const FEEDBACK_OPTIONS: { label: string; value: FeedbackBucket; hint: string }[] = [
+  { label: '< 100',      value: '< 100',    hint: 'Too few — needs loosening'    },
+  { label: '100–500',    value: '100-500',  hint: 'Targeted sweet spot'          },
+  { label: '500–2,000',  value: '500-2000', hint: 'Broad sweet spot'             },
+  { label: '2,000+',     value: '2000+',    hint: 'Too many — needs tightening'  },
+]
+
+interface FeedbackPanelProps {
+  variantType:      ActiveVariant
+  currentLinkedin:  string
+  currentIndeed:    string
+  jobTitle:         string
+  jdText:           string
+  refinementCount:  number
+  onRefined: (linkedin: string, indeed: string, newCount: number) => void
+}
+
+function FeedbackPanel({
+  variantType, currentLinkedin, currentIndeed, jobTitle, jdText, refinementCount, onRefined,
+}: FeedbackPanelProps) {
+  const [selected,     setSelected]     = useState<FeedbackBucket | null>(null)
+  const [refining,     setRefining]     = useState(false)
+  const [explanation,  setExplanation]  = useState<string | null>(null)
+  const [confirmed,    setConfirmed]    = useState(false)
+  const [showPrev,     setShowPrev]     = useState(false)
+  const [prevLinkedin, setPrevLinkedin] = useState<string | null>(null)
+
+  async function handleFeedback(bucket: FeedbackBucket) {
+    if (refining) return
+    setSelected(bucket)
+    setRefining(true)
+    setExplanation(null)
+    setConfirmed(false)
+
+    try {
+      const res = await fetch('/api/boolean/refine', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          variant_type:     variantType,
+          feedback:         bucket,
+          current_linkedin: currentLinkedin,
+          current_indeed:   currentIndeed,
+          job_title:        jobTitle,
+          jd_text:          jdText,
+          refinement_count: refinementCount,
+        }),
+      })
+      const data = await res.json() as {
+        limited?: boolean; message?: string
+        confirmed?: boolean; explanation?: string
+        linkedin_string?: string; indeed_string?: string; refinement_count?: number
+        error?: string
+      }
+
+      if (data.limited) {
+        toast.error(data.message ?? 'Max refinements reached.')
+        setSelected(null)
+        setRefining(false)
+        return
+      }
+      if (data.confirmed) {
+        setConfirmed(true)
+        setExplanation(data.explanation ?? null)
+        setRefining(false)
+        return
+      }
+      if (data.linkedin_string && data.indeed_string) {
+        setPrevLinkedin(currentLinkedin)
+        onRefined(data.linkedin_string, data.indeed_string, data.refinement_count ?? refinementCount + 1)
+        setExplanation(data.explanation ?? null)
+      } else {
+        toast.error(data.error ?? 'Refinement failed')
+        setSelected(null)
+      }
+    } catch {
+      toast.error('Network error. Please try again.')
+      setSelected(null)
+    } finally {
+      setRefining(false)
+    }
+  }
+
+  const maxed = refinementCount >= 3
+
+  return (
+    <div className="mt-4 pt-4 border-t border-white/8 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium text-slate-400">
+          How many results did this return?
+        </p>
+        {refinementCount > 0 && (
+          <span className="text-xs text-slate-600">{refinementCount}/3 refinements used</span>
+        )}
+      </div>
+
+      {maxed ? (
+        <p className="text-xs text-amber-400/80">
+          Maximum refinements reached. Generate a new search to start fresh.
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {FEEDBACK_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => handleFeedback(opt.value)}
+              disabled={refining}
+              title={opt.hint}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-150',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+                selected === opt.value && refining
+                  ? 'bg-indigo-600/30 border-indigo-500/60 text-indigo-300'
+                  : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/8 hover:text-slate-200 hover:border-white/20',
+              )}
+            >
+              {selected === opt.value && refining ? (
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  {opt.label}
+                </span>
+              ) : opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <AnimatePresence>
+        {(explanation || confirmed) && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className={cn(
+              'rounded-xl px-4 py-3 text-xs leading-relaxed',
+              confirmed
+                ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300'
+                : 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-200',
+            )}
+          >
+            <span className="font-semibold">{confirmed ? 'Confirmed optimal. ' : 'Refined. '}</span>
+            {explanation}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {prevLinkedin && (
+        <button
+          onClick={() => setShowPrev(v => !v)}
+          className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-400 transition-colors"
+        >
+          {showPrev ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          {showPrev ? 'Hide' : 'Show'} previous string
+        </button>
+      )}
+
+      <AnimatePresence>
+        {showPrev && prevLinkedin && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="rounded-xl bg-white/3 border border-white/8 px-4 py-3 mt-1">
+              <p className="text-xs text-slate-500 mb-1.5">Previous version:</p>
+              <HighlightedBoolean text={prevLinkedin} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// ─── Variant output section ───────────────────────────────
+
+interface VariantSectionProps {
+  variantType:     ActiveVariant
+  strings:         VariantStrings
+  jobTitle:        string
+  jdText:          string
+  refinementCount: number
+  onRefined:       (linkedin: string, indeed: string, newCount: number) => void
+}
+
+function VariantSection({ variantType, strings, jobTitle, jdText, refinementCount, onRefined }: VariantSectionProps) {
+  return (
+    <div className="space-y-3">
+      <StringCard platform="LinkedIn Recruiter" emoji="💼" string={strings.linkedin_string} />
+      <StringCard platform="Indeed"             emoji="🔍" string={strings.indeed_string}   />
+      <FeedbackPanel
+        variantType={variantType}
+        currentLinkedin={strings.linkedin_string}
+        currentIndeed={strings.indeed_string}
+        jobTitle={jobTitle}
+        jdText={jdText}
+        refinementCount={refinementCount}
+        onRefined={onRefined}
+      />
     </div>
   )
 }
@@ -220,24 +437,29 @@ function TagInput({ label, sublabel, tags, onAdd, onRemove, max, placeholder, re
 
 export default function BooleanPage() {
   // ── Mode ───────────────────────────────────────────────────
-  const [mode, setMode]           = useState<InputMode>('jd')
+  const [mode, setMode] = useState<InputMode>('jd')
 
   // ── JD mode state ──────────────────────────────────────────
-  const [jdText,    setJdText]    = useState('')
-  const [jdStatus,  setJdStatus]  = useState<GenerateStatus>('idle')
-  const [jdResult,  setJdResult]  = useState<JdResult | null>(null)
-  const [jdCopiedLi, setJdCopiedLi] = useState(false)
-  const [jdCopiedIn, setJdCopiedIn] = useState(false)
+  const [jdText,   setJdText]   = useState('')
+  const [jdStatus, setJdStatus] = useState<GenerateStatus>('idle')
 
   // ── Manual mode state ──────────────────────────────────────
-  const [jobTitle,        setJobTitle]        = useState('')
-  const [requiredSkills,  setRequiredSkills]  = useState<string[]>([])
-  const [optionalSkills,  setOptionalSkills]  = useState<string[]>([])
-  const [exclusions,      setExclusions]      = useState<string[]>([])
-  const [status,          setStatus]          = useState<GenerateStatus>('idle')
-  const [streamedText,    setStreamedText]    = useState('')
-  const [copied,          setCopied]          = useState(false)
-  const [errors,          setErrors]          = useState<{ jobTitle?: string; requiredSkills?: string }>({})
+  const [jobTitle,       setJobTitle]       = useState('')
+  const [requiredSkills, setRequiredSkills] = useState<string[]>([])
+  const [optionalSkills, setOptionalSkills] = useState<string[]>([])
+  const [exclusions,     setExclusions]     = useState<string[]>([])
+  const [manualStatus,   setManualStatus]   = useState<GenerateStatus>('idle')
+  const [errors,         setErrors]         = useState<{ jobTitle?: string; requiredSkills?: string }>({})
+
+  // ── Result state (shared) ──────────────────────────────────
+  const [result,           setResult]           = useState<GenerateResult | null>(null)
+  const [extractedTitle,   setExtractedTitle]   = useState('')
+  const [extractedSkills,  setExtractedSkills]  = useState<string[]>([])
+  const [activeVariant,    setActiveVariant]     = useState<ActiveVariant>('targeted')
+  const [targetedStrings,  setTargetedStrings]  = useState<VariantStrings | null>(null)
+  const [broadStrings,     setBroadStrings]     = useState<VariantStrings | null>(null)
+  const [targetedRefCount, setTargetedRefCount] = useState(0)
+  const [broadRefCount,    setBroadRefCount]    = useState(0)
 
   // ── Shared ─────────────────────────────────────────────────
   const [showUpgrade,   setShowUpgrade]   = useState(false)
@@ -269,11 +491,24 @@ export default function BooleanPage() {
     }
   }
 
+  function applyResult(data: GenerateResult) {
+    setResult(data)
+    setTargetedStrings(data.targeted)
+    setBroadStrings(data.broad)
+    setTargetedRefCount(0)
+    setBroadRefCount(0)
+    setActiveVariant('targeted')
+    if (data.extracted_title)  setExtractedTitle(data.extracted_title)
+    if (data.extracted_skills) setExtractedSkills(data.extracted_skills)
+  }
+
   // ── JD mode generate ──────────────────────────────────────
   async function handleJdGenerate() {
     if (!jdText.trim() || wordLimitOver) return
     setJdStatus('generating')
-    setJdResult(null)
+    setResult(null)
+    setExtractedTitle('')
+    setExtractedSkills([])
     try {
       const res = await fetch('/api/generate-boolean', {
         method:  'POST',
@@ -290,8 +525,8 @@ export default function BooleanPage() {
         return
       }
 
-      const data = await res.json() as JdResult
-      setJdResult(data)
+      const data = await res.json() as GenerateResult
+      applyResult(data)
       setJdStatus('complete')
     } catch {
       toast.error('Network error. Please try again.')
@@ -300,15 +535,15 @@ export default function BooleanPage() {
   }
 
   // ── Manual mode generate ───────────────────────────────────
-  async function handleGenerate() {
+  async function handleManualGenerate() {
     const newErrors: { jobTitle?: string; requiredSkills?: string } = {}
     if (!jobTitle.trim())            newErrors.jobTitle       = 'Job title is required'
     if (requiredSkills.length === 0) newErrors.requiredSkills = 'Add at least one required skill'
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return }
 
     setErrors({})
-    setStatus('generating')
-    setStreamedText('')
+    setManualStatus('generating')
+    setResult(null)
 
     try {
       const res = await fetch('/api/generate-boolean', {
@@ -317,61 +552,46 @@ export default function BooleanPage() {
         body:    JSON.stringify({ jobTitle: jobTitle.trim(), requiredSkills, optionalSkills, exclusions }),
       })
 
-      if (res.status === 403) { setStatus('idle'); await handleGateError(res); return }
+      if (res.status === 403) { setManualStatus('idle'); await handleGateError(res); return }
 
-      if (!res.ok || !res.body) {
+      if (!res.ok) {
         const data = await res.json() as { error?: string }
         toast.error(data.error ?? 'Something went wrong. Please try again.')
-        setStatus('error')
+        setManualStatus('error')
         return
       }
 
-      const reader  = res.body.getReader()
-      const decoder = new TextDecoder()
-      let   buffer  = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
-        for (const line of lines) {
-          const trimmed = line.trim()
-          if (!trimmed || !trimmed.startsWith('data:')) continue
-          const payload = trimmed.slice(5).trim()
-          if (payload === '[DONE]') { setStatus('complete'); continue }
-          try {
-            const parsed = JSON.parse(payload) as { token?: string; error?: string }
-            if (parsed.error) { toast.error('Generation failed. Please try again.'); setStatus('error'); return }
-            if (parsed.token) setStreamedText(prev => prev + parsed.token)
-          } catch { /* skip malformed */ }
-        }
-      }
+      const data = await res.json() as GenerateResult
+      applyResult(data)
+      setManualStatus('complete')
     } catch {
       toast.error('Network error. Please try again.')
-      setStatus('error')
+      setManualStatus('error')
     }
   }
 
+  const generating = mode === 'jd' ? jdStatus === 'generating' : manualStatus === 'generating'
+  const hasResult  = !!result && !!targetedStrings && !!broadStrings
+
   function handleReset() {
-    setJobTitle(''); setRequiredSkills([]); setOptionalSkills([]); setExclusions([])
-    setStreamedText(''); setStatus('idle'); setErrors({})
+    setResult(null)
+    setTargetedStrings(null)
+    setBroadStrings(null)
+    setTargetedRefCount(0)
+    setBroadRefCount(0)
+    setExtractedTitle('')
+    setExtractedSkills([])
+    if (mode === 'jd') {
+      setJdText(''); setJdStatus('idle')
+    } else {
+      setJobTitle(''); setRequiredSkills([]); setOptionalSkills([]); setExclusions([])
+      setManualStatus('idle'); setErrors({})
+    }
   }
 
-  function handleJdReset() {
-    setJdText(''); setJdResult(null); setJdStatus('idle')
-  }
-
-  // ── Copy helpers (manual mode) ─────────────────────────────
-  async function handleCopy() {
-    if (!streamedText) return
-    try {
-      await navigator.clipboard.writeText(streamedText)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch { toast.error('Failed to copy to clipboard') }
-  }
+  // The job title for refinement context
+  const refinementJobTitle = extractedTitle || jobTitle
+  const refinementJdText   = jdText
 
   return (
     <>
@@ -380,14 +600,14 @@ export default function BooleanPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold gradient-text mb-1">Boolean String Generator</h1>
           <p className="text-slate-400 text-sm">
-            Generate Boolean search strings for sourcing candidates on LinkedIn and Indeed.
+            Generate targeted and broad Boolean search strings for sourcing candidates on LinkedIn and Indeed.
           </p>
         </div>
 
         {/* Mode toggle */}
         <div className="flex gap-1 p-1 rounded-xl bg-white/5 border border-white/10 w-fit mb-6">
           <button
-            onClick={() => setMode('jd')}
+            onClick={() => { setMode('jd'); handleReset() }}
             className={cn(
               'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150',
               mode === 'jd'
@@ -399,7 +619,7 @@ export default function BooleanPage() {
             Paste Job Description
           </button>
           <button
-            onClick={() => setMode('manual')}
+            onClick={() => { setMode('manual'); handleReset() }}
             className={cn(
               'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150',
               mode === 'manual'
@@ -417,7 +637,6 @@ export default function BooleanPage() {
           {/* ─── Left panel ──────────────────────────────────── */}
 
           {mode === 'jd' ? (
-            /* JD paste panel */
             <div className="glass-card rounded-2xl p-6 space-y-5">
               <div className="space-y-1">
                 <div className="flex items-baseline justify-between">
@@ -433,7 +652,7 @@ export default function BooleanPage() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-500">
-                  Paste or upload a job description and Cortex AI will extract the title, skills, and generate both strings.
+                  Paste or upload a job description and Cortex AI will extract the title, skills, and generate both a targeted and broad string.
                 </p>
               </div>
 
@@ -453,7 +672,7 @@ export default function BooleanPage() {
 
               <button
                 onClick={handleJdGenerate}
-                disabled={!jdText.trim() || wordLimitOver || jdStatus === 'generating'}
+                disabled={!jdText.trim() || wordLimitOver || generating}
                 className={cn(
                   'w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl',
                   'text-sm font-semibold text-white transition-all duration-150',
@@ -461,7 +680,7 @@ export default function BooleanPage() {
                   'disabled:opacity-60 disabled:cursor-not-allowed',
                 )}
               >
-                {jdStatus === 'generating' ? (
+                {generating ? (
                   <><Loader2 className="w-4 h-4 animate-spin" />Generating…</>
                 ) : (
                   <><Sparkles className="w-4 h-4" />Generate from Job Description</>
@@ -469,7 +688,6 @@ export default function BooleanPage() {
               </button>
             </div>
           ) : (
-            /* Manual entry panel */
             <div className="glass-card rounded-2xl p-6 space-y-6">
               {/* Job Title */}
               <div className="space-y-2">
@@ -512,8 +730,8 @@ export default function BooleanPage() {
               />
 
               <button
-                onClick={handleGenerate}
-                disabled={status === 'generating'}
+                onClick={handleManualGenerate}
+                disabled={generating}
                 className={cn(
                   'w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl',
                   'text-sm font-semibold text-white transition-all duration-150',
@@ -521,10 +739,10 @@ export default function BooleanPage() {
                   'disabled:opacity-60 disabled:cursor-not-allowed',
                 )}
               >
-                {status === 'generating' ? (
+                {generating ? (
                   <><Loader2 className="w-4 h-4 animate-spin" />Generating…</>
                 ) : (
-                  <><Search className="w-4 h-4" />Generate Boolean String</>
+                  <><Search className="w-4 h-4" />Generate Boolean Strings</>
                 )}
               </button>
             </div>
@@ -533,164 +751,164 @@ export default function BooleanPage() {
           {/* ─── Right panel: Output ─────────────────────────── */}
           <div className="glass-card rounded-2xl p-6 min-h-[400px] flex flex-col">
 
-            {/* ── JD mode output ── */}
-            {mode === 'jd' && (
-              <>
-                {jdStatus === 'idle' && (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
-                    <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4">
-                      <FileText className="w-7 h-7 text-slate-500" />
-                    </div>
-                    <p className="text-slate-500 text-sm">
-                      Paste a job description and Cortex AI will generate<br />both LinkedIn and Indeed strings for you.
-                    </p>
-                  </div>
-                )}
-
-                {jdStatus === 'generating' && (
-                  <div className="flex-1 flex flex-col items-center justify-center gap-3">
-                    <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
-                    <p className="text-sm text-indigo-300">Extracting skills and generating strings…</p>
-                    <p className="text-xs text-slate-500">This takes 5–15 seconds</p>
-                  </div>
-                )}
-
-                {jdStatus === 'error' && (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
-                    <p className="text-red-400 text-sm mb-3">Generation failed. Please try again.</p>
-                    <button onClick={handleJdReset} className="text-xs text-slate-500 hover:text-slate-300 transition-colors underline underline-offset-2">Reset</button>
-                  </div>
-                )}
-
-                <AnimatePresence>
-                  {jdStatus === 'complete' && jdResult && (
-                    <motion.div
-                      key="jd-output"
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="flex flex-col gap-4 flex-1"
-                    >
-                      {/* Extracted summary chip */}
-                      <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-                        <span className="text-xs font-semibold text-indigo-300">Detected:</span>
-                        <span className="text-xs text-indigo-200 font-medium">{jdResult.extracted_title}</span>
-                        {jdResult.extracted_skills.length > 0 && (
-                          <>
-                            <span className="text-indigo-500">·</span>
-                            <span className="text-xs text-slate-400">
-                              Skills: {jdResult.extracted_skills.join(', ')}
-                            </span>
-                          </>
-                        )}
-                      </div>
-
-                      {/* String cards */}
-                      <StringCard platform="LinkedIn Recruiter" emoji="💼" string={jdResult.linkedin_string} />
-                      <StringCard platform="Indeed"             emoji="🔍" string={jdResult.indeed_string} />
-
-                      {/* Actions */}
-                      <div className="flex gap-2 pt-1">
-                        <button
-                          onClick={handleJdReset}
-                          className={cn(
-                            'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium',
-                            'border border-white/10 bg-white/5 text-slate-300',
-                            'hover:bg-white/8 hover:text-white hover:border-white/20 transition-all duration-150',
-                          )}
-                        >
-                          New Search
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </>
+            {/* Idle state */}
+            {!hasResult && !generating && (
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
+                <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4">
+                  {mode === 'jd'
+                    ? <FileText className="w-7 h-7 text-slate-500" />
+                    : <Search className="w-7 h-7 text-slate-500" />
+                  }
+                </div>
+                <p className="text-slate-500 text-sm">
+                  {mode === 'jd'
+                    ? <>Paste a job description and Cortex AI will generate<br />targeted and broad Boolean strings for you.</>
+                    : 'Your Boolean strings will appear here.'
+                  }
+                </p>
+              </div>
             )}
 
-            {/* ── Manual mode output ── */}
-            {mode === 'manual' && (
-              <>
-                {status === 'idle' && !streamedText && (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
-                    <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4">
-                      <Search className="w-7 h-7 text-slate-500" />
-                    </div>
-                    <p className="text-slate-500 text-sm">Your Boolean string will appear here.</p>
-                  </div>
-                )}
+            {/* Generating state */}
+            {generating && (
+              <div className="flex-1 flex flex-col items-center justify-center gap-3">
+                <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+                <p className="text-sm text-indigo-300">Generating targeted and broad strings…</p>
+                <p className="text-xs text-slate-500">This takes 5–15 seconds</p>
+              </div>
+            )}
 
-                <AnimatePresence>
-                  {(status === 'generating' || status === 'complete') && (
-                    <motion.div
-                      key="output"
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 16 }}
-                      transition={{ duration: 0.3 }}
-                      className="flex flex-col gap-4 flex-1"
-                    >
-                      <div className="glass rounded-xl p-4 flex-1">
-                        <div className="leading-relaxed">
-                          {status === 'complete' ? (
-                            <HighlightedBoolean text={streamedText} />
-                          ) : (
-                            <span className="font-mono text-sm text-slate-200 leading-relaxed break-words">
-                              {streamedText}
-                              <span className="inline-block w-0.5 h-4 bg-indigo-400 ml-0.5 align-middle animate-pulse" />
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {status === 'complete' && (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.15 }}
-                          className="space-y-3"
-                        >
-                          <div className="flex gap-2">
-                            <button
-                              onClick={handleCopy}
-                              className={cn(
-                                'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium',
-                                'border border-white/10 transition-all duration-150',
-                                copied
-                                  ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                                  : 'bg-white/5 text-slate-300 hover:bg-white/8 hover:text-white hover:border-white/20',
-                              )}
-                            >
-                              {copied ? <><Check className="w-3.5 h-3.5" />Copied!</> : <><Copy className="w-3.5 h-3.5" />Copy</>}
-                            </button>
-                            <button
-                              onClick={handleReset}
-                              className={cn(
-                                'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium',
-                                'border border-white/10 bg-white/5 text-slate-300',
-                                'hover:bg-white/8 hover:text-white hover:border-white/20 transition-all duration-150',
-                              )}
-                            >
-                              New Search
-                            </button>
-                          </div>
-                          <p className="text-xs text-slate-500">
-                            Paste directly into LinkedIn Recruiter or Indeed search.
-                          </p>
-                        </motion.div>
+            {/* Result */}
+            <AnimatePresence>
+              {hasResult && targetedStrings && broadStrings && (
+                <motion.div
+                  key="result"
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex flex-col gap-4 flex-1"
+                >
+                  {/* Extracted summary */}
+                  {extractedTitle && (
+                    <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+                      <span className="text-xs font-semibold text-indigo-300">Detected:</span>
+                      <span className="text-xs text-indigo-200 font-medium">{extractedTitle}</span>
+                      {extractedSkills.length > 0 && (
+                        <>
+                          <span className="text-indigo-500">·</span>
+                          <span className="text-xs text-slate-400">
+                            Skills: {extractedSkills.join(', ')}
+                          </span>
+                        </>
                       )}
-                    </motion.div>
+                    </div>
                   )}
-                </AnimatePresence>
 
-                {status === 'error' && (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
-                    <p className="text-red-400 text-sm mb-3">Generation failed. Please try again.</p>
-                    <button onClick={handleReset} className="text-xs text-slate-500 hover:text-slate-300 transition-colors underline underline-offset-2">Reset</button>
+                  {/* Targeted / Broad toggle */}
+                  <div className="flex gap-1 p-1 rounded-xl bg-white/5 border border-white/10 w-fit">
+                    <button
+                      onClick={() => setActiveVariant('targeted')}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150',
+                        activeVariant === 'targeted'
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'text-slate-400 hover:text-slate-200',
+                      )}
+                    >
+                      <Target className="w-3.5 h-3.5" />
+                      Targeted
+                      <span className={cn(
+                        'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
+                        activeVariant === 'targeted'
+                          ? 'bg-indigo-500/40 text-indigo-100'
+                          : 'bg-white/10 text-slate-500',
+                      )}>
+                        50–200 results
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setActiveVariant('broad')}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150',
+                        activeVariant === 'broad'
+                          ? 'bg-teal-600 text-white shadow-sm'
+                          : 'text-slate-400 hover:text-slate-200',
+                      )}
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      Broad
+                      <span className={cn(
+                        'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
+                        activeVariant === 'broad'
+                          ? 'bg-teal-500/40 text-teal-100'
+                          : 'bg-white/10 text-slate-500',
+                      )}>
+                        500–2k results
+                      </span>
+                    </button>
                   </div>
-                )}
-              </>
-            )}
+
+                  {/* Variant content */}
+                  <AnimatePresence mode="wait">
+                    {activeVariant === 'targeted' ? (
+                      <motion.div
+                        key="targeted"
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 8 }}
+                        transition={{ duration: 0.15 }}
+                      >
+                        <VariantSection
+                          variantType="targeted"
+                          strings={targetedStrings}
+                          jobTitle={refinementJobTitle}
+                          jdText={refinementJdText}
+                          refinementCount={targetedRefCount}
+                          onRefined={(li, in_, cnt) => {
+                            setTargetedStrings({ linkedin_string: li, indeed_string: in_ })
+                            setTargetedRefCount(cnt)
+                          }}
+                        />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="broad"
+                        initial={{ opacity: 0, x: 8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -8 }}
+                        transition={{ duration: 0.15 }}
+                      >
+                        <VariantSection
+                          variantType="broad"
+                          strings={broadStrings}
+                          jobTitle={refinementJobTitle}
+                          jdText={refinementJdText}
+                          refinementCount={broadRefCount}
+                          onRefined={(li, in_, cnt) => {
+                            setBroadStrings({ linkedin_string: li, indeed_string: in_ })
+                            setBroadRefCount(cnt)
+                          }}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Actions */}
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={handleReset}
+                      className={cn(
+                        'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium',
+                        'border border-white/10 bg-white/5 text-slate-300',
+                        'hover:bg-white/8 hover:text-white hover:border-white/20 transition-all duration-150',
+                      )}
+                    >
+                      New Search
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>

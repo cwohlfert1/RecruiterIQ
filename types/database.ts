@@ -837,9 +837,10 @@ export type ProjectActivityType =
 
 // Enriched project row returned by /api/projects/list
 export type ProjectListItem = Project & {
-  candidate_count: number
-  top_cqi:         number | null
+  candidate_count:  number
+  top_cqi:          number | null
   last_activity_at: string | null
-  members:         Array<{ user_id: string; role: ProjectMemberRole }>
-  is_owner:        boolean
+  members:          Array<{ user_id: string; role: ProjectMemberRole }>
+  is_owner:         boolean
+  company_logo_url: string | null
 }

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ArrowLeft, PlusCircle, Loader2, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import { FileDropTextarea } from '@/components/ui/file-drop-textarea'
+import { CompanySelector } from '@/components/companies/company-selector'
 import { cn } from '@/lib/utils'
 
 // ─── Validation ──────────────────────────────────────────────
@@ -54,6 +55,8 @@ export default function CreateProjectPage() {
 
   const [title,       setTitle]       = useState('')
   const [clientName,  setClientName]  = useState('')
+  const [companyId,   setCompanyId]   = useState<string | null>(null)
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null)
   const [jdText,      setJdText]      = useState('')
   const [submitting,  setSubmitting]  = useState(false)
   const [planError,   setPlanError]   = useState<{ limit: number; planTier: string } | null>(null)
@@ -61,6 +64,8 @@ export default function CreateProjectPage() {
 
   const titleError  = touched.title      ? validateTitle(title)       : null
   const clientError = touched.clientName ? validateClient(clientName) : null
+
+  void companyLogo // used implicitly via companyId association
 
   async function submit(status: 'active' | 'draft') {
     setTouched({ title: true, clientName: true })
@@ -80,7 +85,7 @@ export default function CreateProjectPage() {
           title:       title.trim(),
           client_name: clientName.trim(),
           jd_text:     jdText.trim() || undefined,
-          // status draft not yet supported by API — always creates active
+          company_id:  companyId ?? undefined,
         }),
       })
 
@@ -166,20 +171,18 @@ export default function CreateProjectPage() {
         </Field>
 
         <Field label="Client / Company Name" required error={clientError}>
-          <input
-            type="text"
+          <CompanySelector
             value={clientName}
-            onChange={e => setClientName(e.target.value)}
-            onBlur={() => setTouched(t => ({ ...t, clientName: true }))}
-            placeholder="e.g. TechCorp Inc."
-            maxLength={100}
-            className={cn(
-              'w-full px-4 py-2.5 rounded-xl bg-white/5 border text-sm text-slate-200 placeholder:text-slate-600',
-              'focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors',
-              clientError ? 'border-red-500/60' : 'border-white/10 hover:border-white/20'
-            )}
+            companyId={companyId}
+            onChange={(name, id, logo) => {
+              setClientName(name)
+              setCompanyId(id)
+              setCompanyLogo(logo)
+              if (name) setTouched(t => ({ ...t, clientName: true }))
+            }}
+            error={clientError}
+            placeholder="Search saved companies or type a name…"
           />
-          <p className="text-[11px] text-slate-600 text-right">{clientName.length}/100</p>
         </Field>
 
         <Field label="Job Description" error={null}>
