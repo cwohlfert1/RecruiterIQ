@@ -10,6 +10,7 @@ import type { PipelineStage, BreakdownJson } from '@/types/database'
 import { CandidateTags }        from '@/components/projects/candidate-tags'
 import { CandidateNotes }       from '@/components/projects/candidate-notes'
 import { FlagCandidateModal }   from '@/components/projects/flag-candidate-modal'
+import { GenerateSummaryModal } from '@/components/projects/candidates/generate-summary-modal'
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -200,6 +201,9 @@ export function CandidateSlideout({
   const [flagging,      setFlagging]      = useState(false)
   const [flagModalOpen, setFlagModalOpen] = useState(false)
   const [flagType,      setFlagType]      = useState<string | null>(candidate?.flag_type ?? null)
+  const [summaryOpen,   setSummaryOpen]   = useState(false)
+  const [localFlags,    setLocalFlags]    = useState<Array<{ type: string; severity: string; evidence: string; explanation: string }> | null>(null)
+  const [localFlagScore, setLocalFlagScore] = useState<number | null>(null)
   const [starred,     setStarred]     = useState(candidate?.starred ?? false)
   const [reaction,    setReaction]    = useState<string | null>(candidate?.reaction ?? null)
   const [savingReact, setSavingReact] = useState(false)
@@ -211,6 +215,8 @@ export function CandidateSlideout({
     setReaction(candidate?.reaction ?? null)
     setFlagType(candidate?.flag_type ?? null)
     setBenchmark(null)
+    setLocalFlags(null)
+    setLocalFlagScore(null)
   }, [candidate?.id])
 
   // Fetch benchmark comparison when candidate has a CQI score
@@ -289,15 +295,18 @@ export function CandidateSlideout({
       const data = await res.json()
       if (!res.ok) { toast.error(data.error ?? 'Red flag check failed'); return }
       const count = data.flags?.length ?? 0
+      setLocalFlags(data.flags ?? [])
+      setLocalFlagScore(data.integrity_score ?? null)
       toast.success(count === 0 ? 'No red flags found' : `${count} flag${count !== 1 ? 's' : ''} found`)
     } catch {
       toast.error('Red flag check failed')
     } finally { setFlagging(false) }
   }
 
-  const breakdown = candidate?.cqi_breakdown_json as BreakdownJson | null
-  const flags     = candidate?.red_flags_json as Array<{ type: string; severity: string; evidence: string; explanation: string }> | null
-  const currentStage = (candidate?.pipeline_stage ?? 'sourced') as PipelineStage
+  const breakdown     = candidate?.cqi_breakdown_json as BreakdownJson | null
+  const flags         = localFlags ?? (candidate?.red_flags_json as Array<{ type: string; severity: string; evidence: string; explanation: string }> | null)
+  const flagScore     = localFlagScore ?? candidate?.red_flag_score ?? null
+  const currentStage  = (candidate?.pipeline_stage ?? 'sourced') as PipelineStage
   const tags         = (candidate?.tags_json ?? []) as string[]
 
   return (
@@ -472,7 +481,7 @@ export function CandidateSlideout({
               </section>
 
               {/* Red Flags */}
-              {candidate.red_flag_score !== null && (
+              {flagScore !== null && (
                 <section>
                   <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500 mb-3">Red Flags</p>
                   {flags && flags.length > 0 ? (
@@ -574,7 +583,7 @@ export function CandidateSlideout({
                 </button>
                 <button
                   className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-purple-300 bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 transition-colors"
-                  onClick={() => toast.info('Open Generate Summary from Candidates tab')}
+                  onClick={() => setSummaryOpen(true)}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   Summary
@@ -613,6 +622,14 @@ export function CandidateSlideout({
                 </button>
               )}
             </div>
+
+            {/* Generate Summary modal */}
+            <GenerateSummaryModal
+              open={summaryOpen}
+              candidate={candidate}
+              project={project}
+              onClose={() => setSummaryOpen(false)}
+            />
 
             {/* Flag candidate modal */}
             {candidate && (
