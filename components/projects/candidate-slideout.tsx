@@ -590,7 +590,16 @@ export function CandidateSlideout({
                 </button>
                 <button
                   className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 bg-white/5 border border-white/10 hover:bg-white/8 transition-colors"
-                  onClick={() => {}}
+                  onClick={() => {
+                    if (!candidate.resume_text) return
+                    const blob = new Blob([candidate.resume_text], { type: 'text/plain' })
+                    const url  = URL.createObjectURL(blob)
+                    const a    = document.createElement('a')
+                    a.href     = url
+                    a.download = `${candidate.candidate_name.replace(/\s+/g, '_')}_resume.txt`
+                    a.click()
+                    URL.revokeObjectURL(url)
+                  }}
                 >
                   <FileText className="w-3.5 h-3.5" />
                   Resume
