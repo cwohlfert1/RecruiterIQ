@@ -51,6 +51,8 @@ export async function POST(req: NextRequest) {
       expiry_hours:             draft.expiry_hours ?? 48,
       notification_recipients:  draft.notification_recipients ?? [],
       template_type:            draft.template_type ?? null,
+      proctoring_intensity:     draft.proctoring_intensity ?? 'standard',
+      allow_retakes:            draft.allow_retakes ?? false,
     })
     .select()
     .single()

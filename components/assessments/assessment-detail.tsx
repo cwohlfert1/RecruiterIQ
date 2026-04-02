@@ -13,6 +13,7 @@ import {
   Archive,
   X,
   CheckCircle2,
+  RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
@@ -70,6 +71,8 @@ export function AssessmentDetail({ assessment, questions, invites, sessionByInvi
   const [copied, setCopied]           = useState<string | null>(null)
   const [deleting, setDeleting]       = useState(false)
   const [archiving, setArchiving]     = useState(false)
+  const [retakeInviteId, setRetakeInviteId] = useState<string | null>(null)
+  const [sendingRetake, setSendingRetake]   = useState(false)
 
   const candidateBase = typeof window !== 'undefined' ? window.location.origin : ''
 
@@ -126,6 +129,28 @@ export function AssessmentDetail({ assessment, questions, invites, sessionByInvi
     toast.success('Assessment deleted')
     router.push('/dashboard/assessments')
   }
+
+  async function handleUnlockRetake(inviteId: string) {
+    setSendingRetake(true)
+    try {
+      const res  = await fetch(`/api/assessments/${assessment.id}/retake`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ inviteId }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Failed to send retake')
+      toast.success('Retake invite sent')
+      setRetakeInviteId(null)
+      router.refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to send retake')
+    } finally {
+      setSendingRetake(false)
+    }
+  }
+
+  const allowRetakes = (assessment as Record<string, unknown>).allow_retakes === true
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -248,12 +273,19 @@ export function AssessmentDetail({ assessment, questions, invites, sessionByInvi
                         <td className="px-5 py-3.5 font-medium text-white">{invite.candidate_name}</td>
                         <td className="px-4 py-3.5 text-slate-400 text-xs">{invite.candidate_email}</td>
                         <td className="px-4 py-3.5 text-center">
-                          <span className={cn(
-                            'inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border capitalize',
-                            inviteStatusBadge[invite.status]
-                          )}>
-                            {invite.status}
-                          </span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span className={cn(
+                              'inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border capitalize',
+                              inviteStatusBadge[invite.status]
+                            )}>
+                              {invite.status}
+                            </span>
+                            {(invite as Record<string, unknown>).reminder_sent === true && invite.status === 'pending' && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/15 text-amber-400 border border-amber-500/25">
+                                Reminded
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3.5 text-center">
                           <ScorePill value={session?.trust_score ?? null} />
@@ -274,6 +306,15 @@ export function AssessmentDetail({ assessment, questions, invites, sessionByInvi
                               >
                                 <ExternalLink className="w-3.5 h-3.5" />
                               </Link>
+                            )}
+                            {allowRetakes && invite.status === 'completed' && (
+                              <button
+                                onClick={() => setRetakeInviteId(invite.id)}
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/8 transition-colors"
+                                title="Unlock Retake"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                              </button>
                             )}
                             <button
                               onClick={() => copyLink(invite.token)}
@@ -330,16 +371,57 @@ export function AssessmentDetail({ assessment, questions, invites, sessionByInvi
             </div>
           </div>
 
-          {assessment.status === 'draft' && (
-            <div className="pt-2 border-t border-white/8">
+          <div className="pt-2 border-t border-white/8 flex flex-wrap gap-4">
+            {assessment.status === 'draft' && (
               <Link
                 href={`/dashboard/assessments/create`}
                 className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
               >
                 Edit in builder →
               </Link>
+            )}
+            <a
+              href={`/assess/preview/${assessment.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+            >
+              👁 Preview as Candidate
+            </a>
+          </div>
+        </div>
+      )}
+
+      {/* Retake confirmation modal */}
+      {retakeInviteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setRetakeInviteId(null)} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative w-full max-w-md bg-[#1A1D2E] border border-white/10 rounded-2xl shadow-2xl p-6 space-y-4"
+          >
+            <h3 className="text-base font-semibold text-white">Send Retake?</h3>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              This will send a new assessment link to the candidate. Their previous results will be preserved and both reports will be visible for comparison. The candidate must wait 24 hours between attempts.
+            </p>
+            <div className="flex justify-end gap-3 pt-1">
+              <button
+                onClick={() => setRetakeInviteId(null)}
+                className="px-4 py-2 rounded-xl text-sm text-slate-400 border border-white/10 hover:border-white/20 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleUnlockRetake(retakeInviteId)}
+                disabled={sendingRetake}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-brand hover-glow transition-all disabled:opacity-40"
+              >
+                <RefreshCw className="w-4 h-4" />
+                {sendingRetake ? 'Sending…' : 'Send Retake'}
+              </button>
             </div>
-          )}
+          </motion.div>
         </div>
       )}
 

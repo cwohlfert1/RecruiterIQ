@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Copy, CheckCircle2, Send } from 'lucide-react'
+import { Copy, CheckCircle2, Send, Eye } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { AssessmentDraft } from './assessment-builder'
@@ -161,12 +161,25 @@ export function BuilderStep4Review({
           </div>
         </div>
 
-        <a
-          href="/dashboard/assessments"
-          className="block text-center text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
-        >
-          View all assessments →
-        </a>
+        <div className="flex items-center justify-center gap-4">
+          {publishedId && (
+            <a
+              href={`/assess/preview/${publishedId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+            >
+              <Eye className="w-4 h-4" />
+              Preview as Candidate
+            </a>
+          )}
+          <a
+            href="/dashboard/assessments"
+            className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+          >
+            View all assessments →
+          </a>
+        </div>
       </motion.div>
     )
   }

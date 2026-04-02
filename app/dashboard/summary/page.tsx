@@ -1,12 +1,21 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FileText, Loader2, Copy, Check, RefreshCw } from 'lucide-react'
+import { FileText, Loader2, Copy, Check, RefreshCw, ClipboardCheck, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { UpgradeModal } from '@/components/upgrade-modal'
 import { FileDropTextarea } from '@/components/ui/file-drop-textarea'
 import { cn } from '@/lib/utils'
+
+type AssessmentSessionOption = {
+  id:            string
+  candidateName: string
+  role:          string
+  skillScore:    number | null
+  trustScore:    number | null
+  completedAt:   string
+}
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -38,6 +47,10 @@ function WordCounter({ count, max }: { count: number; max: number }) {
   )
 }
 
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 // ─── Main component ───────────────────────────────────────
 
 export default function SummaryPage() {
@@ -49,6 +62,10 @@ export default function SummaryPage() {
   const [errorMsg,     setErrorMsg]     = useState('')
   const [copied,       setCopied]       = useState(false)
 
+  const [sessions,         setSessions]         = useState<AssessmentSessionOption[]>([])
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('')
+  const [sessionsLoading,  setSessionsLoading]  = useState(false)
+
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [upgradeReason,    setUpgradeReason]    = useState<'limit_reached' | 'plan_required'>('plan_required')
   const [upgradePlan,      setUpgradePlan]      = useState<'pro' | 'agency' | undefined>('pro')
@@ -58,6 +75,18 @@ export default function SummaryPage() {
   const notesWords    = wordCount(notes)
   const jobTitleChars = jobTitle.length
   const companyChars  = companyName.length
+
+  // Fetch completed assessment sessions on mount
+  useEffect(() => {
+    setSessionsLoading(true)
+    fetch('/api/assessments/completed-sessions')
+      .then(r => r.ok ? r.json() : { sessions: [] })
+      .then(data => setSessions(data.sessions ?? []))
+      .catch(() => setSessions([]))
+      .finally(() => setSessionsLoading(false))
+  }, [])
+
+  const selectedSession = sessions.find(s => s.id === selectedSessionId) ?? null
 
   const handleGenerate = useCallback(async () => {
     // Client-side validation
@@ -87,7 +116,12 @@ export default function SummaryPage() {
       const res = await fetch('/api/generate-summary', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ jobTitle, companyName, notes }),
+        body:    JSON.stringify({
+          jobTitle,
+          companyName,
+          notes,
+          assessmentSessionId: selectedSessionId || undefined,
+        }),
         signal:  controller.signal,
       })
 
@@ -160,7 +194,7 @@ export default function SummaryPage() {
       setErrorMsg(message)
       toast.error(message)
     }
-  }, [jobTitle, companyName, notes, notesWords])
+  }, [jobTitle, companyName, notes, notesWords, selectedSessionId])
 
   function handleReset() {
     abortRef.current?.abort()
@@ -170,6 +204,7 @@ export default function SummaryPage() {
     setJobTitle('')
     setCompanyName('')
     setNotes('')
+    setSelectedSessionId('')
   }
 
   async function handleCopy() {
@@ -265,6 +300,63 @@ export default function SummaryPage() {
                 rows={8}
                 minHeight="200px"
               />
+            </div>
+
+            {/* Assessment results (optional) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label htmlFor="assessment-session" className="text-sm font-medium text-slate-300">
+                  Assessment results
+                  <span className="text-xs text-slate-500 ml-1.5">(optional)</span>
+                </label>
+                {selectedSession && (
+                  <span className="flex items-center gap-1 text-xs text-emerald-400">
+                    <ClipboardCheck className="w-3 h-3" />
+                    Results included
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500">
+                Include a candidate&apos;s assessment results to strengthen your client submittal
+              </p>
+              <div className="relative">
+                <select
+                  id="assessment-session"
+                  value={selectedSessionId}
+                  onChange={e => setSelectedSessionId(e.target.value)}
+                  disabled={sessionsLoading}
+                  className={cn(
+                    'w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 pr-10',
+                    'text-sm text-slate-200 appearance-none',
+                    'focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors',
+                    'disabled:opacity-50 disabled:cursor-not-allowed',
+                    selectedSessionId ? 'border-emerald-500/30' : '',
+                  )}
+                >
+                  <option value="" className="bg-slate-900 text-slate-400">
+                    {sessionsLoading ? 'Loading sessions…' : sessions.length === 0 ? 'No completed assessments' : 'Select completed assessment…'}
+                  </option>
+                  {sessions.map(s => (
+                    <option key={s.id} value={s.id} className="bg-slate-900 text-slate-200">
+                      {s.candidateName} · {s.role}
+                      {s.skillScore !== null ? ` · Skill ${s.skillScore}/100` : ''}
+                      {' · '}{formatDate(s.completedAt)}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+              </div>
+              {selectedSession && (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/8 border border-emerald-500/20">
+                  <ClipboardCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <div className="text-xs text-emerald-300 leading-relaxed">
+                    <span className="font-medium">{selectedSession.candidateName}</span>
+                    {' — '}Skill {selectedSession.skillScore ?? 'N/A'}/100
+                    {selectedSession.trustScore !== null && `, Trust ${selectedSession.trustScore}/100`}
+                    {' · Completed '}{formatDate(selectedSession.completedAt)}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Generate button */}

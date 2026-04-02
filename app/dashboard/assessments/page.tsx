@@ -113,12 +113,13 @@ export default async function AssessmentsPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows = ((assessments ?? []) as any[]).map((a: any) => ({
     ...a,
-    questionCount:    questionCounts[a.id]    ?? 0,
-    inviteCount:      inviteCounts[a.id]      ?? 0,
-    avgTrust:         avgTrust[a.id]          ?? null,
-    avgSkill:         avgSkill[a.id]          ?? null,
-    approvedCount:    approvedCounts[a.id]    ?? 0,
-    doNotSubmitCount: doNotSubmitCounts[a.id] ?? 0,
+    questionCount:       questionCounts[a.id]    ?? 0,
+    inviteCount:         inviteCounts[a.id]      ?? 0,
+    avgTrust:            avgTrust[a.id]          ?? null,
+    avgSkill:            avgSkill[a.id]          ?? null,
+    approvedCount:       approvedCounts[a.id]    ?? 0,
+    doNotSubmitCount:    doNotSubmitCounts[a.id] ?? 0,
+    proctoring_intensity: a.proctoring_intensity ?? null,
   }))
 
   return (

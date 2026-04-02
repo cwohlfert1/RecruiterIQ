@@ -45,6 +45,8 @@ export type AssessmentDraft = {
   expiry_hours:            number
   notification_recipients: NotificationRecipient[]
   template_type:           string | null
+  proctoring_intensity:    'light' | 'standard' | 'full' | 'custom'
+  allow_retakes:           boolean
 }
 
 const defaultDraft: AssessmentDraft = {
@@ -59,6 +61,8 @@ const defaultDraft: AssessmentDraft = {
   expiry_hours:            48,
   notification_recipients: [],
   template_type:           null,
+  proctoring_intensity:    'standard',
+  allow_retakes:           false,
   proctoring: {
     tab_switching:                true,
     paste_detection:              true,

@@ -184,6 +184,33 @@ export function BuilderStep1Details({ draft, onChange, onNext }: Props) {
           </p>
         </div>
 
+        {/* Allow retakes */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <label className="text-sm font-medium text-slate-300">Allow Retakes</label>
+              <p className="text-xs text-slate-500 mt-0.5">Let managers unlock one additional attempt per candidate</p>
+            </div>
+            <button
+              onClick={() => onChange({ allow_retakes: !draft.allow_retakes })}
+              className={cn(
+                'relative w-10 h-5 rounded-full transition-colors duration-200 flex-shrink-0',
+                draft.allow_retakes ? 'bg-indigo-500' : 'bg-white/15'
+              )}
+            >
+              <div className={cn(
+                'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200',
+                draft.allow_retakes ? 'translate-x-5' : 'translate-x-0.5'
+              )} />
+            </button>
+          </div>
+          {draft.allow_retakes && (
+            <div className="p-3.5 rounded-xl bg-indigo-500/8 border border-indigo-500/20 text-xs text-indigo-300 leading-relaxed">
+              Candidates who complete this assessment can be manually unlocked for one retake by a manager. A 24-hour cooldown applies between attempts. Both reports will be visible for comparison.
+            </div>
+          )}
+        </div>
+
         {/* Notification recipients */}
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-1.5">

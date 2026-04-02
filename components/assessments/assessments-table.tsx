@@ -17,17 +17,18 @@ import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
 type AssessmentRow = {
-  id:               string
-  title:            string
-  role:             string
-  status:           'draft' | 'published' | 'archived'
-  created_at:       string
-  questionCount:    number
-  inviteCount:      number
-  avgTrust:         number | null
-  avgSkill:         number | null
-  approvedCount:    number
-  doNotSubmitCount: number
+  id:                  string
+  title:               string
+  role:                string
+  status:              'draft' | 'published' | 'archived'
+  created_at:          string
+  questionCount:       number
+  inviteCount:         number
+  avgTrust:            number | null
+  avgSkill:            number | null
+  approvedCount:       number
+  doNotSubmitCount:    number
+  proctoring_intensity?: string | null
 }
 
 const statusBadge: Record<AssessmentRow['status'], string> = {
@@ -117,6 +118,7 @@ export function AssessmentsTable({ rows }: { rows: AssessmentRow[] }) {
               <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">Title</th>
               <th className="text-left px-4 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">Role</th>
               <th className="text-center px-4 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">Qs</th>
+              <th className="text-center px-4 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">Proctoring</th>
               <th className="text-center px-4 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">Status</th>
               <th className="text-center px-4 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">Invites</th>
               <th className="text-center px-4 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">Avg Trust</th>
@@ -145,6 +147,19 @@ export function AssessmentsTable({ rows }: { rows: AssessmentRow[] }) {
                 </td>
                 <td className="px-4 py-3.5 text-slate-400 max-w-[140px] truncate">{row.role}</td>
                 <td className="px-4 py-3.5 text-center text-slate-300">{row.questionCount}</td>
+                <td className="px-4 py-3.5 text-center">
+                  {row.proctoring_intensity && (
+                    <span className={cn(
+                      'inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border capitalize',
+                      row.proctoring_intensity === 'full'     ? 'bg-violet-500/15 text-violet-300 border-violet-500/25' :
+                      row.proctoring_intensity === 'standard' ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/25' :
+                      row.proctoring_intensity === 'light'    ? 'bg-slate-500/15 text-slate-300 border-slate-500/25' :
+                      'bg-amber-500/15 text-amber-300 border-amber-500/25'
+                    )}>
+                      {row.proctoring_intensity}
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-3.5 text-center">
                   <span className={cn(
                     'inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border capitalize',
