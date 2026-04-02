@@ -17,6 +17,7 @@ import {
   PlusCircle,
   FolderOpen,
   BookOpen,
+  AlertOctagon,
 } from 'lucide-react'
 import { CandidLogo } from '@/components/candid-logo'
 import { createClient } from '@/lib/supabase/client'
@@ -155,6 +156,18 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
               </Link>
             </motion.li>
           ))}
+
+          {/* Flagged Candidates — agency-level DNU registry */}
+          <motion.li variants={itemVariants}>
+            <Link
+              href="/dashboard/flagged"
+              className={cn('nav-item', isActive('/dashboard/flagged') && 'nav-active')}
+            >
+              <AlertOctagon className="w-4 h-4 flex-shrink-0 text-rose-400" />
+              <span>Flagged Candidates</span>
+              <span className="ml-auto w-2 h-2 rounded-full bg-rose-500 flex-shrink-0" />
+            </Link>
+          </motion.li>
 
           {/* ── Tools section ─────────────────────────────── */}
           <SectionDivider label="Tools" />

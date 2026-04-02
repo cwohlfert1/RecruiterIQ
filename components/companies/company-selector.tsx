@@ -26,7 +26,7 @@ interface CompanySelectorProps {
 
 // ─── Company Logo / Initials ──────────────────────────────
 
-function CompanyLogo({ name, logoUrl, size = 24 }: { name: string; logoUrl: string | null; size?: number }) {
+function CompanyLogo({ name, logoUrl, size = 28 }: { name: string; logoUrl: string | null; size?: number }) {
   const [imgError, setImgError] = useState(false)
 
   if (logoUrl && !imgError) {
@@ -36,7 +36,15 @@ function CompanyLogo({ name, logoUrl, size = 24 }: { name: string; logoUrl: stri
         alt={name}
         width={size}
         height={size}
-        className="rounded object-contain bg-white"
+        style={{
+          width:        size,
+          height:       size,
+          objectFit:    'contain',
+          background:   'white',
+          borderRadius: 4,
+          padding:      2,
+          flexShrink:   0,
+        }}
         onError={() => setImgError(true)}
         unoptimized
       />
@@ -150,7 +158,7 @@ function CreateCompanyForm({ initialName, onCreated, onCancel }: CreateFormProps
           {fetching ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-500" />
           ) : logoUrl ? (
-            <Image src={logoUrl} alt="logo" width={24} height={24} className="rounded object-contain bg-white" unoptimized />
+            <CompanyLogo name={name} logoUrl={logoUrl} size={24} />
           ) : (
             <Building2 className="w-3.5 h-3.5 text-slate-600" />
           )}
@@ -270,10 +278,8 @@ export function CompanySelector({ value, companyId, onChange, error, placeholder
         'focus-within:ring-2 focus-within:ring-indigo-500/50',
         error ? 'border-red-500/60' : 'border-white/10 hover:border-white/20',
       )}>
-        {selected?.logo_url ? (
-          <Image src={selected.logo_url} alt={selected.name} width={18} height={18} className="rounded object-contain bg-white shrink-0" unoptimized />
-        ) : selected ? (
-          <CompanyLogo name={selected.name} logoUrl={null} size={18} />
+        {selected ? (
+          <CompanyLogo name={selected.name} logoUrl={selected.logo_url} size={20} />
         ) : (
           <Search className="w-4 h-4 text-slate-500 shrink-0" />
         )}

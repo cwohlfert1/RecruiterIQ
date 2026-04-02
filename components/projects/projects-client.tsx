@@ -90,6 +90,7 @@ function CompanyLogoSmall({ name, logoUrl }: { name: string; logoUrl: string | n
 // ─── Project Card ─────────────────────────────────────────────
 
 function ProjectCard({ project }: { project: ProjectListItem }) {
+  const isFilledWithHire = project.status === 'filled' && !!project.hired_first_name
   const badge = STATUS_BADGE[project.status as ProjectStatus] ?? STATUS_BADGE.active
 
   return (
@@ -110,9 +111,11 @@ function ProjectCard({ project }: { project: ProjectListItem }) {
           </h3>
           <span className={cn(
             'shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border whitespace-nowrap',
-            badge.className
+            isFilledWithHire
+              ? 'bg-amber-500/15 text-amber-400 border-amber-500/20'
+              : badge.className
           )}>
-            {badge.label}
+            {isFilledWithHire ? `Filled · ${project.hired_first_name}` : badge.label}
           </span>
         </div>
 

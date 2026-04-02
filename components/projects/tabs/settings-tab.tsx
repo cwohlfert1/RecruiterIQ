@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, UserMinus, AlertTriangle, Check, X } from 'lucide-react'
+import { Trash2, UserMinus, AlertTriangle, Check, X, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 // ─── Types ───────────────────────────────────────────────────
@@ -16,13 +17,14 @@ interface Member {
 }
 
 interface Props {
-  projectId:   string
-  projectTitle: string
-  canEdit:     boolean
-  isOwner:     boolean
-  members:     Member[]
+  projectId:        string
+  projectTitle:     string
+  canEdit:          boolean
+  isOwner:          boolean
+  members:          Member[]
+  teamsWebhookUrl?: string | null
   onMembersChange?: (members: Member[]) => void
-  onShareClick?: () => void
+  onShareClick?:    () => void
 }
 
 // ─── Role badge ───────────────────────────────────────────────
@@ -65,6 +67,7 @@ export function SettingsTab({
   canEdit,
   isOwner,
   members,
+  teamsWebhookUrl: initialWebhookUrl,
   onMembersChange,
   onShareClick,
 }: Props) {
@@ -79,6 +82,11 @@ export function SettingsTab({
   // Remove member state
   const [removingId,   setRemovingId]   = useState<string | null>(null)
   const [removeError,  setRemoveError]  = useState<string | null>(null)
+
+  // Teams webhook state
+  const [webhookEnabled,  setWebhookEnabled]  = useState(!!(initialWebhookUrl))
+  const [webhookUrl,      setWebhookUrl]      = useState(initialWebhookUrl ?? '')
+  const [savingWebhook,   setSavingWebhook]   = useState(false)
 
   // ── Delete project ────────────────────────────────────────
 
@@ -124,6 +132,28 @@ export function SettingsTab({
     } finally {
       setRemovingId(null)
     }
+  }
+
+  // ── Save Teams webhook ───────────────────────────────────────
+
+  async function handleSaveWebhook() {
+    setSavingWebhook(true)
+    try {
+      const url = webhookEnabled ? webhookUrl.trim() : null
+      if (webhookEnabled && url && !url.startsWith('https://')) {
+        toast.error('Webhook URL must start with https://')
+        return
+      }
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ teams_webhook_url: url || null }),
+      })
+      if (!res.ok) { toast.error('Failed to save webhook'); return }
+      toast.success(url ? 'Teams webhook saved' : 'Teams webhook removed')
+    } catch {
+      toast.error('Failed to save webhook')
+    } finally { setSavingWebhook(false) }
   }
 
   const nonOwnerMembers = members.filter(m => m.role !== 'owner')
@@ -207,6 +237,74 @@ export function SettingsTab({
           </button>
         )}
       </Section>
+
+      {/* ── Integrations ─────────────────────────────────── */}
+      {canEdit && (
+        <Section title="Integrations">
+          <div className="rounded-xl border border-white/8 bg-white/3 p-4 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-indigo-500/15 flex items-center justify-center flex-shrink-0">
+                  <span className="text-base leading-none">🔔</span>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white">MS Teams Notifications</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Post updates to a Teams channel via Incoming Webhook</p>
+                </div>
+              </div>
+              {/* Toggle */}
+              <button
+                onClick={() => setWebhookEnabled(e => !e)}
+                className={cn(
+                  'relative w-10 h-5 rounded-full transition-colors flex-shrink-0',
+                  webhookEnabled ? 'bg-indigo-500' : 'bg-white/10'
+                )}
+              >
+                <span className={cn(
+                  'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
+                  webhookEnabled ? 'translate-x-5' : 'translate-x-0.5'
+                )} />
+              </button>
+            </div>
+
+            {webhookEnabled && (
+              <div className="space-y-2">
+                <label className="text-xs text-slate-500">Webhook URL</label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={webhookUrl}
+                    onChange={e => setWebhookUrl(e.target.value)}
+                    placeholder="https://outlook.office.com/webhook/..."
+                    className="flex-1 text-xs bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-slate-300 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-colors"
+                  />
+                  <button
+                    onClick={handleSaveWebhook}
+                    disabled={savingWebhook || !webhookUrl.trim()}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-indigo-300 bg-indigo-500/15 border border-indigo-500/25 hover:bg-indigo-500/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+                  >
+                    {savingWebhook ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                    Save
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-600">
+                  Notifications sent: candidate added, assessment completed, note added, candidate hired.
+                </p>
+              </div>
+            )}
+
+            {!webhookEnabled && initialWebhookUrl && (
+              <button
+                onClick={handleSaveWebhook}
+                disabled={savingWebhook}
+                className="text-xs text-rose-400 hover:text-rose-300 transition-colors disabled:opacity-40"
+              >
+                {savingWebhook ? 'Removing…' : 'Remove saved webhook'}
+              </button>
+            )}
+          </div>
+        </Section>
+      )}
 
       {/* ── Danger Zone ───────────────────────────────────── */}
       {isOwner && (

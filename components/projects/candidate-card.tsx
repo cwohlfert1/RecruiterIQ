@@ -3,6 +3,7 @@
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { differenceInDays } from 'date-fns'
+import { Crown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { CandidateRow } from '@/app/dashboard/projects/[id]/page'
 
@@ -69,6 +70,7 @@ export function CandidateCard({ candidate: c, noteCount, onClick, isDragOverlay 
   const hasFlags   = c.red_flag_score !== null && (c.red_flags_json as unknown[] | null)?.length
   const hasAssess  = c.invite_status !== null
   const stageDate  = c.stage_changed_at ?? c.created_at
+  const isHired    = (c as CandidateRow & { hired?: boolean }).hired === true
 
   const tags = (c.tags_json ?? []) as string[]
 
@@ -80,18 +82,23 @@ export function CandidateCard({ candidate: c, noteCount, onClick, isDragOverlay 
       {...listeners}
       onClick={onClick}
       className={cn(
-        'bg-[#1A1D2E] border rounded-xl p-3 cursor-grab active:cursor-grabbing select-none',
+        'border rounded-xl p-3 cursor-grab active:cursor-grabbing select-none',
         'transition-all duration-150',
         isDragging || isDragOverlay
-          ? 'border-indigo-400 shadow-[0_0_0_2px_rgba(99,102,241,0.4)] opacity-60'
-          : 'border-white/8 hover:border-white/16 hover:shadow-lg',
+          ? 'border-indigo-400 shadow-[0_0_0_2px_rgba(99,102,241,0.4)] opacity-60 bg-[#1A1D2E]'
+          : isHired
+            ? 'bg-amber-500/8 border-amber-500/25 hover:border-amber-500/40 hover:shadow-lg'
+            : 'bg-[#1A1D2E] border-white/8 hover:border-white/16 hover:shadow-lg',
       )}
     >
       {/* Row 1: avatar + name + days in stage */}
       <div className="flex items-start gap-2 mb-2">
         <InitialAvatar name={c.candidate_name} />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white leading-tight truncate">{c.candidate_name}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-semibold text-white leading-tight truncate">{c.candidate_name}</p>
+            {isHired && <span title="Hired"><Crown className="w-3 h-3 text-amber-400 flex-shrink-0" /></span>}
+          </div>
           <p className="text-[11px] text-slate-500 truncate">{c.candidate_email}</p>
         </div>
         <span className="text-[10px] text-slate-600 flex-shrink-0 mt-0.5">

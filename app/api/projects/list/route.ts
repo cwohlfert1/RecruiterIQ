@@ -65,6 +65,7 @@ export async function GET() {
     client_name: string
     jd_text: string | null
     status: string
+    hired_candidate_name: string | null
     created_at: string
     updated_at: string
     project_members: Array<{ user_id: string; role: string }>
@@ -87,6 +88,9 @@ export async function GET() {
     })),
     is_owner:         p.owner_id === user.id,
     company_logo_url: p.companies?.logo_url ?? null,
+    hired_first_name: p.hired_candidate_name
+      ? p.hired_candidate_name.split(' ')[0]
+      : null,
   }))
 
   return NextResponse.json({ projects: enriched })

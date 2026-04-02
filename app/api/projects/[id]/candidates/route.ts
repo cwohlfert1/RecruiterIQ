@@ -116,14 +116,14 @@ export async function POST(
   if (!canEdit) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   // Parse body
-  let body: { candidate_name?: unknown; candidate_email?: unknown; resume_text?: unknown; pipeline_stage?: unknown }
+  let body: { candidate_name?: unknown; candidate_email?: unknown; resume_text?: unknown; pipeline_stage?: unknown; override?: boolean }
   try {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { candidate_name, candidate_email, resume_text, pipeline_stage } = body
+  const { candidate_name, candidate_email, resume_text, pipeline_stage, override: overrideFlag } = body
 
   if (typeof candidate_name !== 'string' || !candidate_name.trim()) {
     return NextResponse.json({ error: 'candidate_name is required' }, { status: 400 })
@@ -155,6 +155,24 @@ export async function POST(
       { error: 'This candidate is already in this project.', existing_id: existing.id },
       { status: 409 },
     )
+  }
+
+  // Check agency-wide DNU/Catfish flag (skip if user explicitly overrides)
+  if (!overrideFlag) {
+    const adminCheck = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    )
+    const { data: flagRecord } = await adminCheck
+      .from('flagged_candidates')
+      .select('flag_type, reason, candidate_name')
+      .eq('agency_owner_id', project.owner_id)
+      .eq('candidate_email', candidate_email.trim().toLowerCase())
+      .single()
+
+    if (flagRecord) {
+      return NextResponse.json({ flag_warning: flagRecord }, { status: 200 })
+    }
   }
 
   const VALID_STAGES = ['sourced','contacted','phone_screen','am_review','assessment_sent','submitted','placed','rejected']

@@ -23,6 +23,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  AlertOctagon,
+  Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -244,6 +246,13 @@ export function ProctoringReport({ assessment, session, invite, questions, respo
   const [modalInitialIdx, setModalInitialIdx] = useState(0)
   const [showModal,       setShowModal]       = useState(false)
 
+  // Auto-flag state
+  const [flagDismissed,  setFlagDismissed]  = useState(false)
+  const [flagReason,     setFlagReason]     = useState('')
+  const [flagging,       setFlagging]       = useState(false)
+  const [flagged,        setFlagged]        = useState(false)
+  const lowTrust = (session.trust_score ?? 100) < 35
+
   function openModal(list: AssessmentSnapshot[], startIdx: number) {
     setModalSnapshots(list)
     setModalInitialIdx(startIdx)
@@ -286,6 +295,31 @@ export function ProctoringReport({ assessment, session, invite, questions, respo
 
   const candidateName  = invite?.candidate_name  ?? 'Candidate'
   const candidateEmail = invite?.candidate_email ?? ''
+
+  async function handleAutoFlag() {
+    if (!candidateEmail) return
+    setFlagging(true)
+    try {
+      const res = await fetch('/api/flags', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          candidate_email: candidateEmail,
+          candidate_name:  candidateName,
+          flag_type:       'catfish',
+          reason:          flagReason.trim() || `Trust score ${session.trust_score}/100 — potential academic dishonesty detected`,
+        }),
+      })
+      if (res.ok) {
+        setFlagged(true)
+        toast.success(`${candidateName} flagged as Catfish in the DNU registry`)
+      } else {
+        toast.error('Failed to flag candidate')
+      }
+    } catch {
+      toast.error('Failed to flag candidate')
+    } finally { setFlagging(false) }
+  }
 
   const timeSpent = session.time_spent_seconds
     ? `${Math.floor(session.time_spent_seconds / 60)}m ${session.time_spent_seconds % 60}s`
@@ -459,6 +493,49 @@ export function ProctoringReport({ assessment, session, invite, questions, respo
             )}
           </div>
         </div>
+
+        {/* Auto-flag banner for low trust score */}
+        {lowTrust && !flagDismissed && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/8 p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <AlertOctagon className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-amber-300">Low Trust Score Detected</p>
+                <p className="text-xs text-amber-400/80 mt-0.5">
+                  Trust score of <strong>{session.trust_score}/100</strong> is below the 35-point threshold. This may indicate academic dishonesty. Consider flagging this candidate.
+                </p>
+              </div>
+              <button onClick={() => setFlagDismissed(true)} className="text-amber-500 hover:text-amber-300 transition-colors flex-shrink-0">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {!flagged ? (
+              <div className="flex items-center gap-2 ml-8">
+                <input
+                  type="text"
+                  value={flagReason}
+                  onChange={e => setFlagReason(e.target.value)}
+                  placeholder="Optional reason…"
+                  className="flex-1 text-xs bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-slate-300 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+                />
+                <button
+                  onClick={handleAutoFlag}
+                  disabled={flagging}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-500 hover:bg-rose-600 transition-colors disabled:opacity-50 flex-shrink-0"
+                >
+                  {flagging ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AlertOctagon className="w-3.5 h-3.5" />}
+                  Flag as Catfish
+                </button>
+              </div>
+            ) : (
+              <div className="ml-8 flex items-center gap-2 text-xs text-emerald-400">
+                <CheckCircle2 className="w-4 h-4" />
+                Flagged in agency DNU registry
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Decision card */}
         <div className={cn(

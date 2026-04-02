@@ -559,6 +559,7 @@ export function CandidatesTab({
         open={addOpen}
         projectId={project.id}
         hasJd={hasJd}
+        isManager={isManager}
         onClose={() => setAddOpen(false)}
         onAdded={handleAdded}
       />
@@ -575,6 +576,7 @@ export function CandidatesTab({
         onStageChange={handleSlideoutStageChange}
         onTagsChange={handleSlideoutTagsChange}
         onRemove={handleSlideoutRemove}
+        members={members.map(m => ({ user_id: m.user_id, role: 'member', email: m.email }))}
       />
 
       {/* Legacy view-resume slide-over (kept for backward compat) */}

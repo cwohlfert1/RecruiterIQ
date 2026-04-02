@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { MoreHorizontal, Trophy, Medal, Eye, FileText, Flag, Send, Trash2, Loader2, Star } from 'lucide-react'
+import { MoreHorizontal, Trophy, Medal, Eye, FileText, Flag, Send, Trash2, Loader2, Star, Crown } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { CandidateRow } from '@/app/dashboard/projects/[id]/page'
@@ -298,7 +298,15 @@ export function CandidatesTable({
                     onClick={() => onViewResume(c)}
                     className="text-left group/name"
                   >
-                    <p className="font-medium text-white group-hover/name:text-indigo-300 transition-colors">{c.candidate_name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-medium text-white group-hover/name:text-indigo-300 transition-colors">{c.candidate_name}</p>
+                      {c.hired && (
+                        <span className="flex items-center gap-0.5 text-[9px] font-bold text-amber-400 bg-amber-500/15 border border-amber-500/25 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                          <Crown className="w-2.5 h-2.5" />
+                          Hired
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-slate-500 mt-0.5">{c.candidate_email}</p>
                   </button>
                 </td>

@@ -26,11 +26,12 @@ interface Tab {
 }
 
 interface ProjectRef {
-  id:          string
-  title:       string
-  client_name: string
-  jd_text:     string | null
-  owner_id:    string
+  id:                string
+  title:             string
+  client_name:       string
+  jd_text:           string | null
+  owner_id:          string
+  teams_webhook_url?: string | null
 }
 
 interface Member {
@@ -191,6 +192,7 @@ export function ProjectTabs({
           canEdit={canEdit}
           isOwner={isOwner}
           members={members}
+          teamsWebhookUrl={project.teams_webhook_url ?? null}
           onMembersChange={setMembers}
           onShareClick={() => setShowShareModal(true)}
         />

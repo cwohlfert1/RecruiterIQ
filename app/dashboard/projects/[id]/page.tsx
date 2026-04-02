@@ -14,10 +14,14 @@ export const metadata = { title: 'Project' }
 // ─── Shared candidate row type (server → client) ────────────────
 
 export type CandidateRow = ProjectCandidate & {
-  invite_status:      'pending' | 'completed' | null
-  trust_score:        number | null
-  skill_score:        number | null
+  invite_status:         'pending' | 'completed' | null
+  trust_score:           number | null
+  skill_score:           number | null
   assessment_session_id: string | null
+  starred:               boolean
+  reaction:              string | null
+  hired:                 boolean
+  flag_type:             string | null
 }
 
 const STATUS_BADGE: Record<ProjectStatus, { label: string; className: string }> = {
@@ -144,12 +148,17 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     }
   }
 
-  const candidates: CandidateRow[] = rawCands.map((c: ProjectCandidate) => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const candidates: CandidateRow[] = rawCands.map((c: any) => ({
     ...c,
     invite_status:         c.assessment_invite_id ? (inviteMap[c.assessment_invite_id]?.status ?? 'pending') : null,
     trust_score:           c.assessment_invite_id ? (inviteMap[c.assessment_invite_id]?.trust_score ?? null) : null,
     skill_score:           c.assessment_invite_id ? (inviteMap[c.assessment_invite_id]?.skill_score ?? null) : null,
     assessment_session_id: c.assessment_invite_id ? (inviteMap[c.assessment_invite_id]?.session_id ?? null) : null,
+    starred:               c.starred   ?? false,
+    reaction:              c.reaction  ?? null,
+    hired:                 c.hired     ?? false,
+    flag_type:             c.flag_type ?? null,
   }))
 
   const badge           = STATUS_BADGE[project.status as ProjectStatus] ?? STATUS_BADGE.active
@@ -180,6 +189,12 @@ export default async function ProjectDetailPage({ params }: PageProps) {
                 <ProjectStatusDropdown
                   projectId={project.id}
                   currentStatus={project.status as ProjectStatus}
+                  candidates={candidates.map(c => ({
+                    id: c.id,
+                    candidate_name: c.candidate_name,
+                    cqi_score: c.cqi_score,
+                  }))}
+                  hiredName={project.hired_candidate_name ?? null}
                 />
               ) : (
                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${badge.className}`}>

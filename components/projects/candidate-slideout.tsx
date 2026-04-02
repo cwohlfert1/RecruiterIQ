@@ -1,14 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Mail, Loader2, Trash2, FileText, Send, Flag, Sparkles } from 'lucide-react'
+import { X, Mail, Loader2, Trash2, FileText, Send, Sparkles, Star, ThumbsUp, ThumbsDown, Crown, AlertOctagon } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { CandidateRow } from '@/app/dashboard/projects/[id]/page'
 import type { PipelineStage, BreakdownJson } from '@/types/database'
-import { CandidateTags }  from '@/components/projects/candidate-tags'
-import { CandidateNotes } from '@/components/projects/candidate-notes'
+import { CandidateTags }        from '@/components/projects/candidate-tags'
+import { CandidateNotes }       from '@/components/projects/candidate-notes'
+import { FlagCandidateModal }   from '@/components/projects/flag-candidate-modal'
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -18,6 +19,14 @@ interface ProjectRef {
   client_name: string
   jd_text:     string | null
   owner_id:    string
+}
+
+interface BenchmarkData {
+  role_title:  string
+  hired_name:  string | null
+  cqi_score:   number
+  hired_at:    string | null
+  this_cqi:    number
 }
 
 interface Props {
@@ -31,6 +40,7 @@ interface Props {
   onStageChange:   (candidateId: string, stage: PipelineStage) => void
   onTagsChange:    (candidateId: string, tags: string[]) => void
   onRemove:        (candidateId: string) => void
+  members?:        Array<{ user_id: string; role: string; email: string | null }>
 }
 
 // ─── Pipeline stage options ────────────────────────────────────
@@ -176,6 +186,7 @@ export function CandidateSlideout({
   onStageChange,
   onTagsChange,
   onRemove,
+  members,
 }: Props) {
   const open = !!candidate
 
@@ -185,8 +196,72 @@ export function CandidateSlideout({
     return () => document.removeEventListener('keydown', handler)
   }, [onClose])
 
-  const [removing,   setRemoving]   = useState(false)
-  const [flagging,   setFlagging]   = useState(false)
+  const [removing,      setRemoving]      = useState(false)
+  const [flagging,      setFlagging]      = useState(false)
+  const [flagModalOpen, setFlagModalOpen] = useState(false)
+  const [flagType,      setFlagType]      = useState<string | null>(candidate?.flag_type ?? null)
+  const [starred,     setStarred]     = useState(candidate?.starred ?? false)
+  const [reaction,    setReaction]    = useState<string | null>(candidate?.reaction ?? null)
+  const [savingReact, setSavingReact] = useState(false)
+  const [benchmark,   setBenchmark]   = useState<BenchmarkData | null>(null)
+
+  // Sync star/reaction/flag state when candidate changes
+  useEffect(() => {
+    setStarred(candidate?.starred ?? false)
+    setReaction(candidate?.reaction ?? null)
+    setFlagType(candidate?.flag_type ?? null)
+    setBenchmark(null)
+  }, [candidate?.id])
+
+  // Fetch benchmark comparison when candidate has a CQI score
+  useEffect(() => {
+    if (!candidate?.cqi_score || !project.title) return
+    fetch('/api/benchmarks/compare', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ role_title: project.title, this_cqi: candidate.cqi_score }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.benchmark) setBenchmark(data.benchmark) })
+      .catch(() => null)
+  }, [candidate?.id, candidate?.cqi_score, project.title])
+
+  async function handleStar() {
+    if (!candidate) return
+    const next = !starred
+    setStarred(next)
+    setSavingReact(true)
+    try {
+      const res = await fetch(`/api/projects/${projectId}/candidates/${candidate.id}/react`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ starred: next }),
+      })
+      if (!res.ok) { setStarred(!next); toast.error('Failed to update') }
+    } catch {
+      setStarred(!next)
+      toast.error('Failed to update')
+    } finally { setSavingReact(false) }
+  }
+
+  async function handleReaction(val: 'up' | 'down') {
+    if (!candidate) return
+    // Optimistic toggle: same reaction clears it
+    const next = reaction === val ? null : val
+    setReaction(next)
+    setSavingReact(true)
+    try {
+      const res = await fetch(`/api/projects/${projectId}/candidates/${candidate.id}/react`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ reaction: val }),
+      })
+      if (!res.ok) { setReaction(reaction); toast.error('Failed to update') }
+    } catch {
+      setReaction(reaction)
+      toast.error('Failed to update')
+    } finally { setSavingReact(false) }
+  }
 
   async function handleRemove() {
     if (!candidate) return
@@ -249,7 +324,15 @@ export function CandidateSlideout({
             {/* Header */}
             <div className="px-5 py-4 border-b border-white/8 flex items-start gap-3">
               <div className="flex-1 min-w-0">
-                <h2 className="text-sm font-semibold text-white truncate">{candidate.candidate_name}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-white truncate">{candidate.candidate_name}</h2>
+                  {candidate.hired && (
+                    <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-500/15 border border-amber-500/25 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                      <Crown className="w-3 h-3" />
+                      Hired
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-500">
                   <Mail className="w-3 h-3" />
                   <span className="truncate">{candidate.candidate_email}</span>
@@ -262,6 +345,49 @@ export function CandidateSlideout({
                     canEdit={canEdit}
                     onChange={s => onStageChange(candidate.id, s)}
                   />
+                </div>
+                {/* Star + reaction row */}
+                <div className="flex items-center gap-1.5 mt-2.5">
+                  <button
+                    onClick={handleStar}
+                    disabled={savingReact}
+                    title={starred ? 'Unstar' : 'Star candidate'}
+                    className={cn(
+                      'flex items-center gap-1 px-2 py-1 rounded-lg text-xs border transition-colors disabled:opacity-50',
+                      starred
+                        ? 'text-amber-400 bg-amber-500/15 border-amber-500/25'
+                        : 'text-slate-500 bg-white/5 border-white/10 hover:text-amber-400 hover:border-amber-500/25'
+                    )}
+                  >
+                    <Star className="w-3.5 h-3.5" fill={starred ? 'currentColor' : 'none'} />
+                    <span>{starred ? 'Starred' : 'Star'}</span>
+                  </button>
+                  <button
+                    onClick={() => handleReaction('up')}
+                    disabled={savingReact}
+                    title="Thumbs up"
+                    className={cn(
+                      'px-2 py-1 rounded-lg text-xs border transition-colors disabled:opacity-50',
+                      reaction === 'up'
+                        ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/25'
+                        : 'text-slate-500 bg-white/5 border-white/10 hover:text-emerald-400 hover:border-emerald-500/25'
+                    )}
+                  >
+                    <ThumbsUp className="w-3.5 h-3.5" fill={reaction === 'up' ? 'currentColor' : 'none'} />
+                  </button>
+                  <button
+                    onClick={() => handleReaction('down')}
+                    disabled={savingReact}
+                    title="Thumbs down"
+                    className={cn(
+                      'px-2 py-1 rounded-lg text-xs border transition-colors disabled:opacity-50',
+                      reaction === 'down'
+                        ? 'text-rose-400 bg-rose-500/15 border-rose-500/25'
+                        : 'text-slate-500 bg-white/5 border-white/10 hover:text-rose-400 hover:border-rose-500/25'
+                    )}
+                  >
+                    <ThumbsDown className="w-3.5 h-3.5" fill={reaction === 'down' ? 'currentColor' : 'none'} />
+                  </button>
                 </div>
               </div>
               <button
@@ -291,6 +417,50 @@ export function CandidateSlideout({
                             weight={breakdown[cat.key].weight}
                           />
                         ))}
+                      </div>
+                    )}
+                    {/* Benchmark comparison card */}
+                    {benchmark && (
+                      <div className="mt-4 rounded-xl p-3 border border-indigo-500/20 bg-indigo-500/5">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-indigo-400 mb-2">Benchmark Comparison</p>
+                        <p className="text-xs text-slate-400 mb-2.5">
+                          Similar role: <span className="text-slate-200 font-medium">{benchmark.role_title}</span>
+                          {benchmark.hired_name && (
+                            <span className="text-slate-500"> · Hired: {benchmark.hired_name.split(' ')[0]}</span>
+                          )}
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <div className="text-center">
+                            <p className="text-[10px] text-slate-500 mb-0.5">Benchmark CQI</p>
+                            <p className={cn('text-xl font-bold tabular-nums',
+                              benchmark.cqi_score >= 80 ? 'text-emerald-400' :
+                              benchmark.cqi_score >= 60 ? 'text-yellow-400' : 'text-red-400'
+                            )}>
+                              {benchmark.cqi_score}
+                            </p>
+                          </div>
+                          <div className="text-slate-600 text-base">→</div>
+                          <div className="text-center">
+                            <p className="text-[10px] text-slate-500 mb-0.5">This Candidate</p>
+                            <p className={cn('text-xl font-bold tabular-nums',
+                              candidate.cqi_score >= 80 ? 'text-emerald-400' :
+                              candidate.cqi_score >= 60 ? 'text-yellow-400' : 'text-red-400'
+                            )}>
+                              {candidate.cqi_score}
+                            </p>
+                          </div>
+                          <div className="ml-auto text-xs font-medium">
+                            {candidate.cqi_score >= benchmark.cqi_score
+                              ? <span className="text-emerald-400">↑ Above</span>
+                              : <span className="text-rose-400">↓ Below</span>
+                            }
+                          </div>
+                        </div>
+                        {benchmark.hired_at && (
+                          <p className="text-[10px] text-slate-600 mt-2">
+                            Hired {new Date(benchmark.hired_at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                          </p>
+                        )}
                       </div>
                     )}
                   </>
@@ -377,6 +547,7 @@ export function CandidateSlideout({
                   projectId={projectId}
                   userId={userId}
                   canEdit={canEdit}
+                  members={members}
                 />
               </section>
             </div>
@@ -398,7 +569,7 @@ export function CandidateSlideout({
                   disabled={flagging}
                   className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-yellow-300 bg-yellow-500/10 border border-yellow-500/20 hover:bg-yellow-500/20 transition-colors disabled:opacity-50"
                 >
-                  {flagging ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Flag className="w-3.5 h-3.5" />}
+                  {flagging ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                   Red Flags
                 </button>
                 <button
@@ -417,6 +588,20 @@ export function CandidateSlideout({
                 </button>
               </div>
 
+              {/* Flag Candidate button */}
+              <button
+                onClick={() => setFlagModalOpen(true)}
+                className={cn(
+                  'w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition-colors',
+                  flagType
+                    ? 'text-rose-300 bg-rose-500/15 border-rose-500/30 hover:bg-rose-500/20'
+                    : 'text-rose-400 bg-transparent border-rose-500/30 hover:bg-rose-500/10'
+                )}
+              >
+                <AlertOctagon className="w-3.5 h-3.5" />
+                {flagType ? `Flagged: ${flagType.toUpperCase()}` : 'Flag Candidate'}
+              </button>
+
               {canEdit && (
                 <button
                   onClick={handleRemove}
@@ -428,6 +613,19 @@ export function CandidateSlideout({
                 </button>
               )}
             </div>
+
+            {/* Flag candidate modal */}
+            {candidate && (
+              <FlagCandidateModal
+                isOpen={flagModalOpen}
+                candidateId={candidate.id}
+                candidateName={candidate.candidate_name}
+                candidateEmail={candidate.candidate_email}
+                projectId={projectId}
+                onClose={() => setFlagModalOpen(false)}
+                onFlagged={ft => setFlagType(ft)}
+              />
+            )}
           </motion.aside>
         </>
       )}

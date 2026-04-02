@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Trash2, Loader2, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
@@ -14,11 +14,17 @@ interface Note {
   user_email: string | null
 }
 
+interface MemberOption {
+  user_id: string
+  email:   string | null
+}
+
 interface Props {
   candidateId: string
   projectId:   string
   userId:      string
   canEdit:     boolean
+  members?:    MemberOption[]
 }
 
 const AVATAR_COLORS = [
@@ -36,12 +42,37 @@ function NoteAvatar({ email }: { email: string | null }) {
   )
 }
 
-export function CandidateNotes({ candidateId, projectId, userId, canEdit }: Props) {
-  const [notes,     setNotes]     = useState<Note[]>([])
-  const [loading,   setLoading]   = useState(true)
-  const [content,   setContent]   = useState('')
-  const [saving,    setSaving]    = useState(false)
+// Render note content, turning @[userId:Name] tokens into indigo badges
+function NoteContent({ content }: { content: string }) {
+  const parts = content.split(/(@\[[^\]]+\])/g)
+  return (
+    <p className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap break-words">
+      {parts.map((part, i) => {
+        const match = part.match(/^@\[([^\]:]+):([^\]]+)\]$/)
+        if (match) {
+          return (
+            <span key={i} className="inline-flex items-center text-indigo-300 bg-indigo-500/15 border border-indigo-500/25 px-1 py-0.5 rounded text-[10px] font-medium mx-0.5">
+              @{match[2]}
+            </span>
+          )
+        }
+        return <span key={i}>{part}</span>
+      })}
+    </p>
+  )
+}
+
+export function CandidateNotes({ candidateId, projectId, userId, canEdit, members = [] }: Props) {
+  const [notes,      setNotes]      = useState<Note[]>([])
+  const [loading,    setLoading]    = useState(true)
+  const [content,    setContent]    = useState('')
+  const [saving,     setSaving]     = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  // @mention state
+  const [mentionQuery,    setMentionQuery]    = useState<string | null>(null)
+  const [mentionStart,    setMentionStart]    = useState(0)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -51,6 +82,53 @@ export function CandidateNotes({ candidateId, projectId, userId, canEdit }: Prop
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [candidateId, projectId])
+
+  const handleContentChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val    = e.target.value
+    const cursor = e.target.selectionStart ?? val.length
+    setContent(val)
+
+    // Check if we're inside an @mention (look back from cursor for @)
+    const before = val.slice(0, cursor)
+    const atIdx  = before.lastIndexOf('@')
+
+    if (atIdx !== -1) {
+      const fragment = before.slice(atIdx + 1)
+      // Only trigger if no space after the @
+      if (!fragment.includes(' ') && !fragment.includes('\n')) {
+        setMentionQuery(fragment.toLowerCase())
+        setMentionStart(atIdx)
+        return
+      }
+    }
+    setMentionQuery(null)
+  }, [])
+
+  function insertMention(member: MemberOption) {
+    const name   = member.email ? member.email.split('@')[0] : member.user_id.slice(0, 8)
+    const token  = `@[${member.user_id}:${name}]`
+    const cursor = textareaRef.current?.selectionStart ?? content.length
+    const before = content.slice(0, mentionStart)
+    const after  = content.slice(cursor)
+    const next   = before + token + ' ' + after
+    setContent(next)
+    setMentionQuery(null)
+    // Re-focus textarea
+    setTimeout(() => {
+      if (textareaRef.current) {
+        const pos = before.length + token.length + 1
+        textareaRef.current.focus()
+        textareaRef.current.setSelectionRange(pos, pos)
+      }
+    }, 0)
+  }
+
+  const filteredMembers = mentionQuery !== null
+    ? members.filter(m => {
+        const name = m.email ? m.email.split('@')[0].toLowerCase() : ''
+        return name.includes(mentionQuery) || m.user_id.includes(mentionQuery)
+      })
+    : []
 
   async function addNote() {
     const text = content.trim()
@@ -66,6 +144,7 @@ export function CandidateNotes({ candidateId, projectId, userId, canEdit }: Prop
       if (!res.ok) { toast.error(data.error ?? 'Failed to add note'); return }
       setNotes(prev => [data.note, ...prev])
       setContent('')
+      setMentionQuery(null)
     } catch {
       toast.error('Failed to add note')
     } finally { setSaving(false) }
@@ -98,20 +177,52 @@ export function CandidateNotes({ candidateId, projectId, userId, canEdit }: Prop
     <div className="space-y-3">
       {/* Add note */}
       {canEdit && (
-        <div className="flex gap-2">
-          <textarea
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault(); addNote()
-              }
-            }}
-            placeholder="Add a note… (⌘+Enter to save)"
-            rows={2}
-            disabled={saving}
-            className="flex-1 text-xs bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-slate-300 placeholder:text-slate-600 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-colors disabled:opacity-50"
-          />
+        <div className="relative flex gap-2">
+          <div className="relative flex-1">
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={handleContentChange}
+              onKeyDown={e => {
+                if (e.key === 'Escape') { setMentionQuery(null); return }
+                if (mentionQuery !== null && filteredMembers.length > 0 && e.key === 'Enter') {
+                  e.preventDefault()
+                  insertMention(filteredMembers[0])
+                  return
+                }
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault(); addNote()
+                }
+              }}
+              placeholder={members.length > 0 ? 'Add a note… Type @ to mention a team member' : 'Add a note… (⌘+Enter to save)'}
+              rows={2}
+              disabled={saving}
+              className="w-full text-xs bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-slate-300 placeholder:text-slate-600 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-colors disabled:opacity-50"
+            />
+
+            {/* @mention dropdown */}
+            {mentionQuery !== null && filteredMembers.length > 0 && (
+              <div className="absolute left-0 bottom-full mb-1 w-48 bg-[#1A1D2E] border border-white/10 rounded-xl shadow-xl z-30 overflow-hidden">
+                {filteredMembers.slice(0, 5).map(m => {
+                  const name = m.email ? m.email.split('@')[0] : m.user_id.slice(0, 8)
+                  return (
+                    <button
+                      key={m.user_id}
+                      onMouseDown={e => { e.preventDefault(); insertMention(m) }}
+                      className="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-white/5 hover:text-white flex items-center gap-2 transition-colors"
+                    >
+                      <div className={cn('w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0',
+                        AVATAR_COLORS[(m.email ?? '').charCodeAt(0) % AVATAR_COLORS.length]
+                      )}>
+                        {name[0]?.toUpperCase() ?? '?'}
+                      </div>
+                      @{name}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
           <button
             onClick={addNote}
             disabled={saving || !content.trim()}
@@ -151,9 +262,7 @@ export function CandidateNotes({ candidateId, projectId, userId, canEdit }: Prop
                     </button>
                   )}
                 </div>
-                <p className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap break-words">
-                  {note.content}
-                </p>
+                <NoteContent content={note.content} />
               </div>
             </div>
           ))}

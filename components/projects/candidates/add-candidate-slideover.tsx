@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, UserPlus, Loader2, Sparkles, Plus } from 'lucide-react'
+import { X, UserPlus, Loader2, Sparkles, Plus, AlertOctagon } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { FileDropTextarea } from '@/components/ui/file-drop-textarea'
@@ -9,10 +9,17 @@ import { cn } from '@/lib/utils'
 import type { CandidateRow } from '@/app/dashboard/projects/[id]/page'
 import type { PipelineStage } from '@/types/database'
 
+interface FlagWarning {
+  flag_type:      string
+  reason:         string | null
+  candidate_name: string
+}
+
 interface Props {
   open:          boolean
   projectId:     string
   hasJd:         boolean
+  isManager?:    boolean
   initialStage?: PipelineStage
   onClose:       () => void
   onAdded:       (candidate: CandidateRow) => void
@@ -31,7 +38,7 @@ function emptyParsed(): ParsedFields {
   return { name: null, email: null, phone: null, current_title: null, years_experience: null, location: null }
 }
 
-export function AddCandidateSlideover({ open, projectId, hasJd, initialStage, onClose, onAdded }: Props) {
+export function AddCandidateSlideover({ open, projectId, hasJd, isManager = false, initialStage, onClose, onAdded }: Props) {
   const [resume,       setResume]       = useState('')
   const [parsing,      setParsing]      = useState(false)
   const [parsed,       setParsed]       = useState<ParsedFields | null>(null)
@@ -41,6 +48,7 @@ export function AddCandidateSlideover({ open, projectId, hasJd, initialStage, on
   const [addedCount,   setAddedCount]   = useState(0)
   const [nameError,    setNameError]    = useState(false)
   const [emailError,   setEmailError]   = useState(false)
+  const [flagWarning,  setFlagWarning]  = useState<FlagWarning | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Reset on open
@@ -97,7 +105,7 @@ export function AddCandidateSlideover({ open, projectId, hasJd, initialStage, on
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
   const canSubmit  = name.trim() && email.trim() && emailValid && resume.trim() && !parsing && !submitting
 
-  async function submitCandidate() {
+  async function submitCandidate(override = false) {
     setNameError(!name.trim())
     setEmailError(!email.trim() || !emailValid)
     if (!name.trim() || !email.trim() || !emailValid || !resume.trim()) return
@@ -112,6 +120,7 @@ export function AddCandidateSlideover({ open, projectId, hasJd, initialStage, on
           candidate_email: email.trim(),
           resume_text:     resume.trim(),
           ...(initialStage ? { pipeline_stage: initialStage } : {}),
+          ...(override ? { override: true } : {}),
         }),
       })
 
@@ -128,9 +137,17 @@ export function AddCandidateSlideover({ open, projectId, hasJd, initialStage, on
         return
       }
 
+      // Flag warning returned — show warning modal, don't complete
+      if (data.flag_warning) {
+        setFlagWarning(data.flag_warning as FlagWarning)
+        setSubmitting(false)
+        return
+      }
+
       const cqi = data.candidate?.cqi_score
       toast.success(`${name.trim()} added${cqi != null ? ` — CQI: ${cqi}/100` : ''}`)
       onAdded(data.candidate as CandidateRow)
+      setFlagWarning(null)
       return data.candidate as CandidateRow
     } catch {
       toast.error('Something went wrong. Please try again.')
@@ -195,6 +212,52 @@ export function AddCandidateSlideover({ open, projectId, hasJd, initialStage, on
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {/* Flag warning modal */}
+            {flagWarning && (
+              <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+                <div className="bg-[#12141F] border border-rose-500/30 rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-rose-500/15 flex items-center justify-center flex-shrink-0">
+                      <AlertOctagon className="w-5 h-5 text-rose-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-white">Flagged Candidate</h3>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        This email is in the agency DNU registry as <span className="font-semibold text-rose-400 uppercase">{flagWarning.flag_type}</span>.
+                      </p>
+                    </div>
+                  </div>
+                  {flagWarning.reason && (
+                    <p className="text-xs text-slate-500 bg-white/3 border border-white/8 rounded-xl p-3">
+                      {flagWarning.reason}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setFlagWarning(null)}
+                      className="flex-1 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 border border-white/10 hover:text-white transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    {isManager ? (
+                      <button
+                        onClick={async () => {
+                          setFlagWarning(null)
+                          const result = await submitCandidate(true)
+                          if (result) onClose()
+                        }}
+                        className="flex-1 px-3 py-2 rounded-xl text-xs font-semibold text-white bg-rose-500 hover:bg-rose-600 transition-colors"
+                      >
+                        Override &amp; Add
+                      </button>
+                    ) : (
+                      <p className="flex-1 text-center text-xs text-slate-500 self-center">Manager access required to override</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">

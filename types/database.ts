@@ -321,28 +321,40 @@ export type Database = {
       }
       projects: {
         Row: {
-          id:          string
-          owner_id:    string
-          title:       string
-          client_name: string
-          jd_text:     string | null
-          status:      'active' | 'filled' | 'on_hold' | 'archived'
-          created_at:  string
-          updated_at:  string
+          id:                    string
+          owner_id:              string
+          title:                 string
+          client_name:           string
+          jd_text:               string | null
+          status:                'active' | 'filled' | 'on_hold' | 'archived'
+          hired_candidate_id:    string | null
+          hired_candidate_name:  string | null
+          teams_webhook_url:     string | null
+          company_id:            string | null
+          created_at:            string
+          updated_at:            string
         }
         Insert: {
-          id?:          string
-          owner_id:     string
-          title:        string
-          client_name:  string
-          jd_text?:     string | null
-          status?:      'active' | 'filled' | 'on_hold' | 'archived'
+          id?:                   string
+          owner_id:              string
+          title:                 string
+          client_name:           string
+          jd_text?:              string | null
+          status?:               'active' | 'filled' | 'on_hold' | 'archived'
+          hired_candidate_id?:   string | null
+          hired_candidate_name?: string | null
+          teams_webhook_url?:    string | null
+          company_id?:           string | null
         }
         Update: {
-          title?:       string
-          client_name?: string
-          jd_text?:     string | null
-          status?:      'active' | 'filled' | 'on_hold' | 'archived'
+          title?:                string
+          client_name?:          string
+          jd_text?:              string | null
+          status?:               'active' | 'filled' | 'on_hold' | 'archived'
+          hired_candidate_id?:   string | null
+          hired_candidate_name?: string | null
+          teams_webhook_url?:    string | null
+          company_id?:           string | null
         }
       }
       project_members: {
@@ -384,6 +396,10 @@ export type Database = {
           pipeline_stage:       PipelineStage
           stage_changed_at:     string
           tags_json:            string[]
+          starred:              boolean
+          reaction:             string | null
+          hired:                boolean
+          flag_type:            string | null
           deleted_at:           string | null
           created_at:           string
           updated_at:           string
@@ -418,6 +434,10 @@ export type Database = {
           pipeline_stage?:       PipelineStage
           stage_changed_at?:     string
           tags_json?:            string[]
+          starred?:              boolean
+          reaction?:             string | null
+          hired?:                boolean
+          flag_type?:            string | null
           deleted_at?:           string | null
         }
       }
@@ -834,6 +854,12 @@ export type ProjectActivityType =
   | 'member_added'
   | 'batch_score_started'
   | 'batch_score_completed'
+  | 'candidate_hired'
+  | 'candidate_starred'
+  | 'candidate_reacted'
+  | 'candidate_flagged'
+  | 'flag_override'
+  | 'note_added'
 
 // Enriched project row returned by /api/projects/list
 export type ProjectListItem = Project & {
@@ -843,4 +869,5 @@ export type ProjectListItem = Project & {
   members:          Array<{ user_id: string; role: ProjectMemberRole }>
   is_owner:         boolean
   company_logo_url: string | null
+  hired_first_name: string | null
 }
