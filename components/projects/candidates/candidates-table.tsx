@@ -34,8 +34,13 @@ const BREAKDOWN_CATS: Array<{ key: keyof BreakdownJson; label: string }> = [
 
 // ─── Tooltip engine ───────────────────────────────────────────
 // Uses fixed positioning to escape table overflow clipping.
+// Smart above/below: shows above when near bottom of viewport.
 
-interface TooltipRect { x: number; y: number; w: number }
+interface TooltipRect {
+  x:      number   // center x of the badge
+  top:    number   // badge top  (viewport-relative)
+  bottom: number   // badge bottom (viewport-relative)
+}
 
 function useTooltip(delay = 200) {
   const [rect,   setRect]   = useState<TooltipRect | null>(null)
@@ -44,7 +49,7 @@ function useTooltip(delay = 200) {
   function show(e: React.MouseEvent) {
     if (timerRef.current) clearTimeout(timerRef.current)
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    setRect({ x: r.left + r.width / 2, y: r.top, w: r.width })
+    setRect({ x: r.left + r.width / 2, top: r.top, bottom: r.bottom })
   }
 
   function hide() {
@@ -56,6 +61,18 @@ function useTooltip(delay = 200) {
   }
 
   return { rect, show, hide, keepOpen }
+}
+
+function tooltipPos(rect: TooltipRect, tooltipH: number, tooltipW = 280) {
+  const GAP = 8
+  const spaceBelow = window.innerHeight - rect.bottom
+  const showBelow  = spaceBelow >= tooltipH + GAP
+
+  const top  = showBelow ? rect.bottom + GAP : rect.top - tooltipH - GAP
+  const left = Math.max(GAP, Math.min(rect.x - tooltipW / 2, window.innerWidth - tooltipW - GAP))
+  const arrowLeft = Math.max(8, Math.min(rect.x - left - 5, tooltipW - 18))
+
+  return { top, left, showBelow, arrowLeft }
 }
 
 // ─── CQI Tooltip ──────────────────────────────────────────────
@@ -74,39 +91,32 @@ function CqiTooltip({
   const breakdown = candidate.cqi_breakdown_json as BreakdownJson | null
   if (!breakdown) return null
 
-  // Find best explanation sentence across categories
-  const summary = BREAKDOWN_CATS.map(c => breakdown[c.key]?.explanation).find(Boolean)
-
-  const tooltipW = 280
-  const left     = Math.max(8, Math.min(rect.x - tooltipW / 2, window.innerWidth - tooltipW - 8))
-  const top      = rect.y - 12  // will transform up
+  const summary  = BREAKDOWN_CATS.map(c => breakdown[c.key]?.explanation).find(Boolean)
+  const TOOLTIP_H = summary ? 220 : 175
+  const { top, left, showBelow, arrowLeft } = tooltipPos(rect, TOOLTIP_H)
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 4 }}
+      initial={{ opacity: 0, y: showBelow ? -4 : 4 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 4 }}
+      exit={{   opacity: 0, y: showBelow ? -4 : 4 }}
       transition={{ duration: 0.14 }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      style={{
-        position: 'fixed',
-        left,
-        top,
-        width: tooltipW,
-        transform: 'translateY(-100%)',
-        zIndex: 9999,
-      }}
+      style={{ position: 'fixed', left, top, width: 280, zIndex: 9999 }}
       className="bg-[#12141F] border border-white/12 rounded-xl shadow-2xl p-3 pointer-events-auto"
     >
-      {/* Arrow */}
-      <div
-        style={{ position: 'absolute', bottom: -5, left: rect.x - left - 5, width: 10, height: 10 }}
-        className="bg-[#12141F] border-b border-r border-white/12 rotate-45"
-      />
+      {/* Arrow — above badge = bottom arrow, below badge = top arrow */}
+      {showBelow ? (
+        <div style={{ position: 'absolute', top: -5, left: arrowLeft, width: 10, height: 10 }}
+          className="bg-[#12141F] border-t border-l border-white/12 rotate-45" />
+      ) : (
+        <div style={{ position: 'absolute', bottom: -5, left: arrowLeft, width: 10, height: 10 }}
+          className="bg-[#12141F] border-b border-r border-white/12 rotate-45" />
+      )}
 
       <p className="text-xs font-semibold text-white mb-0.5 truncate">{candidate.candidate_name}</p>
-      <p className="text-[10px] text-slate-500 mb-2.5">Why this score:</p>
+      <p className="text-[10px] text-slate-500 mb-2.5">CQI breakdown:</p>
 
       <div className="space-y-1.5">
         {BREAKDOWN_CATS.map(({ key, label }) => {
@@ -149,37 +159,33 @@ function RedFlagTooltip({
   onMouseEnter: () => void
   onMouseLeave: () => void
 }) {
-  const flags     = candidate.red_flags_json as RedFlag[] | null
-  const hasRun    = candidate.red_flag_score !== null
-  const tooltipW  = 280
-  const left      = Math.max(8, Math.min(rect.x - tooltipW / 2, window.innerWidth - tooltipW - 8))
-  const top       = rect.y - 12
+  const flags  = candidate.red_flags_json as RedFlag[] | null
+  const hasRun = candidate.red_flag_score !== null
 
-  const SEVERITY_ICON: Record<string, string> = { high: '🔴', medium: '🟡', low: '🟢' }
+  const flagCount = flags?.length ?? 0
+  const TOOLTIP_H = hasRun && flagCount > 0 ? Math.min(280, 80 + flagCount * 55) : 70
+  const { top, left, showBelow, arrowLeft } = tooltipPos(rect, TOOLTIP_H)
+
+  const SEVERITY_COLOR: Record<string, string> = { high: 'bg-red-500', medium: 'bg-yellow-500', low: 'bg-emerald-500' }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 4 }}
+      initial={{ opacity: 0, y: showBelow ? -4 : 4 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 4 }}
+      exit={{   opacity: 0, y: showBelow ? -4 : 4 }}
       transition={{ duration: 0.14 }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      style={{
-        position: 'fixed',
-        left,
-        top,
-        width: tooltipW,
-        transform: 'translateY(-100%)',
-        zIndex: 9999,
-      }}
+      style={{ position: 'fixed', left, top, width: 280, zIndex: 9999 }}
       className="bg-[#12141F] border border-white/12 rounded-xl shadow-2xl p-3 pointer-events-auto"
     >
-      {/* Arrow */}
-      <div
-        style={{ position: 'absolute', bottom: -5, left: rect.x - left - 5, width: 10, height: 10 }}
-        className="bg-[#12141F] border-b border-r border-white/12 rotate-45"
-      />
+      {showBelow ? (
+        <div style={{ position: 'absolute', top: -5, left: arrowLeft, width: 10, height: 10 }}
+          className="bg-[#12141F] border-t border-l border-white/12 rotate-45" />
+      ) : (
+        <div style={{ position: 'absolute', bottom: -5, left: arrowLeft, width: 10, height: 10 }}
+          className="bg-[#12141F] border-b border-r border-white/12 rotate-45" />
+      )}
 
       {!hasRun ? (
         <p className="text-[11px] text-slate-400 leading-relaxed">
@@ -188,28 +194,27 @@ function RedFlagTooltip({
       ) : flags && flags.length > 0 ? (
         <>
           <p className="text-[10px] font-semibold text-slate-300 mb-2">
-            Cortex detected {flags.length} flag{flags.length !== 1 ? 's' : ''}:
+            {flags.length} flag{flags.length !== 1 ? 's' : ''} detected:
           </p>
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {flags.map((f, i) => (
-              <div key={i} className="text-[10px]">
-                <p className="font-medium text-slate-300">
-                  {SEVERITY_ICON[f.severity] ?? '⚪'} {f.severity.toUpperCase()} — {f.type}
-                </p>
-                <p className="text-slate-500 mt-0.5 leading-relaxed">&ldquo;{f.evidence}&rdquo;</p>
+              <div key={i} className="flex gap-2 text-[10px]">
+                <span className={cn('w-2 h-2 rounded-full mt-0.5 flex-shrink-0', SEVERITY_COLOR[f.severity] ?? 'bg-slate-500')} />
+                <div>
+                  <p className="font-medium text-slate-300">{f.severity.toUpperCase()} — {f.type}</p>
+                  {f.evidence && <p className="text-slate-500 mt-0.5 leading-relaxed">&ldquo;{f.evidence}&rdquo;</p>}
+                </div>
               </div>
             ))}
           </div>
-          <div className="mt-2 pt-2 border-t border-white/8 flex items-center justify-between">
+          <div className="mt-2 pt-2 border-t border-white/8">
             <span className="text-[10px] text-slate-500">
-              Integrity Score: <span className="text-slate-300 font-medium">{candidate.red_flag_score}/100</span>
+              Integrity: <span className="text-slate-300 font-medium">{candidate.red_flag_score}/100</span>
             </span>
           </div>
         </>
       ) : (
-        <p className="text-[11px] text-emerald-400 leading-relaxed">
-          No red flags detected. Resume integrity looks clean.
-        </p>
+        <p className="text-[11px] text-emerald-400">No red flags detected — resume looks clean.</p>
       )}
     </motion.div>
   )

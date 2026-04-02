@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { ProfileClient } from './profile-client'
 
@@ -18,18 +19,21 @@ export default async function ProfilePage() {
     .single()
 
   return (
-    <ProfileClient
-      userId={user.id}
-      email={user.email ?? ''}
-      profile={profile ?? {
-        avatar_url:            null,
-        display_name:          null,
-        job_title:             null,
-        linkedin_url:          null,
-        linkedin_id:           null,
-        linkedin_connected_at: null,
-        phone:                 null,
-      }}
-    />
+    // useSearchParams() in ProfileClient requires Suspense boundary in Next.js 14
+    <Suspense fallback={null}>
+      <ProfileClient
+        userId={user.id}
+        email={user.email ?? ''}
+        profile={profile ?? {
+          avatar_url:            null,
+          display_name:          null,
+          job_title:             null,
+          linkedin_url:          null,
+          linkedin_id:           null,
+          linkedin_connected_at: null,
+          phone:                 null,
+        }}
+      />
+    </Suspense>
   )
 }

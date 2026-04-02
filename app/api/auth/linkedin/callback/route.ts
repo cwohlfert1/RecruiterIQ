@@ -16,12 +16,12 @@ interface LinkedInUserInfo {
 // GET /api/auth/linkedin/callback
 export async function GET(req: NextRequest) {
   const url          = new URL(req.url)
-  const origin       = url.origin
+  const base         = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ?? url.origin
   const code         = url.searchParams.get('code')
   const returnedState = url.searchParams.get('state')
   const errorParam   = url.searchParams.get('error')
 
-  const settingsUrl  = `${origin}/dashboard/settings/profile`
+  const settingsUrl  = `${base}/dashboard/settings/profile`
 
   // LinkedIn returned an error (e.g. user cancelled)
   if (errorParam) {
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
   cookieStore.delete('li_oauth_state')
 
   // Exchange code for access token
-  const redirectUri = `${origin}/api/auth/linkedin/callback`
+  const redirectUri = `${base}/api/auth/linkedin/callback`
   let accessToken: string
   try {
     const tokenRes = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {

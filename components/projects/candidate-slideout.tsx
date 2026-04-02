@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Mail, Loader2, Trash2, FileText, Send, Sparkles, Star, ThumbsUp, ThumbsDown, Crown, AlertOctagon } from 'lucide-react'
+import { X, Mail, Loader2, Trash2, FileText, Send, Sparkles, Star, ThumbsUp, ThumbsDown, Crown, AlertOctagon, Maximize2, Minimize2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -59,28 +59,33 @@ const STAGES: Array<{ key: PipelineStage; label: string }> = [
 
 // ─── CQI ring ────────────────────────────────────────────────
 
-function CqiRing({ score }: { score: number }) {
-  const radius      = 28
-  const circumference = 2 * Math.PI * radius
+function CqiRing({ score, size = 100 }: { score: number; size?: number }) {
+  const r             = (size / 2) - 8
+  const circumference = 2 * Math.PI * r
   const dash          = (score / 100) * circumference
   const color =
     score >= 80 ? '#10b981' :
     score >= 60 ? '#f59e0b' :
                   '#ef4444'
+  const center = size / 2
+  const sw     = size > 80 ? 8 : 6
+  const fontSize = size > 80 ? 24 : 18
   return (
-    <div className="flex items-center gap-3">
-      <svg width="72" height="72" viewBox="0 0 72 72" className="-rotate-90">
-        <circle cx="36" cy="36" r={radius} stroke="rgba(255,255,255,0.06)" strokeWidth="6" fill="none" />
-        <circle
-          cx="36" cy="36" r={radius}
-          stroke={color} strokeWidth="6" fill="none"
-          strokeDasharray={`${dash} ${circumference - dash}`}
-          strokeLinecap="round"
-        />
-      </svg>
-      <div>
-        <p className="text-2xl font-bold text-white">{score}</p>
-        <p className="text-xs text-slate-500">CQI Score</p>
+    <div className="flex flex-col items-center gap-1">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+          <circle cx={center} cy={center} r={r} stroke="rgba(255,255,255,0.06)" strokeWidth={sw} fill="none" />
+          <circle
+            cx={center} cy={center} r={r}
+            stroke={color} strokeWidth={sw} fill="none"
+            strokeDasharray={`${dash} ${circumference - dash}`}
+            strokeLinecap="round"
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <p className="font-bold text-white leading-none" style={{ fontSize }}>{score}</p>
+          <p className="text-[9px] text-slate-500 mt-0.5">CQI</p>
+        </div>
       </div>
     </div>
   )
@@ -208,6 +213,8 @@ export function CandidateSlideout({
   const [reaction,    setReaction]    = useState<string | null>(candidate?.reaction ?? null)
   const [savingReact, setSavingReact] = useState(false)
   const [benchmark,   setBenchmark]   = useState<BenchmarkData | null>(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [activeTab,    setActiveTab]   = useState<'overview' | 'resume' | 'notes'>('overview')
 
   // Sync star/reaction/flag state when candidate changes
   useEffect(() => {
@@ -217,6 +224,8 @@ export function CandidateSlideout({
     setBenchmark(null)
     setLocalFlags(null)
     setLocalFlagScore(null)
+    setActiveTab('overview')
+    setIsFullscreen(false)
   }, [candidate?.id])
 
   // Fetch benchmark comparison when candidate has a CQI score
@@ -319,16 +328,24 @@ export function CandidateSlideout({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/40 z-40"
+            className={cn(
+              'fixed inset-0 z-40',
+              isFullscreen ? 'bg-black/70' : 'bg-black/40',
+            )}
           />
 
           {/* Panel */}
           <motion.aside
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
+            initial={isFullscreen ? { opacity: 0, scale: 0.97 } : { x: '100%' }}
+            animate={isFullscreen ? { opacity: 1, scale: 1 }    : { x: 0 }}
+            exit={isFullscreen  ? { opacity: 0, scale: 0.97 }  : { x: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-            className="fixed right-0 top-0 bottom-0 w-full max-w-[420px] bg-[#12141F] border-l border-white/10 z-50 flex flex-col shadow-2xl"
+            className={cn(
+              'fixed bg-[#12141F] border border-white/10 z-50 flex flex-col shadow-2xl',
+              isFullscreen
+                ? 'inset-[5vh_5vw] rounded-2xl'
+                : 'right-0 top-0 bottom-0 w-full max-w-[420px] border-l rounded-none',
+            )}
           >
             {/* Header */}
             <div className="px-5 py-4 border-b border-white/8 flex items-start gap-3">
@@ -399,166 +416,211 @@ export function CandidateSlideout({
                   </button>
                 </div>
               </div>
-              <button
-                onClick={onClose}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-200 hover:bg-white/8 transition-colors flex-shrink-0"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={() => setIsFullscreen(v => !v)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-200 hover:bg-white/8 transition-colors"
+                  title={isFullscreen ? 'Collapse' : 'Expand'}
+                >
+                  {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={onClose}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-200 hover:bg-white/8 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-white/8 px-5">
+              {(['overview', 'resume', 'notes'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={cn(
+                    'px-3 py-2.5 text-xs font-medium border-b-2 transition-colors capitalize -mb-px',
+                    activeTab === tab
+                      ? 'border-indigo-500 text-white'
+                      : 'border-transparent text-slate-500 hover:text-slate-300',
+                  )}
+                >
+                  {tab === 'overview' ? 'Overview' : tab === 'resume' ? 'Resume' : 'Notes'}
+                </button>
+              ))}
             </div>
 
             {/* Scrollable body */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+            <div className={cn(
+              'flex-1 overflow-y-auto px-5 py-4',
+              isFullscreen ? 'grid grid-cols-2 gap-6' : 'space-y-5',
+            )}>
 
-              {/* CQI Score */}
-              <section>
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500 mb-3">CQI Score</p>
-                {candidate.cqi_score !== null ? (
-                  <>
-                    <CqiRing score={candidate.cqi_score} />
-                    {breakdown && (
-                      <div className="mt-3 space-y-2.5">
-                        {BREAKDOWN_CATEGORIES.map(cat => (
-                          <BreakdownBar
-                            key={cat.key}
-                            label={cat.label}
-                            score={breakdown[cat.key].score}
-                            weight={breakdown[cat.key].weight}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    {/* Benchmark comparison card */}
-                    {benchmark && (
-                      <div className="mt-4 rounded-xl p-3 border border-indigo-500/20 bg-indigo-500/5">
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-indigo-400 mb-2">Benchmark Comparison</p>
-                        <p className="text-xs text-slate-400 mb-2.5">
-                          Similar role: <span className="text-slate-200 font-medium">{benchmark.role_title}</span>
-                          {benchmark.hired_name && (
-                            <span className="text-slate-500"> · Hired: {benchmark.hired_name.split(' ')[0]}</span>
+              {/* ── FULLSCREEN LEFT COLUMN or OVERVIEW TAB ── */}
+              {(activeTab === 'overview' || isFullscreen) && (
+                <div className="space-y-5">
+
+                  {/* CQI Score */}
+                  <section>
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500 mb-3">CQI Score</p>
+                    {candidate.cqi_score !== null ? (
+                      <>
+                        <div className="flex items-center gap-4">
+                          <CqiRing score={candidate.cqi_score} size={100} />
+                          {breakdown && (
+                            <div className="flex-1 space-y-2">
+                              {BREAKDOWN_CATEGORIES.map(cat => (
+                                <BreakdownBar
+                                  key={cat.key}
+                                  label={cat.label}
+                                  score={breakdown[cat.key]?.score ?? 0}
+                                  weight={breakdown[cat.key]?.weight ?? 0}
+                                />
+                              ))}
+                            </div>
                           )}
-                        </p>
-                        <div className="flex items-center gap-3">
-                          <div className="text-center">
-                            <p className="text-[10px] text-slate-500 mb-0.5">Benchmark CQI</p>
-                            <p className={cn('text-xl font-bold tabular-nums',
-                              benchmark.cqi_score >= 80 ? 'text-emerald-400' :
-                              benchmark.cqi_score >= 60 ? 'text-yellow-400' : 'text-red-400'
-                            )}>
-                              {benchmark.cqi_score}
-                            </p>
-                          </div>
-                          <div className="text-slate-600 text-base">→</div>
-                          <div className="text-center">
-                            <p className="text-[10px] text-slate-500 mb-0.5">This Candidate</p>
-                            <p className={cn('text-xl font-bold tabular-nums',
-                              candidate.cqi_score >= 80 ? 'text-emerald-400' :
-                              candidate.cqi_score >= 60 ? 'text-yellow-400' : 'text-red-400'
-                            )}>
-                              {candidate.cqi_score}
-                            </p>
-                          </div>
-                          <div className="ml-auto text-xs font-medium">
-                            {candidate.cqi_score >= benchmark.cqi_score
-                              ? <span className="text-emerald-400">↑ Above</span>
-                              : <span className="text-rose-400">↓ Below</span>
-                            }
-                          </div>
                         </div>
-                        {benchmark.hired_at && (
-                          <p className="text-[10px] text-slate-600 mt-2">
-                            Hired {new Date(benchmark.hired_at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
-                          </p>
+                        {/* Benchmark comparison card */}
+                        {benchmark && (
+                          <div className="mt-4 rounded-xl p-3 border border-indigo-500/20 bg-indigo-500/5">
+                            <p className="text-[10px] font-semibold uppercase tracking-widest text-indigo-400 mb-2">Benchmark Comparison</p>
+                            <div className="flex items-center gap-3">
+                              <div className="text-center">
+                                <p className="text-[10px] text-slate-500 mb-0.5">Benchmark</p>
+                                <p className={cn('text-xl font-bold tabular-nums',
+                                  benchmark.cqi_score >= 80 ? 'text-emerald-400' :
+                                  benchmark.cqi_score >= 60 ? 'text-yellow-400' : 'text-red-400'
+                                )}>{benchmark.cqi_score}</p>
+                              </div>
+                              <div className="text-slate-600 text-base">→</div>
+                              <div className="text-center">
+                                <p className="text-[10px] text-slate-500 mb-0.5">This candidate</p>
+                                <p className={cn('text-xl font-bold tabular-nums',
+                                  candidate.cqi_score >= 80 ? 'text-emerald-400' :
+                                  candidate.cqi_score >= 60 ? 'text-yellow-400' : 'text-red-400'
+                                )}>{candidate.cqi_score}</p>
+                              </div>
+                              <div className="ml-auto text-xs font-medium">
+                                {candidate.cqi_score >= benchmark.cqi_score
+                                  ? <span className="text-emerald-400">↑ Above</span>
+                                  : <span className="text-rose-400">↓ Below</span>
+                                }
+                              </div>
+                            </div>
+                          </div>
                         )}
+                      </>
+                    ) : (
+                      <div className="text-xs text-slate-500 bg-white/4 border border-white/8 rounded-xl p-3">
+                        Not scored yet
                       </div>
                     )}
-                  </>
-                ) : (
-                  <div className="text-xs text-slate-500 bg-white/4 border border-white/8 rounded-xl p-3">
-                    Not scored yet
-                  </div>
-                )}
-              </section>
+                  </section>
 
-              {/* Red Flags */}
-              {flagScore !== null && (
-                <section>
-                  <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500 mb-3">Red Flags</p>
-                  {flags && flags.length > 0 ? (
-                    <div className="space-y-2">
-                      {flags.map((flag, i) => (
-                        <div key={i} className="px-3 py-2.5 rounded-xl bg-white/4 border border-white/8">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className={cn(
-                              'text-[10px] font-semibold px-1.5 py-0.5 rounded-full',
-                              flag.severity === 'high'   ? 'bg-red-500/20 text-red-400' :
-                              flag.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
-                                                            'bg-slate-500/20 text-slate-400'
-                            )}>
-                              {flag.severity}
-                            </span>
-                            <span className="text-xs font-medium text-slate-300">{flag.type}</span>
+                  {/* Red Flags — always show */}
+                  <section>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">Red Flags</p>
+                      <button
+                        onClick={handleRedFlag}
+                        disabled={flagging}
+                        className="flex items-center gap-1 text-[10px] text-yellow-300 bg-yellow-500/10 border border-yellow-500/20 px-2 py-1 rounded-full hover:bg-yellow-500/20 transition-colors disabled:opacity-50"
+                      >
+                        {flagging ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                        {flagScore !== null ? 'Re-check' : 'Run Check'}
+                      </button>
+                    </div>
+                    {flagScore === null ? (
+                      <div className="flex items-center gap-2 text-xs text-slate-500 bg-white/4 border border-white/8 rounded-xl p-3">
+                        <Sparkles className="w-3.5 h-3.5 text-slate-600" />
+                        Not checked yet
+                      </div>
+                    ) : flags && flags.length > 0 ? (
+                      <div className="space-y-2">
+                        {flags.map((flag, i) => (
+                          <div key={i} className="px-3 py-2.5 rounded-xl bg-white/4 border border-white/8">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={cn(
+                                'text-[10px] font-semibold px-1.5 py-0.5 rounded-full',
+                                flag.severity === 'high'   ? 'bg-red-500/20 text-red-400' :
+                                flag.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                              'bg-slate-500/20 text-slate-400'
+                              )}>
+                                {flag.severity}
+                              </span>
+                              <span className="text-xs font-medium text-slate-300">{flag.type}</span>
+                            </div>
+                            <p className="text-xs text-slate-500">{flag.explanation}</p>
                           </div>
-                          <p className="text-xs text-slate-500">{flag.explanation}</p>
+                        ))}
+                        <p className="text-[10px] text-slate-500 mt-1">Integrity score: {flagScore}/100</p>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+                        No red flags detected
+                      </div>
+                    )}
+                  </section>
+
+                  {/* Assessment Results */}
+                  {candidate.invite_status === 'completed' && (
+                    <section>
+                      <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500 mb-3">Assessment Results</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-white/4 border border-white/8 rounded-xl p-3 text-center">
+                          <p className="text-xs text-slate-500 mb-1">Trust Score</p>
+                          <p className="text-xl font-bold text-emerald-400">{candidate.trust_score ?? '—'}</p>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
-                      No red flags found
-                    </div>
+                        <div className="bg-white/4 border border-white/8 rounded-xl p-3 text-center">
+                          <p className="text-xs text-slate-500 mb-1">Skill Score</p>
+                          <p className="text-xl font-bold text-indigo-400">{candidate.skill_score ?? '—'}</p>
+                        </div>
+                      </div>
+                    </section>
                   )}
-                </section>
+
+                  {/* Tags (overview only) */}
+                  {!isFullscreen && (
+                    <section>
+                      <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500 mb-3">Tags</p>
+                      <CandidateTags
+                        candidateId={candidate.id}
+                        projectId={projectId}
+                        initialTags={tags}
+                        canEdit={canEdit}
+                        onTagsChange={t => onTagsChange(candidate.id, t)}
+                      />
+                    </section>
+                  )}
+                </div>
               )}
 
-              {/* Assessment Results */}
-              {candidate.invite_status === 'completed' && (
-                <section>
-                  <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500 mb-3">Assessment Results</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white/4 border border-white/8 rounded-xl p-3 text-center">
-                      <p className="text-xs text-slate-500 mb-1">Trust Score</p>
-                      <p className="text-xl font-bold text-emerald-400">{candidate.trust_score ?? '—'}</p>
-                    </div>
-                    <div className="bg-white/4 border border-white/8 rounded-xl p-3 text-center">
-                      <p className="text-xs text-slate-500 mb-1">Skill Score</p>
-                      <p className="text-xl font-bold text-indigo-400">{candidate.skill_score ?? '—'}</p>
-                    </div>
-                  </div>
-                </section>
+              {/* ── RESUME TAB or FULLSCREEN RIGHT COLUMN ── */}
+              {(activeTab === 'resume' || isFullscreen) && (
+                <div className="space-y-3">
+                  {isFullscreen && (
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">Resume</p>
+                  )}
+                  <pre className="whitespace-pre-wrap text-xs text-slate-400 font-sans leading-relaxed bg-white/3 border border-white/8 rounded-xl p-3 h-full min-h-[300px] overflow-y-auto">
+                    {candidate.resume_text || 'No resume text available.'}
+                  </pre>
+                </div>
               )}
 
-              {/* Resume */}
-              <section>
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500 mb-3">Resume</p>
-                <pre className="whitespace-pre-wrap text-xs text-slate-400 font-sans leading-relaxed bg-white/3 border border-white/8 rounded-xl p-3 max-h-48 overflow-y-auto">
-                  {candidate.resume_text}
-                </pre>
-              </section>
-
-              {/* Tags */}
-              <section>
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500 mb-3">Tags</p>
-                <CandidateTags
-                  candidateId={candidate.id}
-                  projectId={projectId}
-                  initialTags={tags}
-                  canEdit={canEdit}
-                  onTagsChange={tags => onTagsChange(candidate.id, tags)}
-                />
-              </section>
-
-              {/* Notes */}
-              <section>
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500 mb-3">Notes</p>
-                <CandidateNotes
-                  candidateId={candidate.id}
-                  projectId={projectId}
-                  userId={userId}
-                  canEdit={canEdit}
-                  members={members}
-                />
-              </section>
+              {/* ── NOTES TAB ── */}
+              {activeTab === 'notes' && !isFullscreen && (
+                <div className="space-y-3">
+                  <CandidateNotes
+                    candidateId={candidate.id}
+                    projectId={projectId}
+                    userId={userId}
+                    canEdit={canEdit}
+                    members={members}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Footer actions */}
@@ -574,16 +636,8 @@ export function CandidateSlideout({
                   </button>
                 )}
                 <button
-                  onClick={handleRedFlag}
-                  disabled={flagging}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-yellow-300 bg-yellow-500/10 border border-yellow-500/20 hover:bg-yellow-500/20 transition-colors disabled:opacity-50"
-                >
-                  {flagging ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                  Red Flags
-                </button>
-                <button
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-purple-300 bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 transition-colors"
                   onClick={() => setSummaryOpen(true)}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-purple-300 bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 transition-colors col-span-1"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   Summary

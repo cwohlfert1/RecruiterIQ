@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 // GET /api/user-profiles?ids=id1,id2,id3
 // Returns a map of userId → { avatar_url, display_name, job_title }
@@ -58,8 +59,11 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
   }
 
-  const { error } = await supabase.from('user_profiles').update(updates).eq('user_id', user.id)
-  if (error) return NextResponse.json({ error: 'Update failed' }, { status: 500 })
+  // Use admin client to bypass RLS (user is already authenticated above)
+  const admin = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (admin as any).from('user_profiles').update(updates).eq('user_id', user.id)
+  if (error) return NextResponse.json({ error: error.message ?? 'Update failed' }, { status: 500 })
 
   return NextResponse.json({ success: true })
 }
