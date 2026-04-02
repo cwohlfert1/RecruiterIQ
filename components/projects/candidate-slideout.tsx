@@ -7,10 +7,11 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { CandidateRow } from '@/app/dashboard/projects/[id]/page'
 import type { PipelineStage, BreakdownJson } from '@/types/database'
-import { CandidateTags }        from '@/components/projects/candidate-tags'
-import { CandidateNotes }       from '@/components/projects/candidate-notes'
-import { FlagCandidateModal }   from '@/components/projects/flag-candidate-modal'
-import { GenerateSummaryModal } from '@/components/projects/candidates/generate-summary-modal'
+import { CandidateTags }             from '@/components/projects/candidate-tags'
+import { CandidateNotes }            from '@/components/projects/candidate-notes'
+import { FlagCandidateModal }        from '@/components/projects/flag-candidate-modal'
+import { GenerateSummaryModal }      from '@/components/projects/candidates/generate-summary-modal'
+import { InternalSubmittalModal }    from '@/components/projects/candidates/internal-submittal-modal'
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -47,14 +48,15 @@ interface Props {
 // ─── Pipeline stage options ────────────────────────────────────
 
 const STAGES: Array<{ key: PipelineStage; label: string }> = [
-  { key: 'sourced',         label: 'Sourced'         },
-  { key: 'contacted',       label: 'Contacted'       },
-  { key: 'phone_screen',    label: 'Phone Screen'    },
-  { key: 'am_review',       label: 'AM Review'       },
-  { key: 'assessment_sent', label: 'Assessment Sent' },
-  { key: 'submitted',       label: 'Submitted'       },
-  { key: 'placed',          label: 'Placed'          },
-  { key: 'rejected',        label: 'Rejected'        },
+  { key: 'sourced',              label: 'Sourced'              },
+  { key: 'contacted',            label: 'Contacted'            },
+  { key: 'phone_screen',         label: 'Phone Screen'         },
+  { key: 'am_review',            label: 'AM Review'            },
+  { key: 'assessment_sent',      label: 'Assessment Sent'      },
+  { key: 'internal_submittal',   label: 'Internal Submittal'   },
+  { key: 'submitted',            label: 'Submitted'            },
+  { key: 'placed',               label: 'Placed'               },
+  { key: 'rejected',             label: 'Rejected'             },
 ]
 
 // ─── CQI ring ────────────────────────────────────────────────
@@ -202,11 +204,12 @@ export function CandidateSlideout({
     return () => document.removeEventListener('keydown', handler)
   }, [onClose])
 
-  const [removing,      setRemoving]      = useState(false)
-  const [flagging,      setFlagging]      = useState(false)
-  const [flagModalOpen, setFlagModalOpen] = useState(false)
-  const [flagType,      setFlagType]      = useState<string | null>(candidate?.flag_type ?? null)
-  const [summaryOpen,   setSummaryOpen]   = useState(false)
+  const [removing,       setRemoving]      = useState(false)
+  const [flagging,       setFlagging]      = useState(false)
+  const [flagModalOpen,  setFlagModalOpen] = useState(false)
+  const [flagType,       setFlagType]      = useState<string | null>(candidate?.flag_type ?? null)
+  const [summaryOpen,    setSummaryOpen]   = useState(false)
+  const [submittalOpen,  setSubmittalOpen] = useState(false)
   const [localFlags,    setLocalFlags]    = useState<Array<{ type: string; severity: string; evidence: string; explanation: string }> | null>(null)
   const [localFlagScore, setLocalFlagScore] = useState<number | null>(null)
   const [starred,     setStarred]     = useState(candidate?.starred ?? false)
@@ -643,6 +646,13 @@ export function CandidateSlideout({
                   Summary
                 </button>
                 <button
+                  onClick={() => setSubmittalOpen(true)}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-indigo-300 bg-transparent border border-indigo-500/30 hover:bg-indigo-500/10 transition-colors col-span-1"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Internal Submittal
+                </button>
+                <button
                   className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 bg-white/5 border border-white/10 hover:bg-white/8 transition-colors"
                   onClick={async () => {
                     if (candidate.resume_file_url) {
@@ -705,6 +715,15 @@ export function CandidateSlideout({
               candidate={candidate}
               project={project}
               onClose={() => setSummaryOpen(false)}
+            />
+
+            {/* Internal Submittal modal */}
+            <InternalSubmittalModal
+              open={submittalOpen}
+              candidate={candidate}
+              project={project}
+              onClose={() => setSubmittalOpen(false)}
+              onStageMove={id => onStageChange(id, 'internal_submittal')}
             />
 
             {/* Flag candidate modal */}

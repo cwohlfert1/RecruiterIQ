@@ -857,6 +857,7 @@ export type PipelineStage      =
   | 'phone_screen'
   | 'am_review'
   | 'assessment_sent'
+  | 'internal_submittal'
   | 'submitted'
   | 'placed'
   | 'rejected'

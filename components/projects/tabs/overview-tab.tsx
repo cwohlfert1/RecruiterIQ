@@ -259,8 +259,9 @@ export function OverviewTab({
 
   const STAGE_LABEL: Record<PipelineStage, string> = {
     sourced: 'Sourced', contacted: 'Contacted', phone_screen: 'Phone Screen',
-    am_review: 'AM Review', assessment_sent: 'Assessment', submitted: 'Submitted',
-    placed: 'Placed', rejected: 'Rejected',
+    am_review: 'AM Review', assessment_sent: 'Assessment',
+    internal_submittal: 'Int. Submittal',
+    submitted: 'Submitted', placed: 'Placed', rejected: 'Rejected',
   }
 
   return (

@@ -46,6 +46,7 @@ interface Props {
 const PIPELINE_STAGE_LABELS: Record<PipelineStage, string> = {
   sourced: 'Sourced', contacted: 'Contacted', phone_screen: 'Phone Screen',
   am_review: 'AM Review', assessment_sent: 'Assessment Sent',
+  internal_submittal: 'Internal Submittal',
   submitted: 'Submitted', placed: 'Placed', rejected: 'Rejected',
 }
 
