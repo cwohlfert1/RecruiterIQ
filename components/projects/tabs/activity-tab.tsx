@@ -57,6 +57,12 @@ function getActivityMessage(
         accent: 'text-yellow-400',
       }
 
+    case 'candidate_stage_changed':
+      return {
+        text:   `${who} moved ${meta.name ?? 'a candidate'} to ${meta.to_stage ?? '—'}`,
+        accent: 'text-indigo-400',
+      }
+
     case 'red_flag_checked':
       return {
         text:   `${who} flagged a red flag on ${meta.name ?? 'a candidate'}`,

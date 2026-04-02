@@ -2,10 +2,13 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Users, FileText, Search, Activity, Settings } from 'lucide-react'
+import { LayoutDashboard, Users, Kanban, FileText, Search, Activity, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { CandidateRow } from '@/app/dashboard/projects/[id]/page'
-import { CandidatesTab } from '@/components/projects/tabs/candidates-tab'
+import type { PipelineStage } from '@/types/database'
+import { OverviewTab }    from '@/components/projects/tabs/overview-tab'
+import { CandidatesTab }  from '@/components/projects/tabs/candidates-tab'
+import { KanbanBoard }    from '@/components/projects/kanban-board'
 import { JdTab }          from '@/components/projects/tabs/jd-tab'
 import { BooleanTab }     from '@/components/projects/tabs/boolean-tab'
 import { ActivityTab }    from '@/components/projects/tabs/activity-tab'
@@ -14,7 +17,7 @@ import { ShareModal }     from '@/components/projects/share-modal'
 
 // ─── Types ──────────────────────────────────────────────────
 
-type TabKey = 'candidates' | 'jd' | 'boolean' | 'activity' | 'settings'
+type TabKey = 'overview' | 'candidates' | 'pipeline' | 'jd' | 'boolean' | 'activity' | 'settings'
 
 interface Tab {
   key:   TabKey
@@ -51,11 +54,13 @@ interface Props {
 // ─── Tabs Config ─────────────────────────────────────────────
 
 const TABS: Tab[] = [
-  { key: 'candidates', label: 'Candidates',      icon: Users    },
-  { key: 'jd',         label: 'Job Description', icon: FileText },
-  { key: 'boolean',    label: 'Boolean Strings', icon: Search   },
-  { key: 'activity',   label: 'Activity Feed',   icon: Activity },
-  { key: 'settings',   label: 'Settings',        icon: Settings },
+  { key: 'overview',   label: 'Overview',        icon: LayoutDashboard },
+  { key: 'candidates', label: 'Candidates',       icon: Users           },
+  { key: 'pipeline',   label: 'Pipeline',         icon: Kanban          },
+  { key: 'jd',         label: 'Job Description',  icon: FileText        },
+  { key: 'boolean',    label: 'Boolean Strings',  icon: Search          },
+  { key: 'activity',   label: 'Activity Feed',    icon: Activity        },
+  { key: 'settings',   label: 'Settings',         icon: Settings        },
 ]
 
 // ─── Component ───────────────────────────────────────────────
@@ -69,17 +74,27 @@ export function ProjectTabs({
   planTier,
   members: initialMembers,
 }: Props) {
-  const [active,              setActive]              = useState<TabKey>('candidates')
-  const [jdText,              setJdText]              = useState<string | null>(project.jd_text)
-  const [jdUpdatedThisSession, setJdUpdatedThisSession] = useState(false)
-  const [members,             setMembers]             = useState<Member[]>(initialMembers)
-  const [showShareModal,      setShowShareModal]      = useState(false)
+  const [active,                setActive]                = useState<TabKey>('overview')
+  const [jdText,                setJdText]                = useState<string | null>(project.jd_text)
+  const [jdUpdatedThisSession,  setJdUpdatedThisSession]  = useState(false)
+  const [members,               setMembers]               = useState<Member[]>(initialMembers)
+  const [showShareModal,        setShowShareModal]        = useState(false)
+  const [pipelineStageFilter,   setPipelineStageFilter]   = useState<PipelineStage | undefined>(undefined)
 
   const isOwner = project.owner_id === userId
 
   function handleJdSaved(text: string | null) {
     setJdText(text)
     setJdUpdatedThisSession(true)
+  }
+
+  function jumpToPipeline(stage?: PipelineStage) {
+    setPipelineStageFilter(stage)
+    setActive('pipeline')
+  }
+
+  function jumpToCandidates() {
+    setActive('candidates')
   }
 
   return (
@@ -111,6 +126,18 @@ export function ProjectTabs({
       </div>
 
       {/* Tab content */}
+      {active === 'overview' && (
+        <OverviewTab
+          project={{ ...project, jd_text: jdText }}
+          candidates={candidates}
+          members={members}
+          planTier={planTier}
+          isManager={isManager}
+          onJumpToPipeline={jumpToPipeline}
+          onJumpToCandidates={jumpToCandidates}
+        />
+      )}
+
       {active === 'candidates' && (
         <CandidatesTab
           project={{ ...project, jd_text: jdText }}
@@ -119,6 +146,17 @@ export function ProjectTabs({
           canEdit={canEdit}
           isOwner={isOwner}
           isManager={isManager}
+        />
+      )}
+
+      {active === 'pipeline' && (
+        <KanbanBoard
+          project={{ ...project, jd_text: jdText }}
+          initialCandidates={candidates}
+          userId={userId}
+          canEdit={canEdit}
+          isManager={isManager}
+          initialStageFilter={pipelineStageFilter}
         />
       )}
 
@@ -164,7 +202,6 @@ export function ProjectTabs({
           planTier={planTier}
           onClose={() => setShowShareModal(false)}
           onShared={() => {
-            // Refresh members list
             fetch(`/api/projects/${project.id}`)
               .then(r => r.json())
               .then(json => {

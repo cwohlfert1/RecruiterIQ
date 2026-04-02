@@ -360,6 +360,9 @@ export type Database = {
           assessment_invite_id: string | null
           added_by:             string | null
           status:               'reviewing' | 'screening' | 'submitted' | 'rejected'
+          pipeline_stage:       PipelineStage
+          stage_changed_at:     string
+          tags_json:            string[]
           deleted_at:           string | null
           created_at:           string
           updated_at:           string
@@ -378,6 +381,9 @@ export type Database = {
           assessment_invite_id?: string | null
           added_by?:             string | null
           status?:               'reviewing' | 'screening' | 'submitted' | 'rejected'
+          pipeline_stage?:       PipelineStage
+          stage_changed_at?:     string
+          tags_json?:            string[]
         }
         Update: {
           candidate_name?:       string
@@ -388,8 +394,29 @@ export type Database = {
           red_flags_json?:       RedFlag[] | null
           assessment_invite_id?: string | null
           status?:               'reviewing' | 'screening' | 'submitted' | 'rejected'
+          pipeline_stage?:       PipelineStage
+          stage_changed_at?:     string
+          tags_json?:            string[]
           deleted_at?:           string | null
         }
+      }
+      project_candidate_notes: {
+        Row: {
+          id:           string
+          candidate_id: string
+          project_id:   string
+          user_id:      string
+          content:      string
+          created_at:   string
+        }
+        Insert: {
+          id?:          string
+          candidate_id: string
+          project_id:   string
+          user_id:      string
+          content:      string
+        }
+        Update: never
       }
       project_boolean_strings: {
         Row: {
@@ -744,18 +771,29 @@ export type ProjectMember            = Database['public']['Tables']['project_mem
 export type ProjectCandidate         = Database['public']['Tables']['project_candidates']['Row']
 export type ProjectBooleanString     = Database['public']['Tables']['project_boolean_strings']['Row']
 export type ProjectActivity          = Database['public']['Tables']['project_activity']['Row']
+export type ProjectCandidateNote     = Database['public']['Tables']['project_candidate_notes']['Row']
 
 // ─── Project domain types ──────────────────────────────────
 
 export type ProjectStatus      = 'active' | 'filled' | 'on_hold' | 'archived'
 export type ProjectMemberRole  = 'owner' | 'collaborator' | 'viewer'
 export type CandidateStatus    = 'reviewing' | 'screening' | 'submitted' | 'rejected'
+export type PipelineStage      =
+  | 'sourced'
+  | 'contacted'
+  | 'phone_screen'
+  | 'am_review'
+  | 'assessment_sent'
+  | 'submitted'
+  | 'placed'
+  | 'rejected'
 
 export type ProjectActivityType =
   | 'project_created'
   | 'candidate_added'
   | 'candidate_scored'
   | 'candidate_status_changed'
+  | 'candidate_stage_changed'
   | 'red_flag_checked'
   | 'boolean_generated'
   | 'boolean_regenerated'

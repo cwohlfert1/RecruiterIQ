@@ -197,6 +197,11 @@ interface Props {
   canEdit:      boolean
   isOwner:      boolean
   isManager:    boolean
+  selected?:    Set<string>
+  allSelected?: boolean
+  someSelected?: boolean
+  onToggleSelect?: (id: string) => void
+  onSelectAll?:   () => void
   onStatusChange: (id: string, status: CandidateStatus) => void
   onScored:     (id: string, score: number) => void
   onRedFlag:    (id: string) => void
@@ -209,6 +214,7 @@ interface Props {
 
 export function CandidatesTable({
   candidates, projectId, userId, canEdit, isOwner, isManager,
+  selected = new Set(), allSelected, someSelected, onToggleSelect, onSelectAll,
   onStatusChange, onRemove, onViewResume, onSummary, onAssessment, onScoreIndividual, onRedFlag,
 }: Props) {
 
@@ -240,9 +246,21 @@ export function CandidatesTable({
 
   return (
     <div className="overflow-x-auto -mx-1">
-      <table className="w-full text-sm border-collapse min-w-[720px]">
+      <table className="w-full text-sm border-collapse min-w-[760px]">
         <thead>
           <tr className="border-b border-white/8">
+            {/* Checkbox header */}
+            <th className="pb-3 pr-2 pl-1 w-8">
+              {onSelectAll && (
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  ref={el => { if (el) el.indeterminate = !!someSelected }}
+                  onChange={onSelectAll}
+                  className="w-3.5 h-3.5 rounded border-white/20 bg-white/5 accent-indigo-500 cursor-pointer"
+                />
+              )}
+            </th>
             {['Rank', 'Name', 'CQI', 'Red Flags', 'Assessment', 'Status', 'Actions'].map(h => (
               <th key={h} className="text-left text-[11px] font-semibold uppercase tracking-widest text-slate-500 pb-3 pr-4 first:pl-1">
                 {h}
@@ -257,7 +275,18 @@ export function CandidatesTable({
             const hasFlags  = c.red_flag_score !== null
 
             return (
-              <tr key={c.id} className="hover:bg-white/2 transition-colors group">
+              <tr key={c.id} className={cn('hover:bg-white/2 transition-colors group', selected.has(c.id) && 'bg-indigo-500/5')}>
+                {/* Checkbox */}
+                <td className="py-3 pr-2 pl-1 w-8">
+                  {onToggleSelect && (
+                    <input
+                      type="checkbox"
+                      checked={selected.has(c.id)}
+                      onChange={() => onToggleSelect(c.id)}
+                      className="w-3.5 h-3.5 rounded border-white/20 bg-white/5 accent-indigo-500 cursor-pointer"
+                    />
+                  )}
+                </td>
                 {/* Rank */}
                 <td className="py-3 pr-4 pl-1 w-10">
                   <RankCell rank={ranks[c.id] ?? null} />

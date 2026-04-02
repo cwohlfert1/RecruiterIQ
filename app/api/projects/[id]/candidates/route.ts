@@ -116,14 +116,14 @@ export async function POST(
   if (!canEdit) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   // Parse body
-  let body: { candidate_name?: unknown; candidate_email?: unknown; resume_text?: unknown }
+  let body: { candidate_name?: unknown; candidate_email?: unknown; resume_text?: unknown; pipeline_stage?: unknown }
   try {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { candidate_name, candidate_email, resume_text } = body
+  const { candidate_name, candidate_email, resume_text, pipeline_stage } = body
 
   if (typeof candidate_name !== 'string' || !candidate_name.trim()) {
     return NextResponse.json({ error: 'candidate_name is required' }, { status: 400 })
@@ -157,6 +157,11 @@ export async function POST(
     )
   }
 
+  const VALID_STAGES = ['sourced','contacted','phone_screen','am_review','assessment_sent','submitted','placed','rejected']
+  const insertStage  = (typeof pipeline_stage === 'string' && VALID_STAGES.includes(pipeline_stage))
+    ? pipeline_stage
+    : 'sourced'
+
   // Insert candidate (unscored initially)
   const { data: candidate, error: insertError } = await supabase
     .from('project_candidates')
@@ -167,6 +172,7 @@ export async function POST(
       resume_text:     resume_text.trim(),
       added_by:        user.id,
       status:          'reviewing',
+      pipeline_stage:  insertStage,
     })
     .select()
     .single()

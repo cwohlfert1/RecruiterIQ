@@ -7,16 +7,18 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { FileDropTextarea } from '@/components/ui/file-drop-textarea'
 import { cn } from '@/lib/utils'
 import type { CandidateRow } from '@/app/dashboard/projects/[id]/page'
+import type { PipelineStage } from '@/types/database'
 
 interface Props {
-  open:       boolean
-  projectId:  string
-  hasJd:      boolean
-  onClose:    () => void
-  onAdded:    (candidate: CandidateRow) => void
+  open:          boolean
+  projectId:     string
+  hasJd:         boolean
+  initialStage?: PipelineStage
+  onClose:       () => void
+  onAdded:       (candidate: CandidateRow) => void
 }
 
-export function AddCandidateSlideover({ open, projectId, hasJd, onClose, onAdded }: Props) {
+export function AddCandidateSlideover({ open, projectId, hasJd, initialStage, onClose, onAdded }: Props) {
   const [name,       setName]       = useState('')
   const [email,      setEmail]      = useState('')
   const [resume,     setResume]     = useState('')
@@ -59,6 +61,7 @@ export function AddCandidateSlideover({ open, projectId, hasJd, onClose, onAdded
           candidate_name:  name.trim(),
           candidate_email: email.trim(),
           resume_text:     resume.trim(),
+          ...(initialStage ? { pipeline_stage: initialStage } : {}),
         }),
       })
 
