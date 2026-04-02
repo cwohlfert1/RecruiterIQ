@@ -14,11 +14,11 @@ export default async function AssessLandingPage({
     .from('assessment_invites')
     .select('id, assessment_id, candidate_name, expires_at, status')
     .eq('token', params.token)
-    .single() as { data: { id: string; assessment_id: string; candidate_name: string; expires_at: string; status: string } | null }
+    .single() as { data: { id: string; assessment_id: string; candidate_name: string; expires_at: string | null; status: string } | null }
 
   if (!invite || invite.status === 'completed') notFound()
 
-  const expired = new Date(invite.expires_at) < new Date()
+  const expired = invite.expires_at ? new Date(invite.expires_at) < new Date() : false
 
   const { data: assessment } = await admin
     .from('assessments')
@@ -41,6 +41,7 @@ export default async function AssessLandingPage({
       questionCount={questionCount ?? 0}
       expired={expired}
       alreadyStarted={invite.status === 'started'}
+      expiresAt={invite.expires_at ?? null}
     />
   )
 }

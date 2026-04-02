@@ -69,7 +69,7 @@ export default async function AssessmentsPage() {
     assessmentIds.length > 0
       ? db
           .from('assessment_sessions')
-          .select('assessment_id, trust_score, skill_score')
+          .select('assessment_id, trust_score, skill_score, recruiter_decision')
           .in('assessment_id', assessmentIds)
           .eq('status', 'completed')
       : Promise.resolve({ data: [] }),
@@ -80,6 +80,8 @@ export default async function AssessmentsPage() {
   const inviteCounts: Record<string, number> = {}
   const avgTrust: Record<string, number | null> = {}
   const avgSkill: Record<string, number | null> = {}
+  const approvedCounts: Record<string, number> = {}
+  const doNotSubmitCounts: Record<string, number> = {}
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const q of ((questionsRes.data ?? []) as any[])) {
@@ -99,6 +101,8 @@ export default async function AssessmentsPage() {
     }
     if (s.trust_score !== null) sessionsByAssessment[s.assessment_id].trust.push(s.trust_score)
     if (s.skill_score !== null) sessionsByAssessment[s.assessment_id].skill.push(s.skill_score)
+    if (s.recruiter_decision === 'approve')        approvedCounts[s.assessment_id]    = (approvedCounts[s.assessment_id]    ?? 0) + 1
+    if (s.recruiter_decision === 'do_not_submit') doNotSubmitCounts[s.assessment_id] = (doNotSubmitCounts[s.assessment_id] ?? 0) + 1
   }
 
   for (const [id, { trust, skill }] of Object.entries(sessionsByAssessment)) {
@@ -109,10 +113,12 @@ export default async function AssessmentsPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows = ((assessments ?? []) as any[]).map((a: any) => ({
     ...a,
-    questionCount: questionCounts[a.id] ?? 0,
-    inviteCount:   inviteCounts[a.id]   ?? 0,
-    avgTrust:      avgTrust[a.id]       ?? null,
-    avgSkill:      avgSkill[a.id]       ?? null,
+    questionCount:    questionCounts[a.id]    ?? 0,
+    inviteCount:      inviteCounts[a.id]      ?? 0,
+    avgTrust:         avgTrust[a.id]          ?? null,
+    avgSkill:         avgSkill[a.id]          ?? null,
+    approvedCount:    approvedCounts[a.id]    ?? 0,
+    doNotSubmitCount: doNotSubmitCounts[a.id] ?? 0,
   }))
 
   return (

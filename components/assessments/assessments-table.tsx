@@ -17,15 +17,17 @@ import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
 type AssessmentRow = {
-  id:            string
-  title:         string
-  role:          string
-  status:        'draft' | 'published' | 'archived'
-  created_at:    string
-  questionCount: number
-  inviteCount:   number
-  avgTrust:      number | null
-  avgSkill:      number | null
+  id:               string
+  title:            string
+  role:             string
+  status:           'draft' | 'published' | 'archived'
+  created_at:       string
+  questionCount:    number
+  inviteCount:      number
+  avgTrust:         number | null
+  avgSkill:         number | null
+  approvedCount:    number
+  doNotSubmitCount: number
 }
 
 const statusBadge: Record<AssessmentRow['status'], string> = {
@@ -119,6 +121,7 @@ export function AssessmentsTable({ rows }: { rows: AssessmentRow[] }) {
               <th className="text-center px-4 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">Invites</th>
               <th className="text-center px-4 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">Avg Trust</th>
               <th className="text-center px-4 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">Avg Skill</th>
+              <th className="text-center px-4 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">Decision</th>
               <th className="text-left px-4 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">Created</th>
               <th className="text-right px-5 py-3.5 text-xs font-semibold uppercase tracking-widest text-slate-500">Actions</th>
             </tr>
@@ -153,6 +156,23 @@ export function AssessmentsTable({ rows }: { rows: AssessmentRow[] }) {
                 <td className="px-4 py-3.5 text-center text-slate-300">{row.inviteCount}</td>
                 <td className="px-4 py-3.5 text-center"><ScorePill value={row.avgTrust} /></td>
                 <td className="px-4 py-3.5 text-center"><ScorePill value={row.avgSkill} /></td>
+                <td className="px-4 py-3.5 text-center">
+                  <div className="flex items-center justify-center gap-1.5">
+                    {row.approvedCount > 0 && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                        ✓ {row.approvedCount}
+                      </span>
+                    )}
+                    {row.doNotSubmitCount > 0 && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/15 text-red-400 border border-red-500/25">
+                        ✗ {row.doNotSubmitCount}
+                      </span>
+                    )}
+                    {row.approvedCount === 0 && row.doNotSubmitCount === 0 && (
+                      <span className="text-slate-600 text-xs">—</span>
+                    )}
+                  </div>
+                </td>
                 <td className="px-4 py-3.5 text-slate-500 text-xs whitespace-nowrap">
                   {new Date(row.created_at).toLocaleDateString()}
                 </td>

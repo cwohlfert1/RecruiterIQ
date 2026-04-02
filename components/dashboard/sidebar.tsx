@@ -15,6 +15,7 @@ import {
   ClipboardList,
   PlusCircle,
   FolderOpen,
+  BookOpen,
 } from 'lucide-react'
 import { CandidLogo } from '@/components/candid-logo'
 import { createClient } from '@/lib/supabase/client'
@@ -39,8 +40,9 @@ const TOOLS_NAV = [
 ]
 
 const ASSESSMENT_NAV = [
-  { label: 'My Assessments',    href: '/dashboard/assessments',        icon: ClipboardList },
-  { label: 'Create Assessment', href: '/dashboard/assessments/create', icon: PlusCircle    },
+  { label: 'My Assessments',    href: '/dashboard/assessments',         icon: ClipboardList },
+  { label: 'Create Assessment', href: '/dashboard/assessments/create',  icon: PlusCircle    },
+  { label: 'Template Library',  href: '/dashboard/assessments/library', icon: BookOpen      },
 ]
 
 const containerVariants = {

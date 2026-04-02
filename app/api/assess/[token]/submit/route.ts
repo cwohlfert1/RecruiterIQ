@@ -183,46 +183,74 @@ Events:\n${eventSummary}
   // Create in-app notification
   const { data: assessment } = await admin
     .from('assessments')
-    .select('title, id')
+    .select('title, id, notification_recipients')
     .eq('id', invite.assessment_id)
-    .single()
+    .single() as { data: { title: string; id: string; notification_recipients: Array<{ email: string; name: string; user_id?: string | null }> | null } | null }
 
+  const reportUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/dashboard/assessments/${invite.assessment_id}/report/${session.id}`
+
+  // In-app notification to assessment owner
   await admin.from('notifications').insert({
     user_id: invite.created_by,
     type:    'assessment_completed',
     title:   `${invite.candidate_name} completed an assessment`,
     message: `${assessment?.title ?? 'Assessment'} — Trust: ${trustScore} | Skill: ${skillScore}`,
-    link:    `/dashboard/assessments/${invite.assessment_id}/report/${session.id}`,
+    link:    reportUrl,
     read:    false,
   })
+
+  const notificationHtml = (toName: string) => `
+    <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto;">
+      <h2>${invite.candidate_name} completed: ${assessment?.title}</h2>
+      <p>Hi ${toName},</p>
+      <p><strong>Trust Score:</strong> ${trustScore}/100</p>
+      <p><strong>Skill Score:</strong> ${skillScore}/100</p>
+      <p>${aiSummary}</p>
+      <a href="${reportUrl}"
+         style="display:inline-block;margin:16px 0;padding:12px 24px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:white;text-decoration:none;border-radius:10px;font-weight:600;">
+        View Full Report
+      </a>
+    </div>
+  `
+
+  const subject = `${invite.candidate_name} completed their assessment`
 
   // Notify recruiter via email
   const { data: recruiterProfile } = await admin.auth.admin.getUserById(invite.created_by)
   const recruiterEmail = recruiterProfile.user?.email
 
-  if (recruiterEmail) {
-    try {
-      await getResend().emails.send({
-        from:    'Candid.ai <noreply@candidai.app>',
-        to:      recruiterEmail,
-        subject: `${invite.candidate_name} completed their assessment`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto;">
-            <h2>${invite.candidate_name} completed: ${assessment?.title}</h2>
-            <p><strong>Trust Score:</strong> ${trustScore}/100</p>
-            <p><strong>Skill Score:</strong> ${skillScore}/100</p>
-            <p>${aiSummary}</p>
-            <a href="${process.env.NEXT_PUBLIC_APP_URL ?? ''}/dashboard/assessments/${invite.assessment_id}/report/${session.id}"
-               style="display:inline-block;margin:16px 0;padding:12px 24px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:white;text-decoration:none;border-radius:10px;font-weight:600;">
-              View Full Report
-            </a>
-          </div>
-        `,
-      })
-    } catch {
-      console.error('Failed to send recruiter notification email')
+  const emailsToSend: Array<{ to: string; toName: string }> = []
+  if (recruiterEmail) emailsToSend.push({ to: recruiterEmail, toName: 'there' })
+
+  // Additional notification recipients
+  const extraRecipients = assessment?.notification_recipients ?? []
+  for (const r of extraRecipients) {
+    if (r.email && r.email !== recruiterEmail) {
+      emailsToSend.push({ to: r.email, toName: r.name })
+      // Also send in-app notification if they have a user_id
+      if (r.user_id) {
+        await admin.from('notifications').insert({
+          user_id: r.user_id,
+          type:    'assessment_completed',
+          title:   `${invite.candidate_name} completed an assessment`,
+          message: `${assessment?.title ?? 'Assessment'} — Trust: ${trustScore} | Skill: ${skillScore}`,
+          link:    reportUrl,
+          read:    false,
+        }).catch(() => null)
+      }
     }
   }
+
+  await Promise.allSettled(
+    emailsToSend.map(({ to, toName }) =>
+      getResend().emails.send({
+        from:    'Candid.ai <noreply@candidai.app>',
+        to,
+        subject,
+        html: notificationHtml(toName),
+      }).catch(() => console.error('Failed to send notification to', to))
+    )
+  )
 
   return NextResponse.json({ ok: true, trustScore, skillScore })
 }

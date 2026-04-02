@@ -1,7 +1,10 @@
 'use client'
 
+import { useState } from 'react'
+import { X, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { AssessmentDraft } from './assessment-builder'
+import type { NotificationRecipient } from '@/types/database'
 
 interface Props {
   draft:    AssessmentDraft
@@ -9,8 +12,40 @@ interface Props {
   onNext:   () => void
 }
 
+const EXPIRY_OPTIONS: { label: string; value: number }[] = [
+  { label: '24 hrs',  value: 24 },
+  { label: '48 hrs',  value: 48 },
+  { label: '72 hrs',  value: 72 },
+  { label: '7 days',  value: 168 },
+]
+
 export function BuilderStep1Details({ draft, onChange, onNext }: Props) {
   const canProceed = draft.title.trim().length > 0 && draft.role.trim().length > 0
+
+  // Notification recipients state
+  const [recipientEmail, setRecipientEmail] = useState('')
+  const [recipientName,  setRecipientName]  = useState('')
+
+  function addRecipient() {
+    const email = recipientEmail.trim().toLowerCase()
+    const name  = recipientName.trim()
+    if (!email || !name) return
+    if (draft.notification_recipients.some(r => r.email === email)) return
+    onChange({
+      notification_recipients: [
+        ...draft.notification_recipients,
+        { email, name },
+      ],
+    })
+    setRecipientEmail('')
+    setRecipientName('')
+  }
+
+  function removeRecipient(email: string) {
+    onChange({
+      notification_recipients: draft.notification_recipients.filter(r => r.email !== email),
+    })
+  }
 
   return (
     <div className="glass-card rounded-2xl p-6 space-y-6">
@@ -97,6 +132,32 @@ export function BuilderStep1Details({ draft, onChange, onNext }: Props) {
           )}
         </div>
 
+        {/* Link expiry */}
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-2">
+            Invite Link Expiry
+          </label>
+          <div className="flex gap-2">
+            {EXPIRY_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => onChange({ expiry_hours: opt.value })}
+                className={cn(
+                  'flex-1 py-2 rounded-xl text-sm font-medium border transition-all duration-150',
+                  draft.expiry_hours === opt.value
+                    ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300'
+                    : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/20'
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-slate-500 mt-1.5">
+            Candidate invite links expire after this time
+          </p>
+        </div>
+
         {/* Question order */}
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-2">Question Order</label>
@@ -121,6 +182,63 @@ export function BuilderStep1Details({ draft, onChange, onNext }: Props) {
               ? 'Questions shown in the order you define.'
               : 'Questions shuffled uniquely for each candidate.'}
           </p>
+        </div>
+
+        {/* Notification recipients */}
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            Notify When Completed <span className="text-slate-500 text-xs font-normal">(optional)</span>
+          </label>
+          <p className="text-xs text-slate-500 mb-3">
+            These people will receive an email + in-app notification when a candidate submits.
+          </p>
+
+          {/* Existing recipients */}
+          {draft.notification_recipients.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {draft.notification_recipients.map((r: NotificationRecipient) => (
+                <div
+                  key={r.email}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500/15 border border-indigo-500/25 text-xs font-medium text-indigo-300"
+                >
+                  <span>{r.name} ({r.email})</span>
+                  <button
+                    onClick={() => removeRecipient(r.email)}
+                    className="text-indigo-400 hover:text-red-400 transition-colors ml-0.5"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add recipient form */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={recipientName}
+              onChange={e => setRecipientName(e.target.value)}
+              placeholder="Name"
+              className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
+            />
+            <input
+              type="email"
+              value={recipientEmail}
+              onChange={e => setRecipientEmail(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addRecipient()}
+              placeholder="Email"
+              className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
+            />
+            <button
+              onClick={addRecipient}
+              disabled={!recipientEmail.trim() || !recipientName.trim()}
+              className="flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-medium bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Plus className="w-4 h-4" />
+              Add
+            </button>
+          </div>
         </div>
       </div>
 

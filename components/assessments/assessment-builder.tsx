@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import type { UserProfile, ProctoringConfig, TestCase, MCOption } from '@/types/database'
+import type { UserProfile, ProctoringConfig, TestCase, MCOption, NotificationRecipient } from '@/types/database'
 
 import { BuilderStep0JD } from './builder-step0-jd'
 import { BuilderStep1Details } from './builder-step1-details'
@@ -33,26 +33,32 @@ export type QuestionDraft = {
 }
 
 export type AssessmentDraft = {
-  title:              string
-  description:        string
-  role:               string
-  time_limit_enabled: boolean
-  time_limit_minutes: number
-  question_order:     'sequential' | 'random'
-  presentation_mode:  'one_at_a_time' | 'all_at_once'
-  questions:          QuestionDraft[]
-  proctoring:         ProctoringConfig
+  title:                   string
+  description:             string
+  role:                    string
+  time_limit_enabled:      boolean
+  time_limit_minutes:      number
+  question_order:          'sequential' | 'random'
+  presentation_mode:       'one_at_a_time' | 'all_at_once'
+  questions:               QuestionDraft[]
+  proctoring:              ProctoringConfig
+  expiry_hours:            number
+  notification_recipients: NotificationRecipient[]
+  template_type:           string | null
 }
 
 const defaultDraft: AssessmentDraft = {
-  title:              '',
-  description:        '',
-  role:               '',
-  time_limit_enabled: true,
-  time_limit_minutes: 60,
-  question_order:     'sequential',
-  presentation_mode:  'one_at_a_time',
-  questions:          [],
+  title:                   '',
+  description:             '',
+  role:                    '',
+  time_limit_enabled:      true,
+  time_limit_minutes:      60,
+  question_order:          'sequential',
+  presentation_mode:       'one_at_a_time',
+  questions:               [],
+  expiry_hours:            48,
+  notification_recipients: [],
+  template_type:           null,
   proctoring: {
     tab_switching:                true,
     paste_detection:              true,
@@ -66,6 +72,40 @@ const defaultDraft: AssessmentDraft = {
 
 const STEPS = ['Details', 'Questions', 'Proctoring', 'Review']
 
+function genId() { return Math.random().toString(36).slice(2) }
+
+function mapRawQuestion(raw: Record<string, unknown>, sortOrder: number): QuestionDraft {
+  const type = raw.type as QuestionDraft['type']
+  const base: QuestionDraft = {
+    id:           genId(),
+    type,
+    prompt:       (raw.prompt as string) ?? '',
+    points:       100,
+    sort_order:   sortOrder,
+    rubric_hints: (raw.rubric_hints as string) ?? '',
+  }
+  if (type === 'coding') {
+    return {
+      ...base,
+      language:     (raw.language as QuestionDraft['language']) ?? 'javascript',
+      starter_code: (raw.starter_code as string) ?? '',
+      test_cases:   (raw.test_cases as TestCase[]) ?? [],
+      instructions: (raw.instructions as string) ?? '',
+    }
+  }
+  if (type === 'multiple_choice') {
+    return {
+      ...base,
+      options:        (raw.options as MCOption[]) ?? [],
+      correct_option: (raw.correct_option as string) ?? '',
+    }
+  }
+  return {
+    ...base,
+    length_hint: (raw.length_hint as QuestionDraft['length_hint']) ?? 'medium',
+  }
+}
+
 interface Props {
   profile: UserProfile
 }
@@ -78,6 +118,35 @@ export function AssessmentBuilder({ profile }: Props) {
   const [saving, setSaving]           = useState(false)
   const [publishedId, setPublishedId]         = useState<string | null>(null)
   const [publishedToken, setPublishedToken]   = useState<string | null>(null)
+
+  // Pre-fill from template library
+  useEffect(() => {
+    const stored = sessionStorage.getItem('assessmentTemplate')
+    if (!stored) return
+    sessionStorage.removeItem('assessmentTemplate')
+    try {
+      const data = JSON.parse(stored) as {
+        template_type: string
+        title:         string
+        role:          string
+        questions:     unknown[]
+      }
+      const mapped = data.questions.map((q, i) =>
+        mapRawQuestion(q as Record<string, unknown>, i + 1)
+      )
+      setDraft(prev => ({
+        ...prev,
+        title:         data.title,
+        role:          data.role,
+        template_type: data.template_type,
+        questions:     mapped,
+      }))
+      setShowEntry(false)
+      setStep(1) // jump straight to questions
+    } catch {
+      // ignore parse errors
+    }
+  }, [])
 
   function updateDraft(patch: Partial<AssessmentDraft>) {
     setDraft(prev => ({ ...prev, ...patch }))

@@ -50,40 +50,55 @@ export type Database = {
       }
       assessments: {
         Row: {
-          id:                 string
-          user_id:            string
-          title:              string
-          description:        string | null
-          role:               string
-          time_limit_minutes: number
-          proctoring_config:  ProctoringConfig
-          question_order:     'sequential' | 'random'
-          presentation_mode:  'one_at_a_time' | 'all_at_once'
-          status:             'draft' | 'published' | 'archived'
-          created_at:         string
-          updated_at:         string
+          id:                       string
+          user_id:                  string
+          title:                    string
+          description:              string | null
+          role:                     string
+          time_limit_minutes:       number
+          proctoring_config:        ProctoringConfig
+          question_order:           'sequential' | 'random'
+          presentation_mode:        'one_at_a_time' | 'all_at_once'
+          status:                   'draft' | 'published' | 'archived'
+          expiry_hours:             number | null
+          notification_recipients:  NotificationRecipient[]
+          template_type:            string | null
+          allow_retakes:            boolean
+          proctoring_intensity:     string | null
+          created_at:               string
+          updated_at:               string
         }
         Insert: {
-          id?:                string
-          user_id:            string
-          title:              string
-          description?:       string | null
-          role:               string
-          time_limit_minutes: number
-          proctoring_config?: ProctoringConfig
-          question_order?:    'sequential' | 'random'
-          presentation_mode?: 'one_at_a_time' | 'all_at_once'
-          status?:            'draft' | 'published' | 'archived'
+          id?:                       string
+          user_id:                   string
+          title:                     string
+          description?:              string | null
+          role:                      string
+          time_limit_minutes:        number
+          proctoring_config?:        ProctoringConfig
+          question_order?:           'sequential' | 'random'
+          presentation_mode?:        'one_at_a_time' | 'all_at_once'
+          status?:                   'draft' | 'published' | 'archived'
+          expiry_hours?:             number | null
+          notification_recipients?:  NotificationRecipient[]
+          template_type?:            string | null
+          allow_retakes?:            boolean
+          proctoring_intensity?:     string | null
         }
         Update: {
-          title?:              string
-          description?:        string | null
-          role?:               string
-          time_limit_minutes?: number
-          proctoring_config?:  ProctoringConfig
-          question_order?:     'sequential' | 'random'
-          presentation_mode?:  'one_at_a_time' | 'all_at_once'
-          status?:             'draft' | 'published' | 'archived'
+          title?:                     string
+          description?:               string | null
+          role?:                      string
+          time_limit_minutes?:        number
+          proctoring_config?:         ProctoringConfig
+          question_order?:            'sequential' | 'random'
+          presentation_mode?:         'one_at_a_time' | 'all_at_once'
+          status?:                    'draft' | 'published' | 'archived'
+          expiry_hours?:              number | null
+          notification_recipients?:   NotificationRecipient[]
+          template_type?:             string | null
+          allow_retakes?:             boolean
+          proctoring_intensity?:      string | null
         }
       }
       assessment_questions: {
@@ -179,6 +194,8 @@ export type Database = {
           skill_score:          number | null
           ai_integrity_summary: string | null
           status:               'in_progress' | 'completed' | 'abandoned'
+          recruiter_decision:   string | null
+          decision_notes:       string | null
           created_at:           string
         }
         Insert: {
@@ -193,6 +210,8 @@ export type Database = {
           skill_score?:          number | null
           ai_integrity_summary?: string | null
           status?:               'in_progress' | 'completed' | 'abandoned'
+          recruiter_decision?:   string | null
+          decision_notes?:       string | null
         }
         Update: {
           completed_at?:         string | null
@@ -201,6 +220,8 @@ export type Database = {
           skill_score?:          number | null
           ai_integrity_summary?: string | null
           status?:               'in_progress' | 'completed' | 'abandoned'
+          recruiter_decision?:   string | null
+          decision_notes?:       string | null
         }
       }
       assessment_question_responses: {
@@ -677,6 +698,12 @@ export type Database = {
 }
 
 // ─── Domain types ─────────────────────────────────────────
+
+export type NotificationRecipient = {
+  email:   string
+  name:    string
+  user_id?: string | null
+}
 
 export type RedFlag = {
   type:        string

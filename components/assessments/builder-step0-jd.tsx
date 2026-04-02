@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, FileText, Plus, ArrowLeft, RefreshCw, CheckCircle2 } from 'lucide-react'
+import { Sparkles, FileText, Plus, ArrowLeft, RefreshCw, CheckCircle2, BookOpen } from 'lucide-react'
+import Link from 'next/link'
 import { FileDropTextarea } from '@/components/ui/file-drop-textarea'
 import { cn } from '@/lib/utils'
 import type { AssessmentDraft, QuestionDraft } from './assessment-builder'
@@ -135,7 +136,7 @@ export function BuilderStep0JD({ onSkip, onConfirm }: Props) {
             <p className="text-sm text-slate-400">Choose your starting point for this assessment</p>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {/* Generate from JD */}
             <button
               onClick={() => setPhase('input')}
@@ -154,6 +155,25 @@ export function BuilderStep0JD({ onSkip, onConfirm }: Props) {
                 Paste JD →
               </span>
             </button>
+
+            {/* Browse Templates */}
+            <Link
+              href="/dashboard/assessments/library"
+              className="group flex flex-col items-start gap-3 p-5 rounded-xl bg-violet-500/8 border border-violet-500/25 hover:border-violet-500/50 hover:bg-violet-500/12 transition-all duration-150 text-left"
+            >
+              <div className="w-10 h-10 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-violet-400" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white mb-0.5">Browse Templates</p>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Pick from 15 role-specific templates. Claude generates starter questions tailored to the position.
+                </p>
+              </div>
+              <span className="text-xs font-medium text-violet-400 group-hover:text-violet-300 transition-colors">
+                View library →
+              </span>
+            </Link>
 
             {/* Start from scratch */}
             <button

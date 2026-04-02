@@ -39,15 +39,18 @@ export async function POST(req: NextRequest) {
   const { data: assessment, error: assessmentError } = await db
     .from('assessments')
     .insert({
-      user_id:            user.id,
-      title:              draft.title.trim(),
-      description:        draft.description?.trim() || null,
-      role:               draft.role.trim(),
-      time_limit_minutes: draft.time_limit_enabled ? draft.time_limit_minutes : 60,
-      proctoring_config:  draft.proctoring,
-      question_order:     draft.question_order,
-      presentation_mode:  draft.presentation_mode,
+      user_id:                  user.id,
+      title:                    draft.title.trim(),
+      description:              draft.description?.trim() || null,
+      role:                     draft.role.trim(),
+      time_limit_minutes:       draft.time_limit_enabled ? draft.time_limit_minutes : 60,
+      proctoring_config:        draft.proctoring,
+      question_order:           draft.question_order,
+      presentation_mode:        draft.presentation_mode,
       status,
+      expiry_hours:             draft.expiry_hours ?? 48,
+      notification_recipients:  draft.notification_recipients ?? [],
+      template_type:            draft.template_type ?? null,
     })
     .select()
     .single()

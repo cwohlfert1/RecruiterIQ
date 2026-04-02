@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
   // Verify assessment belongs to this manager
   const { data: assessment } = await db
     .from('assessments')
-    .select('id, title, role, status')
+    .select('id, title, role, status, expiry_hours')
     .eq('id', assessmentId)
     .eq('user_id', user.id)
     .single()
@@ -46,6 +46,9 @@ export async function POST(req: NextRequest) {
   if (assessment.status !== 'published') {
     return NextResponse.json({ error: 'Assessment must be published to send invites' }, { status: 400 })
   }
+
+  const expiryHours = (assessment.expiry_hours as number | null) ?? 48
+  const expiresAt   = new Date(Date.now() + expiryHours * 60 * 60 * 1000).toISOString()
 
   // Create invite
   const { data: invite, error: inviteError } = await db
@@ -56,6 +59,7 @@ export async function POST(req: NextRequest) {
       candidate_name:  candidateName.trim(),
       candidate_email: candidateEmail.trim(),
       sent_at:         new Date().toISOString(),
+      expires_at:      expiresAt,
     })
     .select()
     .single()
@@ -77,7 +81,7 @@ export async function POST(req: NextRequest) {
           <h2 style="color: #1e293b;">Hi ${candidateName},</h2>
           <p>You've been invited to complete a skills assessment for the <strong>${assessment.role}</strong> role.</p>
           <p><strong>Assessment:</strong> ${assessment.title}</p>
-          <p>Click the link below to begin. The link expires in 7 days.</p>
+          <p>Click the link below to begin. The link expires in ${expiryHours < 48 ? `${expiryHours} hours` : expiryHours === 168 ? '7 days' : `${expiryHours / 24} days`}.</p>
           <a href="${candidateLink}" style="
             display: inline-block;
             margin: 16px 0;

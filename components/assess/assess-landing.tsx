@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Clock, FileText, Shield, AlertCircle, ChevronRight } from 'lucide-react'
+import { Clock, FileText, Shield, AlertCircle, ChevronRight, Timer } from 'lucide-react'
 import type { ProctoringConfig } from '@/types/database'
 
 interface Props {
@@ -19,6 +19,17 @@ interface Props {
   questionCount: number
   expired: boolean
   alreadyStarted: boolean
+  expiresAt: string | null
+}
+
+function formatCountdown(expiresAt: string): string {
+  const ms       = new Date(expiresAt).getTime() - Date.now()
+  if (ms <= 0) return 'Expired'
+  const hours    = Math.floor(ms / (1000 * 60 * 60))
+  const minutes  = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60))
+  if (hours >= 48) return `${Math.floor(hours / 24)} days`
+  if (hours >= 1)  return `${hours}h ${minutes}m`
+  return `${minutes} minutes`
 }
 
 export function AssessLanding({
@@ -28,6 +39,7 @@ export function AssessLanding({
   questionCount,
   expired,
   alreadyStarted,
+  expiresAt,
 }: Props) {
   const router = useRouter()
   const config = assessment.proctoring_config as ProctoringConfig | null
@@ -82,6 +94,16 @@ export function AssessLanding({
             <p className="text-gray-600 mt-2 text-sm">{assessment.description}</p>
           )}
         </div>
+
+        {/* Expiry countdown */}
+        {expiresAt && !expired && (
+          <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-4 text-sm">
+            <Timer className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            <span className="text-amber-800">
+              Link expires in <strong>{formatCountdown(expiresAt)}</strong>
+            </span>
+          </div>
+        )}
 
         {/* Info cards */}
         <div className="grid grid-cols-2 gap-3 mb-6">
