@@ -60,11 +60,11 @@ export async function POST(req: NextRequest) {
     'Return ONLY valid JSON, no markdown, no explanation outside the JSON.'
 
   const userPrompt = `Score this resume against this job description using these exact weights:
-- Must-Have Skills Match: 40% (does candidate have the required skills?)
-- Domain/Industry Experience: 20% (relevant industry background?)
+- Must-Have Skills Match: 55% (does candidate have the required skills?)
+- Domain/Industry Experience: 10% (relevant industry background?)
 - Communication & Clarity: 15% (how well-written and clear is the resume?)
 - Tenure Stability: 10% (consistent employment history, not job-hopping?)
-- Depth of Tool Usage: 15% (depth of experience with relevant tools?)
+- Depth of Tool Usage: 10% (depth of experience with relevant tools?)
 
 For each category: score 0-100, plus one concise sentence explanation.
 Calculate overall score as weighted sum.
@@ -80,11 +80,11 @@ Return ONLY this JSON structure:
   "overall_score": <integer 0-100>,
   "job_title": "<extracted job title from JD or empty string>",
   "breakdown": {
-    "must_have_skills":  { "score": <0-100>, "weight": 0.40, "weighted": <score*0.40 rounded>, "explanation": "<sentence>" },
-    "domain_experience": { "score": <0-100>, "weight": 0.20, "weighted": <score*0.20 rounded>, "explanation": "<sentence>" },
+    "must_have_skills":  { "score": <0-100>, "weight": 0.55, "weighted": <score*0.55 rounded>, "explanation": "<sentence>" },
+    "domain_experience": { "score": <0-100>, "weight": 0.10, "weighted": <score*0.10 rounded>, "explanation": "<sentence>" },
     "communication":     { "score": <0-100>, "weight": 0.15, "weighted": <score*0.15 rounded>, "explanation": "<sentence>" },
     "tenure_stability":  { "score": <0-100>, "weight": 0.10, "weighted": <score*0.10 rounded>, "explanation": "<sentence>" },
-    "tool_depth":        { "score": <0-100>, "weight": 0.15, "weighted": <score*0.15 rounded>, "explanation": "<sentence>" }
+    "tool_depth":        { "score": <0-100>, "weight": 0.10, "weighted": <score*0.10 rounded>, "explanation": "<sentence>" }
   }
 }`
 
@@ -112,28 +112,28 @@ Return ONLY this JSON structure:
   const breakdownJson: BreakdownJson = {
     must_have_skills:  {
       score:    breakdown.must_have_skills.score,
-      weight:   breakdown.must_have_skills.weight,
-      weighted: breakdown.must_have_skills.weighted,
+      weight:   0.55,
+      weighted: Math.round(breakdown.must_have_skills.score * 0.55),
     },
     domain_experience: {
       score:    breakdown.domain_experience.score,
-      weight:   breakdown.domain_experience.weight,
-      weighted: breakdown.domain_experience.weighted,
+      weight:   0.10,
+      weighted: Math.round(breakdown.domain_experience.score * 0.10),
     },
     communication: {
       score:    breakdown.communication.score,
-      weight:   breakdown.communication.weight,
-      weighted: breakdown.communication.weighted,
+      weight:   0.15,
+      weighted: Math.round(breakdown.communication.score * 0.15),
     },
     tenure_stability: {
       score:    breakdown.tenure_stability.score,
-      weight:   breakdown.tenure_stability.weight,
-      weighted: breakdown.tenure_stability.weighted,
+      weight:   0.10,
+      weighted: Math.round(breakdown.tenure_stability.score * 0.10),
     },
     tool_depth: {
       score:    breakdown.tool_depth.score,
-      weight:   breakdown.tool_depth.weight,
-      weighted: breakdown.tool_depth.weighted,
+      weight:   0.10,
+      weighted: Math.round(breakdown.tool_depth.score * 0.10),
     },
   }
 

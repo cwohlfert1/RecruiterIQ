@@ -777,9 +777,10 @@ export type MCOption = {
 }
 
 export type BreakdownCategory = {
-  score:    number
-  weight:   number
-  weighted: number
+  score:       number
+  weight:      number
+  weighted:    number
+  explanation?: string
 }
 
 export type BreakdownJson = {

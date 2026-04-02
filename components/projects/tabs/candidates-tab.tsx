@@ -14,6 +14,7 @@ import { CandidatesTable }        from '@/components/projects/candidates/candida
 import { BatchScoreBar }          from '@/components/projects/candidates/batch-score-bar'
 import { CandidateFilters, DEFAULT_FILTERS } from '@/components/projects/candidate-filters'
 import { CandidateSlideout }      from '@/components/projects/candidate-slideout'
+import { CandidateCompare }       from '@/components/projects/candidate-compare'
 import type { FilterState }       from '@/components/projects/candidate-filters'
 
 interface BatchState {
@@ -62,6 +63,7 @@ export function CandidatesTab({
   const [batchState,     setBatchState]     = useState<BatchState | null>(null)
   const [confirmBatch,   setConfirmBatch]   = useState(false)
   const [scoringIds,     setScoringIds]     = useState<Set<string>>(new Set())
+  const [compareBase,    setCompareBase]    = useState<CandidateRow | null>(null)
 
   // Search & Filters
   const [searchQuery,    setSearchQuery]    = useState('')
@@ -530,6 +532,7 @@ export function CandidatesTab({
           onSummary={openSummary}
           onAssessment={openAssessment}
           onScoreIndividual={handleScoreIndividual}
+          onCompare={c => setCompareBase(c)}
         />
       ) : candidates.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -599,6 +602,15 @@ export function CandidatesTab({
         onClose={() => { setAssessOpen(false); setAssessTarget(null) }}
         onSent={handleAssessmentSent}
       />
+
+      {compareBase && (
+        <CandidateCompare
+          base={compareBase}
+          candidates={candidates}
+          projectId={project.id}
+          onClose={() => setCompareBase(null)}
+        />
+      )}
     </div>
   )
 }

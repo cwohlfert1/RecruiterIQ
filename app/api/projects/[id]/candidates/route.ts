@@ -31,11 +31,11 @@ async function scoreWithClaude(
   jdText: string,
 ): Promise<{ score: number; breakdownJson: BreakdownJson } | null> {
   const userPrompt = `Score this resume against this job description using these exact weights:
-- Must-Have Skills Match: 40%
-- Domain/Industry Experience: 20%
+- Must-Have Skills Match: 55%
+- Domain/Industry Experience: 10%
 - Communication & Clarity: 15%
 - Tenure Stability: 10%
-- Depth of Tool Usage: 15%
+- Depth of Tool Usage: 10%
 
 Job Description:
 ${jdText}
@@ -48,11 +48,11 @@ Return ONLY this JSON:
   "overall_score": <integer 0-100>,
   "job_title": "<extracted job title or empty string>",
   "breakdown": {
-    "must_have_skills":  { "score": <0-100>, "weight": 0.40, "weighted": <rounded>, "explanation": "<sentence>" },
-    "domain_experience": { "score": <0-100>, "weight": 0.20, "weighted": <rounded>, "explanation": "<sentence>" },
+    "must_have_skills":  { "score": <0-100>, "weight": 0.55, "weighted": <rounded>, "explanation": "<sentence>" },
+    "domain_experience": { "score": <0-100>, "weight": 0.10, "weighted": <rounded>, "explanation": "<sentence>" },
     "communication":     { "score": <0-100>, "weight": 0.15, "weighted": <rounded>, "explanation": "<sentence>" },
     "tenure_stability":  { "score": <0-100>, "weight": 0.10, "weighted": <rounded>, "explanation": "<sentence>" },
-    "tool_depth":        { "score": <0-100>, "weight": 0.15, "weighted": <rounded>, "explanation": "<sentence>" }
+    "tool_depth":        { "score": <0-100>, "weight": 0.10, "weighted": <rounded>, "explanation": "<sentence>" }
   }
 }`
 
@@ -68,11 +68,11 @@ Return ONLY this JSON:
     const data    = JSON.parse(cleaned) as ClaudeScoreResponse
 
     const breakdownJson: BreakdownJson = {
-      must_have_skills:  { score: data.breakdown.must_have_skills.score,  weight: data.breakdown.must_have_skills.weight,  weighted: data.breakdown.must_have_skills.weighted  },
-      domain_experience: { score: data.breakdown.domain_experience.score, weight: data.breakdown.domain_experience.weight, weighted: data.breakdown.domain_experience.weighted },
-      communication:     { score: data.breakdown.communication.score,     weight: data.breakdown.communication.weight,     weighted: data.breakdown.communication.weighted     },
-      tenure_stability:  { score: data.breakdown.tenure_stability.score,  weight: data.breakdown.tenure_stability.weight,  weighted: data.breakdown.tenure_stability.weighted  },
-      tool_depth:        { score: data.breakdown.tool_depth.score,        weight: data.breakdown.tool_depth.weight,        weighted: data.breakdown.tool_depth.weighted        },
+      must_have_skills:  { score: data.breakdown.must_have_skills.score,  weight: 0.55, weighted: Math.round(data.breakdown.must_have_skills.score  * 0.55) },
+      domain_experience: { score: data.breakdown.domain_experience.score, weight: 0.10, weighted: Math.round(data.breakdown.domain_experience.score * 0.10) },
+      communication:     { score: data.breakdown.communication.score,     weight: 0.15, weighted: Math.round(data.breakdown.communication.score     * 0.15) },
+      tenure_stability:  { score: data.breakdown.tenure_stability.score,  weight: 0.10, weighted: Math.round(data.breakdown.tenure_stability.score  * 0.10) },
+      tool_depth:        { score: data.breakdown.tool_depth.score,        weight: 0.10, weighted: Math.round(data.breakdown.tool_depth.score        * 0.10) },
     }
 
     return { score: data.overall_score, breakdownJson }

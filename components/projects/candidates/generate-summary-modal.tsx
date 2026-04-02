@@ -107,9 +107,33 @@ export function GenerateSummaryModal({ open, candidate, project, onClose }: Prop
   }
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(text)
+    // Strip markdown bold markers for plain-text copy
+    const plain = text.replace(/\*\*/g, '').trim()
+    await navigator.clipboard.writeText(plain)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  function renderBody() {
+    if (!text) return null
+    const lines = text.split('\n').filter(l => l.trim())
+    return (
+      <ul className="space-y-3">
+        {lines.map((line, i) => {
+          const match = line.match(/^[-•*]\s*\*\*(.+?)\*\*[:\s]\s*(.*)$/)
+          if (match) {
+            return (
+              <li key={i} className="flex gap-2 text-sm leading-relaxed">
+                <span className="font-semibold text-white shrink-0">{match[1]}:</span>
+                <span className="text-slate-300">{match[2]}</span>
+              </li>
+            )
+          }
+          // Fallback for non-matching lines (e.g., partial during stream)
+          return <li key={i} className="text-sm text-slate-300 leading-relaxed list-none">{line}</li>
+        })}
+      </ul>
+    )
   }
 
   return (
@@ -165,9 +189,7 @@ export function GenerateSummaryModal({ open, candidate, project, onClose }: Prop
                       : 'Generating summary…'}
                   </div>
                 )}
-                {text && (
-                  <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{text}</p>
-                )}
+                {text && renderBody()}
                 {streaming && text && (
                   <span className="inline-block w-1 h-4 bg-indigo-400 animate-pulse ml-0.5 align-middle" />
                 )}

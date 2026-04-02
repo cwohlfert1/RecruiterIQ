@@ -80,22 +80,22 @@ Incorporate these results naturally into Bullet 4 of the summary. Example format
       try {
         const messageStream = anthropic.messages.stream({
           model: MODEL,
-          max_tokens: 600,
+          max_tokens: 500,
           messages: [
             {
               role: 'user',
-              content: `You are a professional recruiter writing a client brief. Based on these notes, write a polished ${safeSessionId ? '4' : '3'}-paragraph summary brief for this client engagement.
+              content: `You are a professional recruiter writing a candidate brief to present to a client. Based on the resume below, write exactly ${safeSessionId ? '5' : '4'} bullet points using this precise format — one bullet per line, bold category label, colon, one sentence:
+
+- **Skills Match**: [how well their skills align with the ${jobTitle.trim()} role]
+- **Background**: [their experience level and most relevant background]
+- **Communication**: [how polished and clear their resume is as a proxy for communication]
+- **Stability**: [their career trajectory and job tenure pattern]${safeSessionId ? '\n- **Assessment**: [incorporate the assessment scores — be factual and brief]' : ''}
 
 Job Title: ${jobTitle.trim()}
 Company: ${safeCompany || 'Not specified'}
-Notes: ${notes}${assessmentContext}
+Resume: ${notes}${assessmentContext}
 
-Write ${safeSessionId ? '4' : '3'} paragraphs:
-1. The opportunity (role + company context)
-2. What they're looking for (key requirements)
-3. Why this is a good opportunity${safeSessionId ? '\n4. Assessment verification (use the assessment results above — keep it factual and brief)' : ''}
-
-Be professional, concise, and compelling. No fluff.`,
+Output ONLY the ${safeSessionId ? '5' : '4'} bullet lines. No intro, no outro, no extra text.`,
             },
           ],
         })

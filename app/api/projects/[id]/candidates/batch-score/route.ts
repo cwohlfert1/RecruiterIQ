@@ -100,11 +100,11 @@ Return ONLY JSON:
 {
   "overall_score": <integer 0-100>,
   "breakdown": {
-    "must_have_skills":  { "score": <0-100>, "weight": 0.40, "weighted": <rounded>, "explanation": "" },
-    "domain_experience": { "score": <0-100>, "weight": 0.20, "weighted": <rounded>, "explanation": "" },
+    "must_have_skills":  { "score": <0-100>, "weight": 0.55, "weighted": <rounded>, "explanation": "" },
+    "domain_experience": { "score": <0-100>, "weight": 0.10, "weighted": <rounded>, "explanation": "" },
     "communication":     { "score": <0-100>, "weight": 0.15, "weighted": <rounded>, "explanation": "" },
     "tenure_stability":  { "score": <0-100>, "weight": 0.10, "weighted": <rounded>, "explanation": "" },
-    "tool_depth":        { "score": <0-100>, "weight": 0.15, "weighted": <rounded>, "explanation": "" }
+    "tool_depth":        { "score": <0-100>, "weight": 0.10, "weighted": <rounded>, "explanation": "" }
   }
 }`,
             }],
@@ -115,11 +115,11 @@ Return ONLY JSON:
           const data    = JSON.parse(cleaned) as ClaudeScoreResponse
 
           const breakdownJson: BreakdownJson = {
-            must_have_skills:  { score: data.breakdown.must_have_skills.score,  weight: 0.40, weighted: data.breakdown.must_have_skills.weighted  },
-            domain_experience: { score: data.breakdown.domain_experience.score, weight: 0.20, weighted: data.breakdown.domain_experience.weighted },
-            communication:     { score: data.breakdown.communication.score,     weight: 0.15, weighted: data.breakdown.communication.weighted     },
-            tenure_stability:  { score: data.breakdown.tenure_stability.score,  weight: 0.10, weighted: data.breakdown.tenure_stability.weighted  },
-            tool_depth:        { score: data.breakdown.tool_depth.score,        weight: 0.15, weighted: data.breakdown.tool_depth.weighted        },
+            must_have_skills:  { score: data.breakdown.must_have_skills.score,  weight: 0.55, weighted: Math.round(data.breakdown.must_have_skills.score  * 0.55) },
+            domain_experience: { score: data.breakdown.domain_experience.score, weight: 0.10, weighted: Math.round(data.breakdown.domain_experience.score * 0.10) },
+            communication:     { score: data.breakdown.communication.score,     weight: 0.15, weighted: Math.round(data.breakdown.communication.score     * 0.15) },
+            tenure_stability:  { score: data.breakdown.tenure_stability.score,  weight: 0.10, weighted: Math.round(data.breakdown.tenure_stability.score  * 0.10) },
+            tool_depth:        { score: data.breakdown.tool_depth.score,        weight: 0.10, weighted: Math.round(data.breakdown.tool_depth.score        * 0.10) },
           }
 
           await supabase.from('project_candidates')
