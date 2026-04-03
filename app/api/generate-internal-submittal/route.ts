@@ -50,39 +50,49 @@ export async function POST(req: NextRequest) {
         .join('\n')
     : ''
 
-  const systemPrompt = `You are a technical recruiter writing a 4-bullet internal submittal note for your account manager.
+  const systemPrompt = `You are a senior technical recruiter writing a candidate sell summary for a hiring manager. Your job is to market the candidate concisely and confidently. Match the tone of a strong recruiter pitching a candidate they believe in.`
 
-RULES:
-- Professional but brief — recruiter to AM
-- No fluff, no filler phrases
-- No "maps cleanly to", "direct hit", "I am pleased to present", or any sales language
-- No emojis
-- Each bullet: bold label + 1-2 sentences max
-- Pull specific skills, years, tools, metrics, and company names directly from the resume
-- Each bullet connects what the candidate has to what the JD requires — stated plainly
-- If pay rate is provided include it in bullet 4
-- Be honest — if there is a gap, note it briefly
+  const payRateLine = pay_rate_min
+    ? `${pay_rate_min}${pay_rate_max ? `–${pay_rate_max}` : '+'}/hr W2`
+    : 'not provided'
 
-FORMAT (follow exactly, output raw markdown):
-- **[Skill Area + Tools + Years]** — [what they have, stated factually, tied to JD requirement]
-- **[Domain/Industry Experience]** — [relevant background with specifics tied to role context]
-- **[Key Differentiator or Strongest Point]** — [what stands out for this specific role, with metrics where available]
-- **[Rate & Availability]** — [W2 hourly rate if known + notice period if found in resume. If rate unknown: "Rate TBD — not yet discussed." If there is a notable gap vs JD, note it here]
+  const topAreas = cqi_breakdown
+    ? Object.entries(cqi_breakdown)
+        .sort((a, b) => b[1].score - a[1].score)
+        .slice(0, 3)
+        .map(([k, v]) => `${k} (${v.score}/100)`)
+        .join(', ')
+    : 'not available'
 
-IMPORTANT:
-- Use the candidate's actual resume data only
-- Never fabricate numbers, companies, or titles
-- If resume lacks detail for a bullet, keep it brief rather than padding it out
-- 4 bullets total, no more, no less
-- Output only the 4 bullets — no intro, no sign-off, no header`
+  const userContent = `Write a candidate sell summary using the resume and job description below.
 
-  const userContent = [
-    `RESUME:\n${resume_text.slice(0, 6000)}`,
-    jd_text ? `\nJOB DESCRIPTION:\n${jd_text.slice(0, 3000)}` : '',
-    cqiContext ? `\n${cqiContext}` : '',
-    breakdownContext ? `Score breakdown:\n${breakdownContext}` : '',
-    `\n${rateContext}`,
-  ].filter(Boolean).join('\n')
+Requirements:
+- 4-5 bullet points only
+- Each bullet starts with a **bolded skill, qualification, or strength**
+- Follow the bold with a dash and 1 sentence max of specific explanation
+- Focus on: relevant experience, technical tools, certifications, communication and stakeholder skills
+- Tone: confident, professional, slightly sales-oriented — this is meant to market the candidate
+- No fluff, no generic phrases, no long sentences
+- Prioritize clarity and impact over detail
+- Tailor bullets to align with the job description where possible
+- Lead with the most differentiating or standout experience first
+- If pay rate is provided include it as the final bullet
+
+Output format exactly:
+- **[Skill/Strength]** – brief explanation
+- **[Skill/Strength]** – brief explanation
+- **[Skill/Strength]** – brief explanation
+- **[Skill/Strength]** – brief explanation
+
+Job Description:
+${jd_text ? jd_text.slice(0, 3000) : 'Not provided'}
+
+Resume:
+${resume_text.slice(0, 6000)}
+
+CQI Score: ${cqi_score !== null && cqi_score !== undefined ? `${cqi_score}/100` : 'not available'}
+Top scoring areas: ${topAreas}
+Pay Rate: ${payRateLine}`
 
   try {
     const message = await client.messages.create({
