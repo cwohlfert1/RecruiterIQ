@@ -347,7 +347,7 @@ export function CandidateSlideout({
               'fixed bg-[#12141F] border border-white/10 z-50 flex flex-col shadow-2xl',
               isFullscreen
                 ? 'inset-[5vh_5vw] rounded-2xl'
-                : 'right-0 top-0 bottom-0 w-full max-w-[420px] border-l rounded-none',
+                : 'right-0 top-0 bottom-0 h-screen w-[640px] max-w-[640px] border-l rounded-none',
             )}
           >
             {/* Header */}
