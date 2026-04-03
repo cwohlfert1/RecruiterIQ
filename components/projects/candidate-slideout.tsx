@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { CandidateRow } from '@/app/dashboard/projects/[id]/page'
-import type { PipelineStage, BreakdownJson } from '@/types/database'
+import type { PipelineStage, BreakdownJson, CqiRecommendation } from '@/types/database'
 import { CandidateTags }             from '@/components/projects/candidate-tags'
 import { CandidateNotes }            from '@/components/projects/candidate-notes'
 import { FlagCandidateModal }        from '@/components/projects/flag-candidate-modal'
@@ -91,26 +91,34 @@ function CqiRing({ score, size = 100 }: { score: number; size?: number }) {
   )
 }
 
-const BREAKDOWN_CATEGORIES: Array<{ key: keyof BreakdownJson; label: string }> = [
-  { key: 'must_have_skills',  label: 'Must-Have Skills'  },
+const BREAKDOWN_CATEGORIES: Array<{ key: keyof BreakdownJson; label: string; inverted?: boolean }> = [
+  { key: 'technical_fit',     label: 'Technical Fit'    },
   { key: 'domain_experience', label: 'Domain Experience' },
-  { key: 'communication',     label: 'Communication'     },
-  { key: 'tenure_stability',  label: 'Tenure Stability'  },
-  { key: 'tool_depth',        label: 'Tool Depth'        },
+  { key: 'scope_impact',      label: 'Scope & Impact'   },
+  { key: 'communication',     label: 'Communication'    },
+  { key: 'catfish_risk',      label: 'Red Flag Risk',   inverted: true },
 ]
 
-function BreakdownBar({ label, score, weight }: { label: string; score: number; weight: number }) {
-  const color = score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+const RECOMMENDATION_BADGE: Record<string, { label: string; cls: string }> = {
+  'Strong Submit': { label: 'Strong Submit', cls: 'bg-green-500/15 text-green-400 border border-green-500/25' },
+  'Submit':        { label: 'Submit',        cls: 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/25' },
+  'Borderline':    { label: 'Borderline',    cls: 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/25' },
+  'Pass':          { label: 'Pass',          cls: 'bg-red-500/15 text-red-400 border border-red-500/25' },
+}
+
+function BreakdownBar({ label, score, weight, inverted }: { label: string; score: number; weight: number; inverted?: boolean }) {
+  const displayScore = inverted ? 100 - score : score
+  const color = displayScore >= 80 ? 'bg-emerald-500' : displayScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'
   return (
     <div>
       <div className="flex justify-between text-xs mb-1">
         <span className="text-slate-400">{label}</span>
         <span className="text-slate-300 font-medium">
-          {score} <span className="text-slate-600">({Math.round(weight * 100)}%)</span>
+          {displayScore} <span className="text-slate-600">({Math.round(weight * 100)}%)</span>
         </span>
       </div>
       <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
-        <div className={cn('h-full rounded-full', color)} style={{ width: `${score}%` }} />
+        <div className={cn('h-full rounded-full', color)} style={{ width: `${displayScore}%` }} />
       </div>
     </div>
   )
@@ -313,7 +321,7 @@ export function CandidateSlideout({
     } finally { setFlagging(false) }
   }
 
-  const breakdown     = candidate?.cqi_breakdown_json as BreakdownJson | null
+  const breakdown     = candidate?.cqi_breakdown_json as (BreakdownJson & { recommendation?: CqiRecommendation }) | null
   const flags         = localFlags ?? (candidate?.red_flags_json as Array<{ type: string; severity: string; evidence: string; explanation: string }> | null)
   const flagScore     = localFlagScore ?? candidate?.red_flag_score ?? null
   const currentStage  = (candidate?.pipeline_stage ?? 'sourced') as PipelineStage
@@ -478,7 +486,17 @@ export function CandidateSlideout({
                     {candidate.cqi_score !== null ? (
                       <>
                         <div className="flex items-center gap-4">
-                          <CqiRing score={candidate.cqi_score} size={100} />
+                          <div className="flex flex-col items-center gap-2">
+                            <CqiRing score={candidate.cqi_score} size={100} />
+                            {breakdown?.recommendation && RECOMMENDATION_BADGE[breakdown.recommendation] && (
+                              <span className={cn(
+                                'text-[10px] font-semibold px-2 py-0.5 rounded-full',
+                                RECOMMENDATION_BADGE[breakdown.recommendation].cls,
+                              )}>
+                                {RECOMMENDATION_BADGE[breakdown.recommendation].label}
+                              </span>
+                            )}
+                          </div>
                           {breakdown && (
                             <div className="flex-1 space-y-2">
                               {BREAKDOWN_CATEGORIES.map(cat => (
@@ -487,6 +505,7 @@ export function CandidateSlideout({
                                   label={cat.label}
                                   score={breakdown[cat.key]?.score ?? 0}
                                   weight={breakdown[cat.key]?.weight ?? 0}
+                                  inverted={cat.inverted}
                                 />
                               ))}
                             </div>

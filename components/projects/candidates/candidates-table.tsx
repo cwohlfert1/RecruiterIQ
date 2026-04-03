@@ -25,12 +25,12 @@ const STATUS_CLASS: Record<CandidateStatus, string> = {
   rejected:  'bg-red-500/15 text-red-400 border-red-500/20',
 }
 
-const BREAKDOWN_CATS: Array<{ key: keyof BreakdownJson; label: string }> = [
-  { key: 'must_have_skills',  label: 'Must-Have Skills'  },
-  { key: 'communication',     label: 'Communication'     },
-  { key: 'tenure_stability',  label: 'Tenure Stability'  },
-  { key: 'tool_depth',        label: 'Tool Depth'        },
+const BREAKDOWN_CATS: Array<{ key: keyof BreakdownJson; label: string; inverted?: boolean }> = [
+  { key: 'technical_fit',     label: 'Technical Fit'    },
   { key: 'domain_experience', label: 'Domain Experience' },
+  { key: 'scope_impact',      label: 'Scope & Impact'   },
+  { key: 'communication',     label: 'Communication'    },
+  { key: 'catfish_risk',      label: 'Red Flag Risk',   inverted: true },
 ]
 
 // ─── Tooltip engine ───────────────────────────────────────────
@@ -122,18 +122,19 @@ function CqiTooltip({
       <p className="text-[10px] text-slate-500 mb-2.5">CQI breakdown:</p>
 
       <div className="space-y-1.5">
-        {BREAKDOWN_CATS.map(({ key, label }) => {
+        {BREAKDOWN_CATS.map(({ key, label, inverted }) => {
           const cat   = breakdown[key]
           if (!cat) return null
-          const color = cat.score >= 80 ? 'bg-emerald-500' : cat.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+          const displayScore = inverted ? 100 - cat.score : cat.score
+          const color = displayScore >= 80 ? 'bg-emerald-500' : displayScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'
           return (
             <div key={key}>
               <div className="flex justify-between text-[10px] mb-0.5">
                 <span className="text-slate-400">{label}</span>
-                <span className="text-slate-300 font-medium tabular-nums">{cat.score}/100</span>
+                <span className="text-slate-300 font-medium tabular-nums">{displayScore}/100</span>
               </div>
               <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
-                <div className={cn('h-full rounded-full', color)} style={{ width: `${cat.score}%` }} />
+                <div className={cn('h-full rounded-full', color)} style={{ width: `${displayScore}%` }} />
               </div>
             </div>
           )

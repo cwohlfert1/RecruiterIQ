@@ -12,14 +12,15 @@ interface ClaudeBreakdownCategory {
 }
 
 interface ClaudeResponse {
-  overall_score: number
-  job_title: string
+  overall_score:  number
+  job_title:      string
+  recommendation: 'Strong Submit' | 'Submit' | 'Borderline' | 'Pass'
   breakdown: {
-    must_have_skills:  ClaudeBreakdownCategory
+    technical_fit:     ClaudeBreakdownCategory
     domain_experience: ClaudeBreakdownCategory
+    scope_impact:      ClaudeBreakdownCategory
     communication:     ClaudeBreakdownCategory
-    tenure_stability:  ClaudeBreakdownCategory
-    tool_depth:        ClaudeBreakdownCategory
+    catfish_risk:      ClaudeBreakdownCategory
   }
 }
 
@@ -59,15 +60,33 @@ export async function POST(req: NextRequest) {
     'You are an expert technical recruiter. Evaluate the resume against the job description.\n' +
     'Return ONLY valid JSON, no markdown, no explanation outside the JSON.'
 
-  const userPrompt = `Score this resume against this job description using these exact weights:
-- Must-Have Skills Match: 55% (does candidate have the required skills?)
-- Domain/Industry Experience: 10% (relevant industry background?)
-- Communication & Clarity: 15% (how well-written and clear is the resume?)
-- Tenure Stability: 10% (consistent employment history, not job-hopping?)
-- Depth of Tool Usage: 10% (depth of experience with relevant tools?)
+  const userPrompt = `Score this resume against this job description using the CQI (Candidate Quality Index) framework.
 
-For each category: score 0-100, plus one concise sentence explanation.
-Calculate overall score as weighted sum.
+Scoring categories and weights:
+- Technical Fit (40%): exact match to required tools/stack and depth of hands-on experience
+- Domain Experience (15%): relevance of industry background and environment
+- Scope & Impact (15%): ownership, complexity, and measurable contributions
+- Communication (15%): clarity, articulation, and stakeholder interaction signals from the resume
+- Catfish Risk (15%): inconsistencies, vague experience, or overinflated skills — score 0-100 where 100 = very high risk
+
+IMPORTANT for Catfish Risk: this score is INVERTED when computing overall_score.
+A candidate with catfish_risk score of 0 (no red flags) contributes the full 15 points.
+A candidate with catfish_risk score of 100 (extreme red flags) contributes 0 points.
+
+Weighted contribution formula:
+- technical_fit:     score * 0.40
+- domain_experience: score * 0.15
+- scope_impact:      score * 0.15
+- communication:     score * 0.15
+- catfish_risk:      (100 - score) * 0.15
+
+overall_score = sum of all weighted contributions (integer 0-100)
+
+recommendation:
+- "Strong Submit" if overall_score >= 85
+- "Submit" if overall_score 70-84
+- "Borderline" if overall_score 55-69
+- "Pass" if overall_score < 55
 
 Job Description:
 ${jd_text}
@@ -79,12 +98,13 @@ Return ONLY this JSON structure:
 {
   "overall_score": <integer 0-100>,
   "job_title": "<extracted job title from JD or empty string>",
+  "recommendation": "<Strong Submit|Submit|Borderline|Pass>",
   "breakdown": {
-    "must_have_skills":  { "score": <0-100>, "weight": 0.55, "weighted": <score*0.55 rounded>, "explanation": "<sentence>" },
-    "domain_experience": { "score": <0-100>, "weight": 0.10, "weighted": <score*0.10 rounded>, "explanation": "<sentence>" },
+    "technical_fit":     { "score": <0-100>, "weight": 0.40, "weighted": <score*0.40 rounded>, "explanation": "<sentence>" },
+    "domain_experience": { "score": <0-100>, "weight": 0.15, "weighted": <score*0.15 rounded>, "explanation": "<sentence>" },
+    "scope_impact":      { "score": <0-100>, "weight": 0.15, "weighted": <score*0.15 rounded>, "explanation": "<sentence>" },
     "communication":     { "score": <0-100>, "weight": 0.15, "weighted": <score*0.15 rounded>, "explanation": "<sentence>" },
-    "tenure_stability":  { "score": <0-100>, "weight": 0.10, "weighted": <score*0.10 rounded>, "explanation": "<sentence>" },
-    "tool_depth":        { "score": <0-100>, "weight": 0.10, "weighted": <score*0.10 rounded>, "explanation": "<sentence>" }
+    "catfish_risk":      { "score": <0-100>, "weight": 0.15, "weighted": <(100-score)*0.15 rounded>, "explanation": "<sentence>" }
   }
 }`
 
@@ -104,38 +124,40 @@ Return ONLY this JSON structure:
     return NextResponse.json({ error: 'Failed to get or parse Claude response' }, { status: 500 })
   }
 
-  const { overall_score, job_title, breakdown } = claudeData
+  const { overall_score, job_title, recommendation, breakdown } = claudeData
 
   // 4. Save to Supabase
   const supabase = createClient()
 
   const breakdownJson: BreakdownJson = {
-    must_have_skills:  {
-      score:    breakdown.must_have_skills.score,
-      weight:   0.55,
-      weighted: Math.round(breakdown.must_have_skills.score * 0.55),
+    technical_fit: {
+      score:    breakdown.technical_fit.score,
+      weight:   0.40,
+      weighted: Math.round(breakdown.technical_fit.score * 0.40),
     },
     domain_experience: {
       score:    breakdown.domain_experience.score,
-      weight:   0.10,
-      weighted: Math.round(breakdown.domain_experience.score * 0.10),
+      weight:   0.15,
+      weighted: Math.round(breakdown.domain_experience.score * 0.15),
+    },
+    scope_impact: {
+      score:    breakdown.scope_impact.score,
+      weight:   0.15,
+      weighted: Math.round(breakdown.scope_impact.score * 0.15),
     },
     communication: {
       score:    breakdown.communication.score,
       weight:   0.15,
       weighted: Math.round(breakdown.communication.score * 0.15),
     },
-    tenure_stability: {
-      score:    breakdown.tenure_stability.score,
-      weight:   0.10,
-      weighted: Math.round(breakdown.tenure_stability.score * 0.10),
-    },
-    tool_depth: {
-      score:    breakdown.tool_depth.score,
-      weight:   0.10,
-      weighted: Math.round(breakdown.tool_depth.score * 0.10),
+    catfish_risk: {
+      score:    breakdown.catfish_risk.score,
+      weight:   0.15,
+      weighted: Math.round((100 - breakdown.catfish_risk.score) * 0.15),
     },
   }
+  // recommendation stored in JSONB alongside breakdown categories
+  const breakdownJsonWithRec = { ...breakdownJson, recommendation } as typeof breakdownJson & { recommendation: typeof recommendation }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
@@ -147,7 +169,7 @@ Return ONLY this JSON structure:
       resume_text,
       jd_text,
       score:          overall_score,
-      breakdown_json: breakdownJson,
+      breakdown_json: breakdownJsonWithRec,
     })
     .select('id')
     .single()
@@ -169,29 +191,30 @@ Return ONLY this JSON structure:
 
   // 7. Return result — include explanations for the page
   return NextResponse.json({
-    score:     overall_score,
-    job_title: job_title || '',
-    record_id: scoreRow.id,
+    score:          overall_score,
+    job_title:      job_title || '',
+    recommendation: recommendation || null,
+    record_id:      scoreRow.id,
     breakdown: {
-      must_have_skills:  {
-        ...breakdownJson.must_have_skills,
-        explanation: breakdown.must_have_skills.explanation,
+      technical_fit: {
+        ...breakdownJson.technical_fit,
+        explanation: breakdown.technical_fit.explanation,
       },
       domain_experience: {
         ...breakdownJson.domain_experience,
         explanation: breakdown.domain_experience.explanation,
       },
+      scope_impact: {
+        ...breakdownJson.scope_impact,
+        explanation: breakdown.scope_impact.explanation,
+      },
       communication: {
         ...breakdownJson.communication,
         explanation: breakdown.communication.explanation,
       },
-      tenure_stability: {
-        ...breakdownJson.tenure_stability,
-        explanation: breakdown.tenure_stability.explanation,
-      },
-      tool_depth: {
-        ...breakdownJson.tool_depth,
-        explanation: breakdown.tool_depth.explanation,
+      catfish_risk: {
+        ...breakdownJson.catfish_risk,
+        explanation: breakdown.catfish_risk.explanation,
       },
     },
   })

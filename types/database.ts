@@ -828,12 +828,14 @@ export type BreakdownCategory = {
 }
 
 export type BreakdownJson = {
-  must_have_skills:  BreakdownCategory
+  technical_fit:     BreakdownCategory
   domain_experience: BreakdownCategory
+  scope_impact:      BreakdownCategory
   communication:     BreakdownCategory
-  tenure_stability:  BreakdownCategory
-  tool_depth:        BreakdownCategory
+  catfish_risk:      BreakdownCategory
 }
+
+export type CqiRecommendation = 'Strong Submit' | 'Submit' | 'Borderline' | 'Pass'
 
 export type BooleanInputsJson = {
   job_title:           string

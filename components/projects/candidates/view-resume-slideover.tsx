@@ -42,28 +42,29 @@ function CqiRing({ score }: { score: number }) {
   )
 }
 
-const CATEGORIES: Array<{ key: keyof BreakdownJson; label: string }> = [
-  { key: 'must_have_skills',  label: 'Must-Have Skills'    },
-  { key: 'domain_experience', label: 'Domain Experience'   },
-  { key: 'communication',     label: 'Communication'       },
-  { key: 'tenure_stability',  label: 'Tenure Stability'    },
-  { key: 'tool_depth',        label: 'Tool Depth'          },
+const CATEGORIES: Array<{ key: keyof BreakdownJson; label: string; inverted?: boolean }> = [
+  { key: 'technical_fit',     label: 'Technical Fit'      },
+  { key: 'domain_experience', label: 'Domain Experience'  },
+  { key: 'scope_impact',      label: 'Scope & Impact'     },
+  { key: 'communication',     label: 'Communication'      },
+  { key: 'catfish_risk',      label: 'Red Flag Risk',     inverted: true },
 ]
 
-function BreakdownBar({ label, score, weight }: { label: string; score: number; weight: number }) {
+function BreakdownBar({ label, score, weight, inverted }: { label: string; score: number; weight: number; inverted?: boolean }) {
+  const displayScore = inverted ? 100 - score : score
   const color =
-    score >= 80 ? 'bg-emerald-500' :
-    score >= 60 ? 'bg-yellow-500'  :
-                  'bg-red-500'
+    displayScore >= 80 ? 'bg-emerald-500' :
+    displayScore >= 60 ? 'bg-yellow-500'  :
+                         'bg-red-500'
 
   return (
     <div>
       <div className="flex justify-between text-xs mb-1">
         <span className="text-slate-400">{label}</span>
-        <span className="text-slate-300 font-medium">{score} <span className="text-slate-600">({Math.round(weight * 100)}%)</span></span>
+        <span className="text-slate-300 font-medium">{displayScore} <span className="text-slate-600">({Math.round(weight * 100)}%)</span></span>
       </div>
       <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
-        <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${score}%` }} />
+        <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${displayScore}%` }} />
       </div>
     </div>
   )
@@ -124,8 +125,9 @@ export function ViewResumeSlideover({ candidate, onClose }: Props) {
                         <BreakdownBar
                           key={cat.key}
                           label={cat.label}
-                          score={breakdown[cat.key].score}
-                          weight={breakdown[cat.key].weight}
+                          score={breakdown[cat.key]?.score ?? 0}
+                          weight={breakdown[cat.key]?.weight ?? 0}
+                          inverted={cat.inverted}
                         />
                       ))}
                     </div>

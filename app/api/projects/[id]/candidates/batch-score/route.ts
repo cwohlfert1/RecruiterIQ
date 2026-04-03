@@ -7,13 +7,14 @@ import type { BreakdownJson, ProjectActivityType } from '@/types/database'
 
 interface ClaudeBreakdownCategory { score: number; weight: number; weighted: number; explanation: string }
 interface ClaudeScoreResponse {
-  overall_score: number
+  overall_score:  number
+  recommendation: 'Strong Submit' | 'Submit' | 'Borderline' | 'Pass'
   breakdown: {
-    must_have_skills:  ClaudeBreakdownCategory
+    technical_fit:     ClaudeBreakdownCategory
     domain_experience: ClaudeBreakdownCategory
+    scope_impact:      ClaudeBreakdownCategory
     communication:     ClaudeBreakdownCategory
-    tenure_stability:  ClaudeBreakdownCategory
-    tool_depth:        ClaudeBreakdownCategory
+    catfish_risk:      ClaudeBreakdownCategory
   }
 }
 
@@ -88,7 +89,12 @@ export async function POST(
             max_tokens: 1024,
             system:     'You are an expert technical recruiter. Return ONLY valid JSON.',
             messages:   [{
-              role: 'user', content: `Score this resume against this job description.
+              role: 'user', content: `Score this resume against this job description using the CQI framework.
+
+Categories: Technical Fit (40%), Domain Experience (15%), Scope & Impact (15%), Communication (15%), Catfish Risk (15% inverted).
+Catfish Risk is inverted: score 0=no risk (full 15pts), score 100=high risk (0pts).
+overall_score = (technical_fit*0.40) + (domain_experience*0.15) + (scope_impact*0.15) + (communication*0.15) + ((100-catfish_risk)*0.15)
+recommendation: "Strong Submit" (>=85), "Submit" (70-84), "Borderline" (55-69), "Pass" (<55)
 
 Job Description:
 ${project.jd_text}
@@ -99,12 +105,13 @@ ${candidate.resume_text}
 Return ONLY JSON:
 {
   "overall_score": <integer 0-100>,
+  "recommendation": "<Strong Submit|Submit|Borderline|Pass>",
   "breakdown": {
-    "must_have_skills":  { "score": <0-100>, "weight": 0.55, "weighted": <rounded>, "explanation": "" },
-    "domain_experience": { "score": <0-100>, "weight": 0.10, "weighted": <rounded>, "explanation": "" },
+    "technical_fit":     { "score": <0-100>, "weight": 0.40, "weighted": <rounded>, "explanation": "" },
+    "domain_experience": { "score": <0-100>, "weight": 0.15, "weighted": <rounded>, "explanation": "" },
+    "scope_impact":      { "score": <0-100>, "weight": 0.15, "weighted": <rounded>, "explanation": "" },
     "communication":     { "score": <0-100>, "weight": 0.15, "weighted": <rounded>, "explanation": "" },
-    "tenure_stability":  { "score": <0-100>, "weight": 0.10, "weighted": <rounded>, "explanation": "" },
-    "tool_depth":        { "score": <0-100>, "weight": 0.10, "weighted": <rounded>, "explanation": "" }
+    "catfish_risk":      { "score": <0-100>, "weight": 0.15, "weighted": <(100-score)*0.15 rounded>, "explanation": "" }
   }
 }`,
             }],
@@ -115,15 +122,16 @@ Return ONLY JSON:
           const data    = JSON.parse(cleaned) as ClaudeScoreResponse
 
           const breakdownJson: BreakdownJson = {
-            must_have_skills:  { score: data.breakdown.must_have_skills.score,  weight: 0.55, weighted: Math.round(data.breakdown.must_have_skills.score  * 0.55) },
-            domain_experience: { score: data.breakdown.domain_experience.score, weight: 0.10, weighted: Math.round(data.breakdown.domain_experience.score * 0.10) },
+            technical_fit:     { score: data.breakdown.technical_fit.score,     weight: 0.40, weighted: Math.round(data.breakdown.technical_fit.score     * 0.40) },
+            domain_experience: { score: data.breakdown.domain_experience.score, weight: 0.15, weighted: Math.round(data.breakdown.domain_experience.score * 0.15) },
+            scope_impact:      { score: data.breakdown.scope_impact.score,      weight: 0.15, weighted: Math.round(data.breakdown.scope_impact.score      * 0.15) },
             communication:     { score: data.breakdown.communication.score,     weight: 0.15, weighted: Math.round(data.breakdown.communication.score     * 0.15) },
-            tenure_stability:  { score: data.breakdown.tenure_stability.score,  weight: 0.10, weighted: Math.round(data.breakdown.tenure_stability.score  * 0.10) },
-            tool_depth:        { score: data.breakdown.tool_depth.score,        weight: 0.10, weighted: Math.round(data.breakdown.tool_depth.score        * 0.10) },
+            catfish_risk:      { score: data.breakdown.catfish_risk.score,      weight: 0.15, weighted: Math.round((100 - data.breakdown.catfish_risk.score) * 0.15) },
           }
+          const breakdownWithRec = { ...breakdownJson, recommendation: data.recommendation } as typeof breakdownJson & { recommendation: typeof data.recommendation }
 
           await supabase.from('project_candidates')
-            .update({ cqi_score: data.overall_score, cqi_breakdown_json: breakdownJson })
+            .update({ cqi_score: data.overall_score, cqi_breakdown_json: breakdownWithRec })
             .eq('id', candidate.id)
 
           await incrementAICallCount(user.id)
@@ -133,7 +141,7 @@ Return ONLY JSON:
             type:         'progress',
             candidateId:  candidate.id,
             score:        data.overall_score,
-            breakdown:    breakdownJson,
+            breakdown:    breakdownWithRec,
             current:      scored + failed,
             total,
           })

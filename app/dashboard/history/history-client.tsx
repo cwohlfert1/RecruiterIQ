@@ -475,19 +475,26 @@ export function HistoryClient() {
                             Score breakdown
                           </p>
                           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                            {Object.entries(row.breakdown_json).map(([key, val]) => (
-                              <div key={key} className="text-center">
-                                <p className="text-xs text-slate-500 mb-1 capitalize leading-tight">
-                                  {key.replace(/_/g, ' ')}
-                                </p>
-                                <p
-                                  className="text-xl font-bold"
-                                  style={{ color: getScoreColor(val.score) }}
-                                >
-                                  {val.score}
-                                </p>
-                              </div>
-                            ))}
+                            {Object.entries(row.breakdown_json)
+                              .filter(([key]) => key !== 'recommendation')
+                              .map(([key, val]) => {
+                                const cat = val as { score: number }
+                                const label = key === 'catfish_risk' ? 'Red Flag Risk' : key === 'scope_impact' ? 'Scope & Impact' : key.replace(/_/g, ' ')
+                                const displayScore = key === 'catfish_risk' ? 100 - cat.score : cat.score
+                                return (
+                                  <div key={key} className="text-center">
+                                    <p className="text-xs text-slate-500 mb-1 capitalize leading-tight">
+                                      {label}
+                                    </p>
+                                    <p
+                                      className="text-xl font-bold"
+                                      style={{ color: getScoreColor(displayScore) }}
+                                    >
+                                      {displayScore}
+                                    </p>
+                                  </div>
+                                )
+                              })}
                           </div>
                         </div>
                       </ExpandPanel>

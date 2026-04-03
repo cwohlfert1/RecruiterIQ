@@ -19,15 +19,16 @@ interface BreakdownCategoryResult {
 }
 
 interface ScoreResult {
-  score:     number
-  job_title: string
-  record_id: string
+  score:          number
+  job_title:      string
+  record_id:      string
+  recommendation: 'Strong Submit' | 'Submit' | 'Borderline' | 'Pass' | null
   breakdown: {
-    must_have_skills:  BreakdownCategoryResult
+    technical_fit:     BreakdownCategoryResult
     domain_experience: BreakdownCategoryResult
+    scope_impact:      BreakdownCategoryResult
     communication:     BreakdownCategoryResult
-    tenure_stability:  BreakdownCategoryResult
-    tool_depth:        BreakdownCategoryResult
+    catfish_risk:      BreakdownCategoryResult
   }
 }
 
@@ -170,16 +171,24 @@ function RedFlagLoadingSkeleton() {
 // ─── Category rows config ──────────────────────────────────
 
 const CATEGORIES: Array<{
-  key:    keyof ScoreResult['breakdown']
-  label:  string
-  weight: string
+  key:      keyof ScoreResult['breakdown']
+  label:    string
+  weight:   string
+  inverted?: boolean
 }> = [
-  { key: 'must_have_skills',  label: 'Must-Have Skills',  weight: '40%' },
-  { key: 'domain_experience', label: 'Domain Experience', weight: '20%' },
-  { key: 'communication',     label: 'Communication',     weight: '15%' },
-  { key: 'tenure_stability',  label: 'Tenure Stability',  weight: '10%' },
-  { key: 'tool_depth',        label: 'Tool Depth',        weight: '15%' },
+  { key: 'technical_fit',     label: 'Technical Fit',    weight: '40%' },
+  { key: 'domain_experience', label: 'Domain Experience', weight: '15%' },
+  { key: 'scope_impact',      label: 'Scope & Impact',   weight: '15%' },
+  { key: 'communication',     label: 'Communication',    weight: '15%' },
+  { key: 'catfish_risk',      label: 'Red Flag Risk',    weight: '15%', inverted: true },
 ]
+
+const RECOMMENDATION_BADGE: Record<string, { label: string; cls: string }> = {
+  'Strong Submit': { label: 'Strong Submit', cls: 'bg-green-500/15 text-green-400 border-green-500/25' },
+  'Submit':        { label: 'Submit',        cls: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/25' },
+  'Borderline':    { label: 'Borderline',    cls: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/25' },
+  'Pass':          { label: 'Pass',          cls: 'bg-red-500/15 text-red-400 border-red-500/25' },
+}
 
 // ─── Red Flag helpers ──────────────────────────────────────
 
@@ -469,19 +478,28 @@ export default function ScorerPage() {
                           <span className={cn('text-xs font-bold tracking-widest mt-1', getScoreLabelColor(result.score))}>
                             {getScoreLabel(result.score)}
                           </span>
+                          {result.recommendation && RECOMMENDATION_BADGE[result.recommendation] && (
+                            <span className={cn(
+                              'text-xs font-semibold px-2.5 py-0.5 rounded-full border',
+                              RECOMMENDATION_BADGE[result.recommendation].cls,
+                            )}>
+                              {RECOMMENDATION_BADGE[result.recommendation].label}
+                            </span>
+                          )}
                         </div>
 
                         <div className="space-y-4">
-                          {CATEGORIES.map(({ key, label, weight }, idx) => {
-                            const cat   = result.breakdown[key]
-                            const color = getScoreColor(cat.score)
+                          {CATEGORIES.map(({ key, label, weight, inverted }, idx) => {
+                            const cat        = result.breakdown[key]
+                            const displayScore = inverted ? 100 - cat.score : cat.score
+                            const color      = getScoreColor(displayScore)
                             return (
                               <div key={key} className="space-y-1">
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs font-medium text-slate-300">{label}</span>
                                   <div className="flex items-center gap-2">
                                     <span className="text-xs text-slate-500">{weight}</span>
-                                    <span className="text-xs font-semibold text-white tabular-nums w-6 text-right">{cat.score}</span>
+                                    <span className="text-xs font-semibold text-white tabular-nums w-6 text-right">{displayScore}</span>
                                   </div>
                                 </div>
                                 <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
@@ -489,7 +507,7 @@ export default function ScorerPage() {
                                     className="h-full rounded-full"
                                     style={{ backgroundColor: color }}
                                     initial={{ width: '0%' }}
-                                    animate={{ width: `${cat.score}%` }}
+                                    animate={{ width: `${displayScore}%` }}
                                     transition={{ duration: 0.8, ease: 'easeOut', delay: 0.1 * idx }}
                                   />
                                 </div>
