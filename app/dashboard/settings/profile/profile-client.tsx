@@ -2,10 +2,11 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Linkedin, CheckCircle2, RefreshCw, Camera, Loader2, ArrowLeft, User } from 'lucide-react'
+import { Linkedin, CheckCircle2, RefreshCw, Camera, Loader2, ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { UserAvatar } from '@/components/ui/user-avatar'
+import { createClient } from '@/lib/supabase/client'
 
 interface ProfileData {
   avatar_url:            string | null
@@ -32,9 +33,10 @@ export function ProfileClient({ userId, email, profile: initialProfile }: Props)
   const [jobTitle,    setJobTitle]    = useState(initialProfile.job_title    ?? '')
   const [linkedinUrl, setLinkedinUrl] = useState(initialProfile.linkedin_url ?? '')
   const [phone,       setPhone]       = useState(initialProfile.phone        ?? '')
-  const [saving,      setSaving]      = useState(false)
-  const [uploading,   setUploading]   = useState(false)
+  const [saving,        setSaving]      = useState(false)
+  const [uploading,     setUploading]   = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
+  const [connecting,    setConnecting]  = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -114,6 +116,26 @@ export function ProfileClient({ userId, email, profile: initialProfile }: Props)
     }
   }
 
+  async function handleConnectLinkedIn() {
+    setConnecting(true)
+    try {
+      const supabase = createClient()
+      const redirectTo = `${window.location.origin}/auth/callback?next=/dashboard/settings/profile`
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'linkedin_oidc',
+        options:  { redirectTo },
+      })
+      if (error) {
+        toast.error(error.message ?? 'LinkedIn connection failed')
+        setConnecting(false)
+      }
+      // On success the browser navigates away — no need to reset state
+    } catch {
+      toast.error('LinkedIn connection failed')
+      setConnecting(false)
+    }
+  }
+
   return (
     <div className="max-w-xl mx-auto space-y-6">
       {/* Header */}
@@ -166,13 +188,14 @@ export function ProfileClient({ userId, email, profile: initialProfile }: Props)
 
           {isConnected ? (
             <div className="flex items-center gap-2 flex-shrink-0">
-              <a
-                href="/api/auth/linkedin"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 border border-white/10 hover:border-white/20 hover:text-white transition-colors"
+              <button
+                onClick={handleConnectLinkedIn}
+                disabled={connecting}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 border border-white/10 hover:border-white/20 hover:text-white transition-colors disabled:opacity-40"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
+                {connecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                 Refresh
-              </a>
+              </button>
               <button
                 onClick={handleDisconnect}
                 disabled={disconnecting}
@@ -182,13 +205,14 @@ export function ProfileClient({ userId, email, profile: initialProfile }: Props)
               </button>
             </div>
           ) : (
-            <a
-              href="/api/auth/linkedin"
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#0A66C2] hover:bg-[#0A66C2]/80 transition-colors flex-shrink-0"
+            <button
+              onClick={handleConnectLinkedIn}
+              disabled={connecting}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#0A66C2] hover:bg-[#0A66C2]/80 transition-colors flex-shrink-0 disabled:opacity-50"
             >
-              <Linkedin className="w-4 h-4" />
-              Connect
-            </a>
+              {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Linkedin className="w-4 h-4" />}
+              {connecting ? 'Connecting…' : 'Connect'}
+            </button>
           )}
         </div>
       </div>
