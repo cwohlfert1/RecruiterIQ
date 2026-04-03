@@ -48,22 +48,44 @@ async function handleJdMode(
 
   const jdText = jdTextRaw.trim().slice(0, 8000)
 
-  const prompt = `You are a Boolean search string expert for technical recruiting.
+  const systemPrompt = `You are an expert technical recruiter and Boolean search specialist. You build precise, high-performance Boolean strings for LinkedIn Recruiter and Indeed. You understand the difference between candidates who have hands-on experience and those who managed or observed it — and you optimize every string to surface the former.`
+
+  const userPrompt = `Create two Boolean search strings for sourcing candidates based on the job description below.
+
+Requirements:
+- Generate TWO versions:
+  1. Strict (high precision, low noise)
+  2. Broad (wider net, more inclusive)
+
+Guidelines:
+- Identify core must-have technologies and use AND logic
+- Include synonyms and variations using OR logic
+- Add supporting/adjacent tools where relevant
+- Use parentheses correctly for grouping
+- Include common alternate titles for the role
+
+Strict Version:
+- Prioritize exact tech stack match
+- Minimize OR statements
+- Add NOT filters to remove irrelevant profiles (e.g., BI-only, analysts, non-engineers, directors, managers, entry-level)
+- Designed to surface hands-on practitioners only — not managers who touched it 5 years ago, not entry-level candidates padding their resume
+- Designed to avoid catfish candidates
+
+Broad Version:
+- Expand OR statements for tools and titles
+- Reduce or remove most NOT filters
+- Allow adjacent or transferable experience
+- Still prioritize hands-on contributors over people-managers where possible
+
+Secret sauce — apply to BOTH versions:
+- Always prioritize candidates with demonstrated hands-on experience for hands-on roles
+- If the JD signals an IC (individual contributor) role, add NOT filters for Director, VP, Head of, Manager where appropriate
+- If the JD signals a senior/lead role, filter out intern, junior, entry-level
+
+From the job description, also extract the job title and top 5-8 required skills.
 
 Job Description:
 ${jdText}
-
-From this job description:
-1. Extract the job title and top 5-8 required skills
-2. Generate TWO Boolean search string variants:
-
-VARIANT 1 — TARGETED (strict):
-- Use AND logic throughout; exact title matches; all required skills ANDed
-- Designed to return 50–200 results on LinkedIn
-
-VARIANT 2 — BROAD (inclusive):
-- Use OR groups for title variations and synonyms; nice-to-have skills as OR alternatives
-- Designed to return 500–2000 results
 
 Return ONLY valid JSON (no markdown, no explanation):
 {
@@ -82,8 +104,9 @@ Return ONLY valid JSON (no markdown, no explanation):
   try {
     const response = await anthropic.messages.create({
       model:      MODEL,
-      max_tokens: 900,
-      messages:   [{ role: 'user', content: prompt }],
+      max_tokens: 1200,
+      system:     systemPrompt,
+      messages:   [{ role: 'user', content: userPrompt }],
     })
 
     const rawText = response.content[0].type === 'text' ? response.content[0].text : ''
@@ -175,25 +198,46 @@ async function handleManualMode(
     : []
   const safeJobTitle = jobTitle.trim()
 
-  const prompt = `You are a Boolean search string expert for technical recruiting.
+  const systemPrompt = `You are an expert technical recruiter and Boolean search specialist. You build precise, high-performance Boolean strings for LinkedIn Recruiter and Indeed. You understand the difference between candidates who have hands-on experience and those who managed or observed it — and you optimize every string to surface the former.`
 
+  const userPrompt = `Create two Boolean search strings for sourcing candidates based on the inputs below.
+
+Requirements:
+- Generate TWO versions:
+  1. Strict (high precision, low noise)
+  2. Broad (wider net, more inclusive)
+
+Guidelines:
+- Identify core must-have technologies and use AND logic
+- Include synonyms and variations using OR logic
+- Add supporting/adjacent tools where relevant
+- Use parentheses correctly for grouping
+- Include common alternate titles for the role
+
+Strict Version:
+- Prioritize exact tech stack match
+- Minimize OR statements
+- Add NOT filters to remove irrelevant profiles (e.g., BI-only, analysts, non-engineers, directors, managers, entry-level)
+- Designed to surface hands-on practitioners only — not managers who touched it 5 years ago, not entry-level candidates padding their resume
+- Designed to avoid catfish candidates
+
+Broad Version:
+- Expand OR statements for tools and titles
+- Reduce or remove most NOT filters
+- Allow adjacent or transferable experience
+- Still prioritize hands-on contributors over people-managers where possible
+
+Secret sauce — apply to BOTH versions:
+- Always prioritize candidates with demonstrated hands-on experience for hands-on roles
+- If the role signals an IC (individual contributor) role, add NOT filters for Director, VP, Head of, Manager where appropriate
+- If the role signals a senior/lead role, filter out intern, junior, entry-level
+
+Additional inputs if provided:
 Job Title: ${safeJobTitle}
-Required Skills: ${safeRequired.join(', ')}
-Optional Skills: ${safeOptional.length > 0 ? safeOptional.join(', ') : 'None'}
-Exclusions: ${safeExclusions.length > 0 ? safeExclusions.join(', ') : 'None'}
-
-Generate TWO Boolean search string variants:
-
-VARIANT 1 — TARGETED (strict):
-- Use AND logic for required skills; exact job title; include all required skills as ANDed
-- Designed to return 50–200 results on LinkedIn
-
-VARIANT 2 — BROAD (inclusive):
-- Use OR groups for title variations and synonyms; optional skills as OR alternatives
-- Designed to return 500–2000 results
-
-LinkedIn strings: use AND, OR, NOT, parentheses, quoted phrases.
-Indeed strings: space-separated terms, minus sign for exclusions.
+Must-Have Skills: ${safeRequired.join(', ')}
+Nice-to-Have Skills: ${safeOptional.length > 0 ? safeOptional.join(', ') : 'none provided'}
+Location: not provided
+Exclude Terms: ${safeExclusions.length > 0 ? safeExclusions.join(', ') : 'none provided'}
 
 Return ONLY valid JSON (no markdown, no explanation):
 {
@@ -210,8 +254,9 @@ Return ONLY valid JSON (no markdown, no explanation):
   try {
     const response = await anthropic.messages.create({
       model:      MODEL,
-      max_tokens: 800,
-      messages:   [{ role: 'user', content: prompt }],
+      max_tokens: 1200,
+      system:     systemPrompt,
+      messages:   [{ role: 'user', content: userPrompt }],
     })
 
     const rawText = response.content[0].type === 'text' ? response.content[0].text : ''
