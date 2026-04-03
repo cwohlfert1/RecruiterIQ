@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { createAdminClient as createAdmin } from '@/lib/supabase/admin'
 
 export async function GET(
   req: NextRequest,
@@ -119,4 +120,67 @@ export async function GET(
     // Legacy compat
     myString: myTargeted ? { ...myTargeted, user_email: emailMap[myTargeted.user_id] ?? myTargeted.user_id } : null,
   })
+}
+
+// PATCH /api/projects/[id]/boolean
+// Manually update a boolean string's linkedin_string and/or indeed_string.
+// Only the owner of the string row can edit it (or a manager/owner of the project).
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = createClient() as any
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })
+
+  let body: { string_id: string; linkedin_string?: string; indeed_string?: string }
+  try { body = await req.json() } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
+  const { string_id, linkedin_string, indeed_string } = body
+  if (!string_id) return NextResponse.json({ error: 'string_id required' }, { status: 400 })
+  if (!linkedin_string && !indeed_string) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
+
+  // Verify the row belongs to this project and user has access
+  const { data: row } = await supabase
+    .from('project_boolean_strings')
+    .select('id, user_id, project_id')
+    .eq('id', string_id)
+    .eq('project_id', params.id)
+    .single()
+
+  if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  // Allow: own string, or manager/owner of project
+  const { data: project } = await supabase
+    .from('projects')
+    .select('owner_id, project_members(user_id, role)')
+    .eq('id', params.id)
+    .single()
+
+  const isOwner   = project?.owner_id === user.id
+  const member    = (project?.project_members ?? []).find((m: { user_id: string }) => m.user_id === user.id)
+  const isManager = isOwner || member?.role === 'owner' || member?.role === 'collaborator'
+  const isOwnRow  = row.user_id === user.id
+
+  if (!isOwnRow && !isManager) {
+    return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+  }
+
+  const updates: Record<string, string> = {}
+  if (linkedin_string) updates.linkedin_string = linkedin_string.trim()
+  if (indeed_string)   updates.indeed_string   = indeed_string.trim()
+
+  const admin = createAdmin()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (admin as any)
+    .from('project_boolean_strings')
+    .update(updates)
+    .eq('id', string_id)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ success: true })
 }

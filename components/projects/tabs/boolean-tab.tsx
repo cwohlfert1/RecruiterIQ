@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Sparkles, RefreshCw, Copy, Check, Loader2, Search, ChevronDown, ChevronUp, Target, Globe, ThumbsUp } from 'lucide-react'
+import { Sparkles, RefreshCw, Copy, Check, Loader2, Search, ChevronDown, ChevronUp, Target, Globe, ThumbsUp, Pencil, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -256,46 +256,148 @@ function VariantSection({
   jdText:      string
   onRefined:   (updated: Partial<BooleanString>) => void
 }) {
+  const [editing,       setEditing]       = useState(false)
+  const [editLinkedin,  setEditLinkedin]  = useState(stringRow.linkedin_string)
+  const [editIndeed,    setEditIndeed]    = useState(stringRow.indeed_string)
+  const [saving,        setSaving]        = useState(false)
+
+  // Keep edit state in sync if parent updates stringRow (e.g. after refinement)
+  useEffect(() => {
+    if (!editing) {
+      setEditLinkedin(stringRow.linkedin_string)
+      setEditIndeed(stringRow.indeed_string)
+    }
+  }, [stringRow.linkedin_string, stringRow.indeed_string, editing])
+
+  async function handleSaveEdit() {
+    if (!editLinkedin.trim() && !editIndeed.trim()) return
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/projects/${projectId}/boolean`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          string_id:        stringRow.id,
+          linkedin_string:  editLinkedin.trim() || undefined,
+          indeed_string:    editIndeed.trim()   || undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error ?? 'Save failed'); return }
+      onRefined({ linkedin_string: editLinkedin.trim(), indeed_string: editIndeed.trim() })
+      setEditing(false)
+      toast.success('Boolean string updated')
+    } catch {
+      toast.error('Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function handleCancelEdit() {
+    setEditLinkedin(stringRow.linkedin_string)
+    setEditIndeed(stringRow.indeed_string)
+    setEditing(false)
+  }
+
   return (
     <div className="space-y-3">
+      {/* LinkedIn string */}
       <div className="rounded-xl bg-white/3 border border-white/10 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/8">
           <div className="flex items-center gap-2">
             <span className="text-base">💼</span>
             <span className="text-xs font-semibold text-slate-300">LinkedIn Recruiter</span>
           </div>
-          <CopyButton text={stringRow.linkedin_string} />
+          <div className="flex items-center gap-1">
+            {!editing && <CopyButton text={stringRow.linkedin_string} />}
+            {!editing && (
+              <button
+                onClick={() => setEditing(true)}
+                className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-200 px-2 py-1 rounded-lg hover:bg-white/8 transition-colors"
+              >
+                <Pencil className="w-3 h-3" />
+                Edit
+              </button>
+            )}
+          </div>
         </div>
         <div className="px-4 py-3 bg-[#0D0F1A]">
-          <BooleanHighlight text={stringRow.linkedin_string} />
+          {editing ? (
+            <textarea
+              value={editLinkedin}
+              onChange={e => setEditLinkedin(e.target.value)}
+              rows={4}
+              className="w-full bg-transparent font-mono text-xs text-slate-200 leading-relaxed resize-none focus:outline-none placeholder-slate-600"
+              placeholder="LinkedIn boolean string…"
+              autoFocus
+            />
+          ) : (
+            <BooleanHighlight text={stringRow.linkedin_string} />
+          )}
         </div>
       </div>
 
+      {/* Indeed string */}
       <div className="rounded-xl bg-white/3 border border-white/10 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/8">
           <div className="flex items-center gap-2">
             <span className="text-base">🔍</span>
             <span className="text-xs font-semibold text-slate-300">Indeed</span>
           </div>
-          <CopyButton text={stringRow.indeed_string} />
+          {!editing && <CopyButton text={stringRow.indeed_string} />}
         </div>
         <div className="px-4 py-3 bg-[#0D0F1A]">
-          <BooleanHighlight text={stringRow.indeed_string} />
+          {editing ? (
+            <textarea
+              value={editIndeed}
+              onChange={e => setEditIndeed(e.target.value)}
+              rows={4}
+              className="w-full bg-transparent font-mono text-xs text-slate-200 leading-relaxed resize-none focus:outline-none placeholder-slate-600"
+              placeholder="Indeed boolean string…"
+            />
+          ) : (
+            <BooleanHighlight text={stringRow.indeed_string} />
+          )}
         </div>
       </div>
+
+      {/* Edit action bar */}
+      {editing && (
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={handleCancelEdit}
+            disabled={saving}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-slate-400 border border-white/10 hover:text-white hover:border-white/20 transition-colors disabled:opacity-40"
+          >
+            <X className="w-3.5 h-3.5" />
+            Cancel
+          </button>
+          <button
+            onClick={handleSaveEdit}
+            disabled={saving}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors disabled:opacity-40"
+          >
+            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      )}
 
       {(stringRow.refinement_count ?? 0) > 0 && (
         <p className="text-[11px] text-slate-600">Refined {stringRow.refinement_count} time{stringRow.refinement_count !== 1 ? 's' : ''}</p>
       )}
 
-      <FeedbackPanel
-        stringRow={stringRow}
-        variantType={variantType}
-        projectId={projectId}
-        jobTitle={jobTitle}
-        jdText={jdText}
-        onRefined={onRefined}
-      />
+      {!editing && (
+        <FeedbackPanel
+          stringRow={stringRow}
+          variantType={variantType}
+          projectId={projectId}
+          jobTitle={jobTitle}
+          jdText={jdText}
+          onRefined={onRefined}
+        />
+      )}
     </div>
   )
 }
