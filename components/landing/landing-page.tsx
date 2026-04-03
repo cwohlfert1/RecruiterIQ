@@ -202,7 +202,7 @@ function Nav() {
 
 function HeroSection() {
   return (
-    <section className="relative min-h-screen flex items-center pt-16 pb-24 overflow-hidden dot-grid-bg">
+    <section id="hero" className="relative min-h-screen flex items-center pt-16 pb-24 overflow-hidden dot-grid-bg">
       {/* Gradient blobs */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/12 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
@@ -859,9 +859,27 @@ function Footer() {
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
+const JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Candid.ai',
+  applicationCategory: 'BusinessApplication',
+  description: 'AI recruiting platform for agency recruiters',
+  url: 'https://candidai.app',
+  offers: [
+    { '@type': 'Offer', name: 'Free',   price: '0',   priceCurrency: 'USD' },
+    { '@type': 'Offer', name: 'Pro',    price: '49',  priceCurrency: 'USD' },
+    { '@type': 'Offer', name: 'Agency', price: '149', priceCurrency: 'USD' },
+  ],
+}
+
 export function LandingPage() {
   return (
     <div className="min-h-screen bg-[#0F1117] text-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+      />
       <Nav />
       <HeroSection />
       <ProofBar />
