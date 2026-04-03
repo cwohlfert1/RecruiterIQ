@@ -520,10 +520,11 @@ const PLANS = [
       'Client Summary Generator',
       'Boolean String Generator',
     ],
-    cta:       'Start Free',
-    href:      '/signup',
-    highlight: false,
-    badge:     null,
+    cta:        'Start Free',
+    href:       '/signup',
+    highlight:  false,
+    badge:      null,
+    enterprise: false,
   },
   {
     name:         'Pro',
@@ -538,10 +539,11 @@ const PLANS = [
       'Projects (up to 10 active)',
       'Full history with search',
     ],
-    cta:       'Start Pro',
-    href:      '/signup',
-    highlight: true,
-    badge:     'Most Popular',
+    cta:        'Start Pro',
+    href:       '/signup',
+    highlight:  true,
+    badge:      'Most Popular',
+    enterprise: false,
   },
   {
     name:         'Agency',
@@ -558,10 +560,30 @@ const PLANS = [
       'CSV export',
       'Team usage dashboard',
     ],
-    cta:       'Start Agency',
-    href:      '/signup',
-    highlight: false,
-    badge:     null,
+    cta:        'Start Agency',
+    href:       '/signup',
+    highlight:  false,
+    badge:      null,
+    enterprise: false,
+  },
+  {
+    name:         'Enterprise',
+    priceMonthly: null,
+    priceAnnual:  null,
+    desc:         'For agencies filling roles at scale.',
+    features: [
+      'Everything in Agency',
+      'Unlimited seats',
+      'Dedicated onboarding',
+      'Custom integrations',
+      'Priority support',
+      'Invoiced billing available',
+    ],
+    cta:        'Book a Demo',
+    href:       'mailto:collin@candidai.app',
+    highlight:  false,
+    badge:      null,
+    enterprise: true,
   },
 ]
 
@@ -611,65 +633,83 @@ function PricingSection() {
           </Reveal>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 items-stretch">
           {PLANS.map((plan, i) => {
             const price = annual ? plan.priceAnnual : plan.priceMonthly
 
-            return (
-              <Reveal key={plan.name} delay={i * 0.1}>
-                <div
+            const cardInner = (
+              <div
+                className={cn(
+                  'flex flex-col h-full relative p-6',
+                  plan.enterprise
+                    ? 'bg-[#0F1117] rounded-[15px]'
+                    : cn(
+                        'glass-card rounded-2xl',
+                        plan.highlight && 'border-indigo-500/40 shadow-[0_0_24px_0_rgba(99,102,241,0.2)]',
+                      ),
+                )}
+              >
+                {plan.badge && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="text-xs font-semibold px-3 py-1 rounded-full bg-indigo-500 text-white shadow-sm">
+                      {plan.badge}
+                    </span>
+                  </div>
+                )}
+
+                <div className="mb-5">
+                  <h3 className="text-base font-semibold text-white mb-1">{plan.name}</h3>
+                  <div className="flex items-end gap-1 mb-1">
+                    {plan.enterprise ? (
+                      <span className="text-3xl font-bold text-white">Custom</span>
+                    ) : price === 0 ? (
+                      <span className="text-3xl font-bold text-white">Free</span>
+                    ) : (
+                      <>
+                        <span className="text-3xl font-bold text-white">${price}</span>
+                        <span className="text-sm text-slate-500 mb-1">/mo</span>
+                      </>
+                    )}
+                  </div>
+                  {annual && price != null && price > 0 && (
+                    <p className="text-xs text-slate-500">billed annually</p>
+                  )}
+                  <p className="text-sm text-slate-400 mt-2">{plan.desc}</p>
+                </div>
+
+                <ul className="space-y-2.5 mb-8 flex-1">
+                  {plan.features.map(f => (
+                    <li key={f} className="flex items-start gap-2.5 text-sm text-slate-300">
+                      <Check className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <a
+                  href={plan.href}
                   className={cn(
-                    'glass-card rounded-2xl p-6 flex flex-col h-full relative',
-                    plan.highlight && 'border-indigo-500/40 shadow-[0_0_24px_0_rgba(99,102,241,0.2)]',
+                    'block w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-center transition-all duration-150',
+                    plan.highlight
+                      ? 'bg-gradient-brand text-white hover-glow'
+                      : 'border border-white/12 text-slate-300 hover:border-white/24 hover:text-white',
                   )}
                 >
-                  {plan.badge && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="text-xs font-semibold px-3 py-1 rounded-full bg-indigo-500 text-white shadow-sm">
-                        {plan.badge}
-                      </span>
-                    </div>
-                  )}
+                  {plan.cta}
+                </a>
+              </div>
+            )
 
-                  <div className="mb-5">
-                    <h3 className="text-base font-semibold text-white mb-1">{plan.name}</h3>
-                    <div className="flex items-end gap-1 mb-1">
-                      {price === 0 ? (
-                        <span className="text-3xl font-bold text-white">Free</span>
-                      ) : (
-                        <>
-                          <span className="text-3xl font-bold text-white">${price}</span>
-                          <span className="text-sm text-slate-500 mb-1">/mo</span>
-                        </>
-                      )}
-                    </div>
-                    {annual && price > 0 && (
-                      <p className="text-xs text-slate-500">billed annually</p>
-                    )}
-                    <p className="text-sm text-slate-400 mt-2">{plan.desc}</p>
+            return (
+              <Reveal key={plan.name} delay={i * 0.1}>
+                {plan.enterprise ? (
+                  /* Gradient border wrapper for Enterprise */
+                  <div className="rounded-2xl p-px bg-gradient-to-br from-indigo-500/50 via-violet-500/20 to-amber-400/30 h-full shadow-[0_0_32px_0_rgba(99,102,241,0.12)]">
+                    {cardInner}
                   </div>
-
-                  <ul className="space-y-2.5 mb-8 flex-1">
-                    {plan.features.map(f => (
-                      <li key={f} className="flex items-start gap-2.5 text-sm text-slate-300">
-                        <Check className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <Link
-                    href={plan.href}
-                    className={cn(
-                      'block w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-center transition-all duration-150',
-                      plan.highlight
-                        ? 'bg-gradient-brand text-white hover-glow'
-                        : 'border border-white/12 text-slate-300 hover:border-white/24 hover:text-white',
-                    )}
-                  >
-                    {plan.cta}
-                  </Link>
-                </div>
+                ) : (
+                  cardInner
+                )}
               </Reveal>
             )
           })}
