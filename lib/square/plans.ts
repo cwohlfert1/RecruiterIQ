@@ -14,8 +14,8 @@
 export const PLAN_CONFIG = {
   pro: {
     name: 'Pro',
-    priceInCents: 3900,
-    displayPrice: '$39',
+    priceInCents: 4900,
+    displayPrice: '$49',
     cadence: 'MONTHLY' as const,
     planId: process.env.SQUARE_PRO_PLAN_ID ?? '',
     planVariationId: process.env.SQUARE_PRO_PLAN_VARIATION_ID ?? '',
@@ -28,8 +28,8 @@ export const PLAN_CONFIG = {
   },
   agency: {
     name: 'Agency',
-    priceInCents: 9900,
-    displayPrice: '$99',
+    priceInCents: 14900,
+    displayPrice: '$149',
     cadence: 'MONTHLY' as const,
     planId: process.env.SQUARE_AGENCY_PLAN_ID ?? '',
     planVariationId: process.env.SQUARE_AGENCY_PLAN_VARIATION_ID ?? '',

@@ -15,7 +15,7 @@ interface UpgradeModalProps {
 const PLAN_META = {
   pro: {
     name:     'Pro',
-    price:    '$39/month',
+    price:    '$49/month',
     features: ['Unlimited Screenings', 'Resume Scorer', 'Summary Generator', 'Boolean Generator'],
     icon:     <Zap className="w-5 h-5" />,
     color:    'from-indigo-500/20 to-indigo-600/10 border-indigo-500/30',
@@ -23,7 +23,7 @@ const PLAN_META = {
   },
   agency: {
     name:     'Agency',
-    price:    '$99/month',
+    price:    '$149/month',
     features: ['Everything in Pro', 'Stack Ranking', 'Team seats (up to 5)', 'CSV export'],
     icon:     <Trophy className="w-5 h-5" />,
     color:    'from-violet-500/20 to-violet-600/10 border-violet-500/30',

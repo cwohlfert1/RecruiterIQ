@@ -527,8 +527,8 @@ const PLANS = [
   },
   {
     name:         'Pro',
-    priceMonthly: 39,
-    priceAnnual:  31,
+    priceMonthly: 49,
+    priceAnnual:  39,
     desc:         'For solo recruiters who want full access.',
     features: [
       'Unlimited AI calls',
@@ -545,8 +545,8 @@ const PLANS = [
   },
   {
     name:         'Agency',
-    priceMonthly: 99,
-    priceAnnual:  79,
+    priceMonthly: 149,
+    priceAnnual:  119,
     desc:         'For small teams filling multiple roles.',
     features: [
       'Everything in Pro',

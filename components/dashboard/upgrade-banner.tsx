@@ -31,7 +31,7 @@ export function UpgradeBanner() {
           Upgrade to Pro for unlimited screenings
         </p>
         <p className="text-xs text-slate-400 mt-0.5">
-          Free plan includes 10 screenings/month. Pro starts at $39/month.
+          Free plan includes 10 screenings/month. Pro starts at $49/month.
         </p>
       </div>
       <Link

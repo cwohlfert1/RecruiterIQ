@@ -84,7 +84,7 @@ function TeamLockedState() {
           href="/dashboard/settings/billing"
           className="inline-flex items-center px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-semibold rounded-xl text-sm transition-colors"
         >
-          Upgrade to Agency — $99/mo
+          Upgrade to Agency — $149/mo
         </a>
       </div>
     </div>

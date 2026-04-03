@@ -61,18 +61,18 @@ async function main() {
   console.log('Creating Square subscription plans...\n')
 
   const pro = await createPlan(
-    'recruiteriq-pro-plan-v1',
+    'recruiteriq-pro-plan-v2',
     'Candid.ai Pro',
-    3900
+    4900
   )
   console.log('✓ Pro plan created:')
   console.log(`  SQUARE_PRO_PLAN_ID=${pro.planId}`)
   console.log(`  SQUARE_PRO_PLAN_VARIATION_ID=${pro.planVariationId}\n`)
 
   const agency = await createPlan(
-    'recruiteriq-agency-plan-v1',
+    'recruiteriq-agency-plan-v2',
     'Candid.ai Agency',
-    9900
+    14900
   )
   console.log('✓ Agency plan created:')
   console.log(`  SQUARE_AGENCY_PLAN_ID=${agency.planId}`)
