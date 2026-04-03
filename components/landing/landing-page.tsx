@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { motion, useInView } from 'framer-motion'
 import {
-  FileSearch, FileText, Search, Trophy,
+  FileSearch, FileText, Search, Trophy, FolderOpen, ClipboardCheck,
   Check, ArrowRight, Menu, X, Clock, Users, Download,
   ChevronRight,
 } from 'lucide-react'
@@ -236,7 +236,7 @@ function HeroSection() {
               transition={{ duration: 0.5, delay: 0.16 }}
               className="text-lg text-slate-400 mb-8 leading-relaxed max-w-lg"
             >
-              Score resumes, rank candidates, and verify skills — all in one place.
+              Score resumes, manage pipelines, rank candidates, and verify skills — all in one place.
               Built for recruiters who move fast and need tools that keep up.
             </motion.p>
 
@@ -394,6 +394,20 @@ const FEATURES = [
     desc:  'Add your entire shortlist to one session. Candid.ai scores every candidate and returns a ranked leaderboard with per-candidate breakdowns. Know who to call first without reading 10 resumes side by side.',
     badge: 'Agency',
   },
+  {
+    icon:  <FolderOpen className="w-5 h-5" />,
+    color: 'bg-emerald-500/15 text-emerald-400',
+    name:  'Projects',
+    desc:  'Every open role gets its own pipeline. Add candidates, auto-score them against the JD, move them from Sourced to Placed, and keep your AM submittal notes where you can actually find them.',
+    badge: null,
+  },
+  {
+    icon:  <ClipboardCheck className="w-5 h-5" />,
+    color: 'bg-cyan-500/15 text-cyan-400',
+    name:  'Skill Assessments',
+    desc:  'Send proctored coding and written assessments straight from a candidate\'s profile. You get a Trust Score and a Skill Score back. Something to show the client besides your gut.',
+    badge: 'Agency',
+  },
 ]
 
 function FeaturesSection() {
@@ -403,7 +417,7 @@ function FeaturesSection() {
         <Reveal className="text-center mb-14">
           <h2 className="text-3xl font-bold text-white">Built for the tools you actually use</h2>
           <p className="mt-3 text-slate-400 max-w-xl mx-auto">
-            Four features, zero fluff. Each one maps to a specific part of your recruiting workflow.
+            Six features, zero fluff. Each one maps to a specific part of your recruiting workflow.
           </p>
         </Reveal>
 
@@ -456,7 +470,7 @@ const STEPS = [
   {
     n:    '03',
     head: 'Submit with confidence. Make the placement.',
-    body: 'You know who to call. You have the client summary ready. You built the Boolean string that found them. Now go close.',
+    body: 'You know who to call. Your internal submittal is written. The Boolean string found them. Now go close.',
   },
 ]
 
@@ -521,6 +535,7 @@ const PLANS = [
       'Resume Scorer',
       'Client Summary Generator',
       'Boolean String Generator',
+      'Projects (up to 10 active)',
       'Full history with search',
     ],
     cta:       'Start Pro',
@@ -536,6 +551,9 @@ const PLANS = [
     features: [
       'Everything in Pro',
       'Stack Ranking (CQI Leaderboard)',
+      'Projects (unlimited)',
+      'Skill Assessments',
+      'Internal Submittal write-ups',
       '5 team seats',
       'CSV export',
       'Team usage dashboard',
