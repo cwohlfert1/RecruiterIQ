@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MoreHorizontal, Trophy, Medal, Eye, FileText, Flag, Send, Trash2, Loader2, Star, Crown, GitCompare } from 'lucide-react'
 import { toast } from 'sonner'
@@ -68,7 +69,9 @@ function tooltipPos(rect: TooltipRect, tooltipH: number, tooltipW = 280) {
   const spaceBelow = window.innerHeight - rect.bottom
   const showBelow  = spaceBelow >= tooltipH + GAP
 
-  const top  = showBelow ? rect.bottom + GAP : rect.top - tooltipH - GAP
+  const rawTop = showBelow ? rect.bottom + GAP : rect.top - tooltipH - GAP
+  // Clamp to viewport so tooltip never overflows top or bottom
+  const top  = Math.max(GAP, Math.min(rawTop, window.innerHeight - tooltipH - GAP))
   const left = Math.max(GAP, Math.min(rect.x - tooltipW / 2, window.innerWidth - tooltipW - GAP))
   const arrowLeft = Math.max(8, Math.min(rect.x - left - 5, tooltipW - 18))
 
@@ -240,16 +243,17 @@ function CqiBadgeWithTooltip({ candidate }: { candidate: CandidateRow }) {
       >
         {score}
       </span>
-      <AnimatePresence>
-        {rect && (
+      {rect && createPortal(
+        <AnimatePresence>
           <CqiTooltip
             candidate={candidate}
             rect={rect}
             onMouseEnter={keepOpen}
             onMouseLeave={hide}
           />
-        )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body,
+      )}
     </>
   )
 }
@@ -300,16 +304,17 @@ function RedFlagCellWithTooltip({
           </button>
         )}
       </div>
-      <AnimatePresence>
-        {rect && (
+      {rect && createPortal(
+        <AnimatePresence>
           <RedFlagTooltip
             candidate={candidate}
             rect={rect}
             onMouseEnter={keepOpen}
             onMouseLeave={hide}
           />
-        )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body,
+      )}
     </>
   )
 }
