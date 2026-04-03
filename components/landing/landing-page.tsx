@@ -9,6 +9,7 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { CandidLogo } from '@/components/candid-logo'
+import { SalesChatWidget } from '@/components/landing/sales-chat-widget'
 import { cn } from '@/lib/utils'
 
 // ─── Scroll fade helper ───────────────────────────────────────────────────────
@@ -686,17 +687,29 @@ function PricingSection() {
                   ))}
                 </ul>
 
-                <a
-                  href={plan.href}
-                  className={cn(
-                    'block w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-center transition-all duration-150',
-                    plan.highlight
-                      ? 'bg-gradient-brand text-white hover-glow'
-                      : 'border border-white/12 text-slate-300 hover:border-white/24 hover:text-white',
-                  )}
-                >
-                  {plan.cta}
-                </a>
+                {plan.enterprise ? (
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('openSalesChat'))}
+                    className={cn(
+                      'block w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-center transition-all duration-150',
+                      'border border-white/12 text-slate-300 hover:border-white/24 hover:text-white',
+                    )}
+                  >
+                    {plan.cta}
+                  </button>
+                ) : (
+                  <a
+                    href={plan.href}
+                    className={cn(
+                      'block w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-center transition-all duration-150',
+                      plan.highlight
+                        ? 'bg-gradient-brand text-white hover-glow'
+                        : 'border border-white/12 text-slate-300 hover:border-white/24 hover:text-white',
+                    )}
+                  >
+                    {plan.cta}
+                  </a>
+                )}
               </div>
             )
 
@@ -859,6 +872,7 @@ export function LandingPage() {
       <TestimonialsSection />
       <CtaSection />
       <Footer />
+      <SalesChatWidget />
     </div>
   )
 }
