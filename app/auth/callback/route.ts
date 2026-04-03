@@ -2,6 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { Resend } from 'resend'
 
 // Log the Supabase callback URL once on startup so it can be confirmed in LinkedIn app settings.
 // This must be the ONLY redirect URI registered in the LinkedIn Developer App.
@@ -63,6 +64,45 @@ export async function GET(request: Request) {
         const profileUrl = new URL('/dashboard/settings/profile', origin)
         profileUrl.searchParams.set('linkedin', 'connected')
         return NextResponse.redirect(profileUrl.toString())
+      }
+
+      // Send welcome email for new email/password signups (not OAuth)
+      const isNewUser = user && !linkedInIdentity && (
+        Date.now() - new Date(user.created_at).getTime() < 5 * 60 * 1000
+      )
+      if (isNewUser && user?.email) {
+        try {
+          const resend = new Resend(process.env.RESEND_API_KEY ?? '')
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? origin
+          await resend.emails.send({
+            from: 'Candid.ai <hello@candidai.app>',
+            to:   user.email,
+            subject: 'Welcome to Candid.ai — your sourcing co-pilot is ready',
+            html: `
+              <div style="font-family:Inter,sans-serif;background:#0D0F1C;color:#f8fafc;max-width:600px;margin:0 auto;padding:40px 32px;border-radius:16px">
+                <h1 style="font-size:24px;font-weight:700;color:#fff;margin:0 0 8px">Welcome to Candid.ai</h1>
+                <p style="color:#94a3b8;margin:0 0 24px;font-size:15px;line-height:1.6">
+                  Your AI-powered recruiting co-pilot is ready. Here's what you can do right now:
+                </p>
+                <ul style="color:#cbd5e1;font-size:14px;line-height:2;padding-left:20px;margin:0 0 28px">
+                  <li>Create a project and paste your job description</li>
+                  <li>Add candidates and get instant CQI scores</li>
+                  <li>Generate Boolean strings for LinkedIn & Indeed</li>
+                  <li>Send skill + trust assessments to shortlisted candidates</li>
+                </ul>
+                <a href="${appUrl}/dashboard" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 28px;border-radius:12px">
+                  Open Dashboard →
+                </a>
+                <p style="color:#475569;font-size:12px;margin:32px 0 0;line-height:1.6">
+                  You're on the free plan. Upgrade anytime for unlimited scoring and team collaboration.<br>
+                  Questions? Reply to this email — we read every one.
+                </p>
+              </div>
+            `,
+          })
+        } catch {
+          // Welcome email failure is non-blocking
+        }
       }
 
       return NextResponse.redirect(`${origin}${next}`)

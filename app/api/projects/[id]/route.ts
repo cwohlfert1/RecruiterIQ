@@ -66,7 +66,7 @@ export async function PATCH(
   const body = await req.json().catch(() => ({}))
 
   // Only allow whitelisted fields
-  const allowed = ['teams_webhook_url'] as const
+  const allowed = ['teams_webhook_url', 'job_boards'] as const
   const updatePayload: Record<string, unknown> = {}
   for (const key of allowed) {
     if (key in body) updatePayload[key] = body[key]

@@ -48,15 +48,13 @@ interface Props {
 // ─── Pipeline stage options ────────────────────────────────────
 
 const STAGES: Array<{ key: PipelineStage; label: string }> = [
-  { key: 'sourced',              label: 'Sourced'              },
-  { key: 'contacted',            label: 'Contacted'            },
-  { key: 'phone_screen',         label: 'Phone Screen'         },
-  { key: 'am_review',            label: 'AM Review'            },
-  { key: 'assessment_sent',      label: 'Assessment Sent'      },
-  { key: 'internal_submittal',   label: 'Internal Submittal'   },
-  { key: 'submitted',            label: 'Submitted'            },
-  { key: 'placed',               label: 'Placed'               },
-  { key: 'rejected',             label: 'Rejected'             },
+  { key: 'sourced',            label: 'Sourced'            },
+  { key: 'contacted',          label: 'Contacted'          },
+  { key: 'internal_submittal', label: 'Internal Submittal' },
+  { key: 'assessment',         label: 'Assessment'         },
+  { key: 'submitted',          label: 'Submitted'          },
+  { key: 'placed',             label: 'Placed'             },
+  { key: 'rejected',           label: 'Rejected'           },
 ]
 
 // ─── CQI ring ────────────────────────────────────────────────
@@ -366,7 +364,7 @@ export function CandidateSlideout({
                   <Mail className="w-3 h-3" />
                   <span className="truncate">{candidate.candidate_email}</span>
                 </div>
-                <div className="mt-2">
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
                   <StageDropdown
                     candidateId={candidate.id}
                     projectId={projectId}
@@ -374,6 +372,16 @@ export function CandidateSlideout({
                     canEdit={canEdit}
                     onChange={s => onStageChange(candidate.id, s)}
                   />
+                  {(candidate.pay_rate_min != null || candidate.pay_rate_max != null) && (
+                    <span className="text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full tabular-nums">
+                      {candidate.pay_rate_min != null && candidate.pay_rate_max != null
+                        ? `$${candidate.pay_rate_min}–$${candidate.pay_rate_max}`
+                        : candidate.pay_rate_min != null
+                          ? `$${candidate.pay_rate_min}+`
+                          : `up to $${candidate.pay_rate_max}`}
+                      /{candidate.pay_rate_type === 'annual' ? 'yr' : 'hr'}
+                    </span>
+                  )}
                 </div>
                 {/* Star + reaction row */}
                 <div className="flex items-center gap-1.5 mt-2.5">

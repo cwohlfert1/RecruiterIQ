@@ -40,14 +40,13 @@ function isDefaultFilter(f: FilterState): boolean {
 }
 
 const STAGES: Array<{ key: PipelineStage; label: string }> = [
-  { key: 'sourced',         label: 'Sourced'         },
-  { key: 'contacted',       label: 'Contacted'       },
-  { key: 'phone_screen',    label: 'Phone Screen'    },
-  { key: 'am_review',       label: 'AM Review'       },
-  { key: 'assessment_sent', label: 'Assessment Sent' },
-  { key: 'submitted',       label: 'Submitted'       },
-  { key: 'placed',          label: 'Placed'          },
-  { key: 'rejected',        label: 'Rejected'        },
+  { key: 'sourced',            label: 'Sourced'            },
+  { key: 'contacted',          label: 'Contacted'          },
+  { key: 'internal_submittal', label: 'Internal Submittal' },
+  { key: 'assessment',         label: 'Assessment'         },
+  { key: 'submitted',          label: 'Submitted'          },
+  { key: 'placed',             label: 'Placed'             },
+  { key: 'rejected',           label: 'Rejected'           },
 ]
 
 // ─── Multi-select dropdown ────────────────────────────────────

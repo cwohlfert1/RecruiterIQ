@@ -44,9 +44,8 @@ interface Props {
 }
 
 const PIPELINE_STAGE_LABELS: Record<PipelineStage, string> = {
-  sourced: 'Sourced', contacted: 'Contacted', phone_screen: 'Phone Screen',
-  am_review: 'AM Review', assessment_sent: 'Assessment Sent',
-  internal_submittal: 'Internal Submittal',
+  sourced: 'Sourced', contacted: 'Contacted',
+  internal_submittal: 'Internal Submittal', assessment: 'Assessment',
   submitted: 'Submitted', placed: 'Placed', rejected: 'Rejected',
 }
 
@@ -549,11 +548,14 @@ export function CandidatesTab({
           )}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <Search className="w-8 h-8 text-slate-600 mb-3" />
-          <p className="text-sm text-slate-400">No candidates match your filters</p>
-          <button onClick={() => { setSearchQuery(''); setFilters(DEFAULT_FILTERS) }} className="mt-3 text-xs text-indigo-400 hover:text-indigo-200 transition-colors">
-            Clear all filters
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <p className="text-sm font-medium text-slate-400 mb-1">No candidates match your filters</p>
+          <p className="text-xs text-slate-600 mb-4">Try adjusting your search or filter criteria.</p>
+          <button
+            onClick={() => { setSearchQuery(''); setFilters(DEFAULT_FILTERS) }}
+            className="text-xs text-indigo-400 hover:text-indigo-200 transition-colors border border-indigo-500/20 bg-indigo-500/10 px-3 py-1.5 rounded-full"
+          >
+            Clear filters
           </button>
         </div>
       )}

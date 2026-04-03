@@ -46,14 +46,13 @@ interface Props {
 // ─── Pipeline stage config ────────────────────────────────────
 
 const PIPELINE_STAGES: Array<{ key: PipelineStage; label: string; color: string; bar: string }> = [
-  { key: 'sourced',        label: 'Sourced',        color: 'text-slate-300',    bar: 'bg-slate-500'   },
-  { key: 'contacted',      label: 'Contacted',      color: 'text-blue-300',     bar: 'bg-blue-500'    },
-  { key: 'phone_screen',   label: 'Phone Screen',   color: 'text-indigo-300',   bar: 'bg-indigo-500'  },
-  { key: 'am_review',      label: 'AM Review',      color: 'text-purple-300',   bar: 'bg-purple-500'  },
-  { key: 'assessment_sent',label: 'Assessment',     color: 'text-cyan-300',     bar: 'bg-cyan-500'    },
-  { key: 'submitted',      label: 'Submitted',      color: 'text-emerald-300',  bar: 'bg-emerald-500' },
-  { key: 'placed',         label: 'Placed',         color: 'text-yellow-300',   bar: 'bg-yellow-500'  },
-  { key: 'rejected',       label: 'Rejected',       color: 'text-red-300',      bar: 'bg-red-500'     },
+  { key: 'sourced',            label: 'Sourced',            color: 'text-slate-300',   bar: 'bg-slate-500'   },
+  { key: 'contacted',          label: 'Contacted',          color: 'text-blue-300',    bar: 'bg-blue-500'    },
+  { key: 'internal_submittal', label: 'Int. Submittal',     color: 'text-indigo-300',  bar: 'bg-indigo-500'  },
+  { key: 'assessment',         label: 'Assessment',         color: 'text-cyan-300',    bar: 'bg-cyan-500'    },
+  { key: 'submitted',          label: 'Submitted',          color: 'text-emerald-300', bar: 'bg-emerald-500' },
+  { key: 'placed',             label: 'Placed',             color: 'text-yellow-300',  bar: 'bg-yellow-500'  },
+  { key: 'rejected',           label: 'Rejected',           color: 'text-red-300',     bar: 'bg-red-500'     },
 ]
 
 // ─── Avatar ───────────────────────────────────────────────────
@@ -258,9 +257,8 @@ export function OverviewTab({
   }
 
   const STAGE_LABEL: Record<PipelineStage, string> = {
-    sourced: 'Sourced', contacted: 'Contacted', phone_screen: 'Phone Screen',
-    am_review: 'AM Review', assessment_sent: 'Assessment',
-    internal_submittal: 'Int. Submittal',
+    sourced: 'Sourced', contacted: 'Contacted',
+    internal_submittal: 'Int. Submittal', assessment: 'Assessment',
     submitted: 'Submitted', placed: 'Placed', rejected: 'Rejected',
   }
 

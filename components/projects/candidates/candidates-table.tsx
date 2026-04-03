@@ -342,15 +342,26 @@ function StatusDropdown({
   status:      CandidateStatus
   onChange:    (next: CandidateStatus) => void
 }) {
-  const [open,   setOpen]    = useState(false)
-  const [saving, setSaving]  = useState(false)
-  const ref                  = useRef<HTMLDivElement>(null)
+  const [open,     setOpen]    = useState(false)
+  const [saving,   setSaving]  = useState(false)
+  const [dropPos,  setDropPos] = useState<{ top: number; left: number } | null>(null)
+  const btnRef                 = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    const h = (e: MouseEvent) => {
+      const target = e.target as Node
+      if (btnRef.current && !btnRef.current.contains(target)) setOpen(false)
+    }
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
   }, [])
+
+  function openDropdown() {
+    if (!btnRef.current) return
+    const r = btnRef.current.getBoundingClientRect()
+    setDropPos({ top: r.bottom + 4, left: r.left })
+    setOpen(true)
+  }
 
   async function pick(next: CandidateStatus) {
     if (next === status) { setOpen(false); return }
@@ -369,16 +380,20 @@ function StatusDropdown({
   }
 
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
-        onClick={() => setOpen(o => !o)}
+        ref={btnRef}
+        onClick={openDropdown}
         disabled={saving}
         className={cn('text-[11px] font-semibold px-2 py-0.5 rounded-full border transition-colors hover:opacity-80', STATUS_CLASS[status])}
       >
         {saving ? <Loader2 className="w-3 h-3 animate-spin inline" /> : STATUS_LABEL[status]}
       </button>
-      {open && (
-        <div className="absolute left-0 top-full mt-1 w-32 bg-[#1A1D2E] border border-white/10 rounded-xl shadow-xl z-20 overflow-hidden">
+      {open && dropPos && createPortal(
+        <div
+          style={{ position: 'fixed', top: dropPos.top, left: dropPos.left, zIndex: 9999 }}
+          className="w-32 bg-[#1A1D2E] border border-white/10 rounded-xl shadow-xl overflow-hidden"
+        >
           {STATUS_OPTIONS.map(s => (
             <button
               key={s}
@@ -388,9 +403,10 @@ function StatusDropdown({
               {STATUS_LABEL[s]}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
-    </div>
+    </>
   )
 }
 
@@ -546,7 +562,7 @@ export function CandidatesTable({
                 />
               )}
             </th>
-            {['Rank', 'Name', 'CQI', 'Red Flags', 'Assessment', 'Status', 'Actions'].map(h => (
+            {['Rank', 'Name', 'Rate', 'CQI', 'Red Flags', 'Assessment', 'Status', 'Actions'].map(h => (
               <th key={h} className="text-left text-[11px] font-semibold uppercase tracking-widest text-slate-500 pb-3 pr-4 first:pl-1">
                 {h}
               </th>
@@ -557,7 +573,7 @@ export function CandidatesTable({
           {candidates.map(c => (
             <tr key={c.id} className={cn('hover:bg-white/2 transition-colors group', selected.has(c.id) && 'bg-indigo-500/5')}>
               {/* Checkbox */}
-              <td className="py-3 pr-2 pl-1 w-8">
+              <td className="py-4 pr-2 pl-1 w-8">
                 {onToggleSelect && (
                   <input
                     type="checkbox"
@@ -569,12 +585,12 @@ export function CandidatesTable({
               </td>
 
               {/* Rank */}
-              <td className="py-3 pr-4 pl-1 w-10">
+              <td className="py-4 pr-4 pl-1 w-10">
                 <RankCell rank={ranks[c.id] ?? null} />
               </td>
 
               {/* Name + email */}
-              <td className="py-3 pr-4">
+              <td className="py-4 pr-4">
                 <button onClick={() => onViewResume(c)} className="text-left group/name">
                   <div className="flex items-center gap-1.5">
                     <p className="font-medium text-white group-hover/name:text-indigo-300 transition-colors">{c.candidate_name}</p>
@@ -589,8 +605,24 @@ export function CandidatesTable({
                 </button>
               </td>
 
+              {/* Rate */}
+              <td className="py-4 pr-4 w-28">
+                {c.pay_rate_min != null || c.pay_rate_max != null ? (
+                  <span className="text-xs text-slate-300 tabular-nums">
+                    {c.pay_rate_min != null && c.pay_rate_max != null
+                      ? `$${c.pay_rate_min}–$${c.pay_rate_max}`
+                      : c.pay_rate_min != null
+                        ? `$${c.pay_rate_min}+`
+                        : `up to $${c.pay_rate_max}`}
+                    <span className="text-slate-600 ml-0.5">/{c.pay_rate_type === 'annual' ? 'yr' : 'hr'}</span>
+                  </span>
+                ) : (
+                  <span className="text-slate-600 text-xs">—</span>
+                )}
+              </td>
+
               {/* CQI */}
-              <td className="py-3 pr-4 w-24">
+              <td className="py-4 pr-4 w-24">
                 {c.cqi_score !== null ? (
                   <CqiBadgeWithTooltip candidate={c} />
                 ) : (
@@ -604,7 +636,7 @@ export function CandidatesTable({
               </td>
 
               {/* Red Flags */}
-              <td className="py-3 pr-4 w-28">
+              <td className="py-4 pr-4 w-28">
                 <RedFlagCellWithTooltip
                   candidate={c}
                   onCheck={() => onRedFlag(c.id)}
@@ -612,7 +644,7 @@ export function CandidatesTable({
               </td>
 
               {/* Assessment */}
-              <td className="py-3 pr-4 w-36">
+              <td className="py-4 pr-4 w-36">
                 {c.invite_status === 'completed' ? (
                   <div className="flex flex-col gap-0.5">
                     <span className="text-[11px] font-medium text-emerald-400">Trust: {c.trust_score ?? '—'}</span>
@@ -634,7 +666,7 @@ export function CandidatesTable({
               </td>
 
               {/* Status */}
-              <td className="py-3 pr-4 w-28">
+              <td className="py-4 pr-4 w-28">
                 {canEdit ? (
                   <StatusDropdown
                     candidateId={c.id}
@@ -650,7 +682,7 @@ export function CandidatesTable({
               </td>
 
               {/* Actions */}
-              <td className="py-3 pl-1 w-10">
+              <td className="py-4 pl-1 w-10">
                 <ActionsMenu
                   candidate={c}
                   projectId={projectId}

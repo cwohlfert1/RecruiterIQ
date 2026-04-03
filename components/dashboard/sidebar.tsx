@@ -166,7 +166,6 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
             >
               <AlertOctagon className="w-4 h-4 flex-shrink-0 text-rose-400" />
               <span>Flagged Candidates</span>
-              <span className="ml-auto w-2 h-2 rounded-full bg-rose-500 flex-shrink-0" />
             </Link>
           </motion.li>
 

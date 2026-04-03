@@ -22,15 +22,13 @@ import type { PipelineStage } from '@/types/database'
 // ─── Stage config ─────────────────────────────────────────────
 
 export const PIPELINE_STAGES: Array<{ key: PipelineStage; label: string }> = [
-  { key: 'sourced',              label: 'Sourced'              },
-  { key: 'contacted',            label: 'Contacted'            },
-  { key: 'phone_screen',         label: 'Phone Screen'         },
-  { key: 'am_review',            label: 'AM Review'            },
-  { key: 'assessment_sent',      label: 'Assessment Sent'      },
-  { key: 'internal_submittal',   label: 'Internal Submittal'   },
-  { key: 'submitted',            label: 'Submitted'            },
-  { key: 'placed',               label: 'Placed'               },
-  { key: 'rejected',             label: 'Rejected'             },
+  { key: 'sourced',            label: 'Sourced'            },
+  { key: 'contacted',          label: 'Contacted'          },
+  { key: 'internal_submittal', label: 'Internal Submittal' },
+  { key: 'assessment',         label: 'Assessment'         },
+  { key: 'submitted',          label: 'Submitted'          },
+  { key: 'placed',             label: 'Placed'             },
+  { key: 'rejected',           label: 'Rejected'           },
 ]
 
 // ─── Types ────────────────────────────────────────────────────
@@ -76,8 +74,8 @@ export function KanbanBoard({
   // Group candidates by stage
   const byStage = useMemo(() => {
     const map: Record<PipelineStage, CandidateRow[]> = {
-      sourced: [], contacted: [], phone_screen: [], am_review: [],
-      assessment_sent: [], internal_submittal: [], submitted: [], placed: [], rejected: [],
+      sourced: [], contacted: [], internal_submittal: [],
+      assessment: [], submitted: [], placed: [], rejected: [],
     }
     for (const c of candidates) {
       const stage = (c.pipeline_stage ?? 'sourced') as PipelineStage
@@ -128,9 +126,8 @@ export function KanbanBoard({
     )
 
     const stageLabelMap: Record<PipelineStage, string> = {
-      sourced: 'Sourced', contacted: 'Contacted', phone_screen: 'Phone Screen',
-      am_review: 'AM Review', assessment_sent: 'Assessment Sent',
-      internal_submittal: 'Internal Submittal',
+      sourced: 'Sourced', contacted: 'Contacted',
+      internal_submittal: 'Internal Submittal', assessment: 'Assessment',
       submitted: 'Submitted', placed: 'Placed', rejected: 'Rejected',
     }
 

@@ -32,6 +32,7 @@ interface ProjectRef {
   jd_text:           string | null
   owner_id:          string
   teams_webhook_url?: string | null
+  job_boards?:       string[] | null
 }
 
 interface Member {
@@ -193,6 +194,7 @@ export function ProjectTabs({
           isOwner={isOwner}
           members={members}
           teamsWebhookUrl={project.teams_webhook_url ?? null}
+          jobBoards={(project.job_boards as string[] | null) ?? ['linkedin']}
           onMembersChange={setMembers}
           onShareClick={() => setShowShareModal(true)}
         />

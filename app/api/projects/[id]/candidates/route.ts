@@ -116,14 +116,14 @@ export async function POST(
   if (!canEdit) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   // Parse body
-  let body: { candidate_name?: unknown; candidate_email?: unknown; resume_text?: unknown; pipeline_stage?: unknown; override?: boolean }
+  let body: { candidate_name?: unknown; candidate_email?: unknown; resume_text?: unknown; pipeline_stage?: unknown; override?: boolean; pay_rate_min?: unknown; pay_rate_max?: unknown; pay_rate_type?: unknown }
   try {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { candidate_name, candidate_email, resume_text, pipeline_stage, override: overrideFlag } = body
+  const { candidate_name, candidate_email, resume_text, pipeline_stage, override: overrideFlag, pay_rate_min, pay_rate_max, pay_rate_type } = body
 
   if (typeof candidate_name !== 'string' || !candidate_name.trim()) {
     return NextResponse.json({ error: 'candidate_name is required' }, { status: 400 })
@@ -175,7 +175,7 @@ export async function POST(
     }
   }
 
-  const VALID_STAGES = ['sourced','contacted','phone_screen','am_review','assessment_sent','submitted','placed','rejected']
+  const VALID_STAGES = ['sourced','contacted','internal_submittal','assessment','submitted','placed','rejected']
   const insertStage  = (typeof pipeline_stage === 'string' && VALID_STAGES.includes(pipeline_stage))
     ? pipeline_stage
     : 'sourced'
@@ -191,6 +191,9 @@ export async function POST(
       added_by:        user.id,
       status:          'reviewing',
       pipeline_stage:  insertStage,
+      ...(typeof pay_rate_min === 'number' ? { pay_rate_min } : {}),
+      ...(typeof pay_rate_max === 'number' ? { pay_rate_max } : {}),
+      ...(typeof pay_rate_type === 'string' ? { pay_rate_type } : {}),
     })
     .select()
     .single()

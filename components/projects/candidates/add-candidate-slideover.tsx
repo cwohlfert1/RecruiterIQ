@@ -46,6 +46,8 @@ export function AddCandidateSlideover({ open, projectId, hasJd, isManager = fals
   const [parsed,       setParsed]       = useState<ParsedFields | null>(null)
   const [name,         setName]         = useState('')
   const [email,        setEmail]        = useState('')
+  const [payMin,       setPayMin]       = useState('')
+  const [payMax,       setPayMax]       = useState('')
   const [submitting,   setSubmitting]   = useState(false)
   const [addedCount,   setAddedCount]   = useState(0)
   const [nameError,    setNameError]    = useState(false)
@@ -57,6 +59,7 @@ export function AddCandidateSlideover({ open, projectId, hasJd, isManager = fals
   useEffect(() => {
     if (open) {
       setResume(''); setOriginalFile(null); setParsed(null); setName(''); setEmail('')
+      setPayMin(''); setPayMax('')
       setSubmitting(false); setParsing(false); setAddedCount(0)
       setNameError(false); setEmailError(false)
     }
@@ -123,6 +126,9 @@ export function AddCandidateSlideover({ open, projectId, hasJd, isManager = fals
           resume_text:     resume.trim(),
           ...(initialStage ? { pipeline_stage: initialStage } : {}),
           ...(override ? { override: true } : {}),
+          ...(payMin ? { pay_rate_min: Number(payMin) } : {}),
+          ...(payMax ? { pay_rate_max: Number(payMax) } : {}),
+          ...(payMin || payMax ? { pay_rate_type: 'hourly' } : {}),
         }),
       })
 
@@ -189,6 +195,7 @@ export function AddCandidateSlideover({ open, projectId, hasJd, isManager = fals
     if (result) {
       setAddedCount(c => c + 1)
       setResume(''); setOriginalFile(null); setParsed(null); setName(''); setEmail('')
+      setPayMin(''); setPayMax('')
       setParsing(false); setSubmitting(false)
       setNameError(false); setEmailError(false)
     }
@@ -360,6 +367,39 @@ export function AddCandidateSlideover({ open, projectId, hasJd, isManager = fals
                         <p className="text-xs text-amber-400">Email not found — please enter manually</p>
                       )}
                       {emailError && <p className="text-xs text-red-400">Valid email is required</p>}
+                    </div>
+
+                    {/* Pay Rate */}
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-slate-300">
+                        Pay Rate (W2/hr) <span className="text-slate-600 font-normal text-xs">optional</span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
+                          <input
+                            type="number"
+                            value={payMin}
+                            onChange={e => setPayMin(e.target.value)}
+                            placeholder="75"
+                            min={0}
+                            className="w-full pl-7 pr-3 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors"
+                          />
+                        </div>
+                        <span className="text-slate-600 text-sm">to</span>
+                        <div className="relative flex-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
+                          <input
+                            type="number"
+                            value={payMax}
+                            onChange={e => setPayMax(e.target.value)}
+                            placeholder="90"
+                            min={0}
+                            className="w-full pl-7 pr-3 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-600">Helps compare candidates at similar CQI scores</p>
                     </div>
 
                     {/* Optional fields */}

@@ -63,14 +63,16 @@ export async function GET(
   // Fetch all active strings (both variants)
   const { data: strings } = await supabase
     .from('project_boolean_strings')
-    .select('id, user_id, linkedin_string, indeed_string, variant_type, refinement_count, feedback, created_at')
+    .select('id, user_id, linkedin_string, indeed_string, variant_type, refinement_count, feedback, is_edited, original_linkedin_string, original_indeed_string, created_at')
     .eq('project_id', params.id)
     .eq('is_active', true)
     .order('created_at', { ascending: false })
 
   const activeStrings: Array<{
     id: string; user_id: string; linkedin_string: string; indeed_string: string
-    variant_type: string | null; refinement_count: number; feedback: string | null; created_at: string
+    variant_type: string | null; refinement_count: number; feedback: string | null
+    is_edited: boolean; original_linkedin_string: string | null; original_indeed_string: string | null
+    created_at: string
   }> = strings ?? []
 
   const { count: archiveCount } = await supabase
@@ -143,10 +145,12 @@ export async function PATCH(
   if (!string_id) return NextResponse.json({ error: 'string_id required' }, { status: 400 })
   if (!linkedin_string && !indeed_string) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
 
+  const resetToOriginal = (body as { reset?: boolean }).reset === true
+
   // Verify the row belongs to this project and user has access
   const { data: row } = await supabase
     .from('project_boolean_strings')
-    .select('id, user_id, project_id')
+    .select('id, user_id, project_id, linkedin_string, indeed_string, is_edited, original_linkedin_string, original_indeed_string')
     .eq('id', string_id)
     .eq('project_id', params.id)
     .single()
@@ -169,11 +173,45 @@ export async function PATCH(
     return NextResponse.json({ error: 'Access denied' }, { status: 403 })
   }
 
-  const updates: Record<string, string> = {}
-  if (linkedin_string) updates.linkedin_string = linkedin_string.trim()
-  if (indeed_string)   updates.indeed_string   = indeed_string.trim()
-
   const admin = createAdmin()
+
+  if (resetToOriginal) {
+    // Restore originals only if they exist
+    if (!row.original_linkedin_string && !row.original_indeed_string) {
+      return NextResponse.json({ error: 'No original to restore' }, { status: 400 })
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (admin as any)
+      .from('project_boolean_strings')
+      .update({
+        linkedin_string: row.original_linkedin_string ?? row.linkedin_string,
+        indeed_string:   row.original_indeed_string   ?? row.indeed_string,
+        is_edited: false,
+      })
+      .eq('id', string_id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({
+      success: true,
+      linkedin_string: row.original_linkedin_string ?? row.linkedin_string,
+      indeed_string:   row.original_indeed_string   ?? row.indeed_string,
+    })
+  }
+
+  // Save originals on first edit only
+  const updates: Record<string, unknown> = { is_edited: true }
+  if (linkedin_string) {
+    updates.linkedin_string = linkedin_string.trim()
+    if (!row.is_edited && !row.original_linkedin_string) {
+      updates.original_linkedin_string = row.linkedin_string
+    }
+  }
+  if (indeed_string) {
+    updates.indeed_string = indeed_string.trim()
+    if (!row.is_edited && !row.original_indeed_string) {
+      updates.original_indeed_string = row.indeed_string
+    }
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (admin as any)
     .from('project_boolean_strings')

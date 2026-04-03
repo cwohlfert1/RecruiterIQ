@@ -3,8 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import type { PipelineStage } from '@/types/database'
 
 const VALID_STAGES: PipelineStage[] = [
-  'sourced', 'contacted', 'phone_screen', 'am_review',
-  'assessment_sent', 'submitted', 'placed', 'rejected',
+  'sourced', 'contacted', 'internal_submittal',
+  'assessment', 'submitted', 'placed', 'rejected',
 ]
 
 export async function PATCH(

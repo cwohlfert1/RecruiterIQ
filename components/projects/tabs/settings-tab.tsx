@@ -23,6 +23,7 @@ interface Props {
   isOwner:          boolean
   members:          Member[]
   teamsWebhookUrl?: string | null
+  jobBoards?:       string[]
   onMembersChange?: (members: Member[]) => void
   onShareClick?:    () => void
 }
@@ -68,6 +69,7 @@ export function SettingsTab({
   isOwner,
   members,
   teamsWebhookUrl: initialWebhookUrl,
+  jobBoards: initialJobBoards = ['linkedin'],
   onMembersChange,
   onShareClick,
 }: Props) {
@@ -87,6 +89,10 @@ export function SettingsTab({
   const [webhookEnabled,  setWebhookEnabled]  = useState(!!(initialWebhookUrl))
   const [webhookUrl,      setWebhookUrl]      = useState(initialWebhookUrl ?? '')
   const [savingWebhook,   setSavingWebhook]   = useState(false)
+
+  // Job boards state
+  const [jobBoards,       setJobBoards]       = useState<string[]>(initialJobBoards)
+  const [savingBoards,    setSavingBoards]    = useState(false)
 
   // ── Delete project ────────────────────────────────────────
 
@@ -154,6 +160,31 @@ export function SettingsTab({
     } catch {
       toast.error('Failed to save webhook')
     } finally { setSavingWebhook(false) }
+  }
+
+  // ── Save job boards ──────────────────────────────────────────
+
+  async function handleSaveJobBoards(next: string[]) {
+    setSavingBoards(true)
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ job_boards: next }),
+      })
+      if (!res.ok) { toast.error('Failed to save job board settings'); return }
+      setJobBoards(next)
+      toast.success('Job board settings saved')
+    } catch {
+      toast.error('Failed to save job board settings')
+    } finally { setSavingBoards(false) }
+  }
+
+  function toggleBoard(board: string) {
+    const next = jobBoards.includes(board)
+      ? jobBoards.filter(b => b !== board)
+      : [...jobBoards, board]
+    handleSaveJobBoards(next)
   }
 
   const nonOwnerMembers = members.filter(m => m.role !== 'owner')
@@ -237,6 +268,42 @@ export function SettingsTab({
           </button>
         )}
       </Section>
+
+      {/* ── Job Boards ───────────────────────────────────── */}
+      {canEdit && (
+        <Section title="Job Board Sourcing">
+          <div className="rounded-xl border border-white/8 bg-white/3 p-4 space-y-3">
+            <p className="text-xs text-slate-500">Select which platforms to generate Boolean strings for.</p>
+            {[
+              { id: 'linkedin', label: 'LinkedIn Recruiter', description: 'X-Ray & Recruiter search syntax' },
+              { id: 'indeed',   label: 'Indeed',            description: 'Boolean string for Indeed search' },
+            ].map(({ id, label, description }) => {
+              const active = jobBoards.includes(id)
+              return (
+                <div key={id} className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-white">{label}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+                  </div>
+                  <button
+                    onClick={() => toggleBoard(id)}
+                    disabled={savingBoards}
+                    className={cn(
+                      'relative w-10 h-5 rounded-full transition-colors flex-shrink-0 disabled:opacity-40',
+                      active ? 'bg-indigo-500' : 'bg-white/10'
+                    )}
+                  >
+                    <span className={cn(
+                      'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
+                      active ? 'translate-x-5' : 'translate-x-0.5'
+                    )} />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </Section>
+      )}
 
       {/* ── Integrations ─────────────────────────────────── */}
       {canEdit && (

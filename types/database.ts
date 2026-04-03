@@ -352,6 +352,7 @@ export type Database = {
           hired_candidate_name:  string | null
           teams_webhook_url:     string | null
           company_id:            string | null
+          job_boards:            string[]
           created_at:            string
           updated_at:            string
         }
@@ -366,6 +367,7 @@ export type Database = {
           hired_candidate_name?: string | null
           teams_webhook_url?:    string | null
           company_id?:           string | null
+          job_boards?:           string[]
         }
         Update: {
           title?:                string
@@ -376,6 +378,7 @@ export type Database = {
           hired_candidate_name?: string | null
           teams_webhook_url?:    string | null
           company_id?:           string | null
+          job_boards?:           string[]
         }
       }
       project_members: {
@@ -422,6 +425,9 @@ export type Database = {
           hired:                boolean
           flag_type:            string | null
           resume_file_url:      string | null
+          pay_rate_min:         number | null
+          pay_rate_max:         number | null
+          pay_rate_type:        string | null
           deleted_at:           string | null
           created_at:           string
           updated_at:           string
@@ -443,6 +449,9 @@ export type Database = {
           pipeline_stage?:       PipelineStage
           stage_changed_at?:     string
           tags_json?:            string[]
+          pay_rate_min?:         number | null
+          pay_rate_max?:         number | null
+          pay_rate_type?:        string | null
         }
         Update: {
           candidate_name?:       string
@@ -461,6 +470,9 @@ export type Database = {
           hired?:                boolean
           flag_type?:            string | null
           resume_file_url?:      string | null
+          pay_rate_min?:         number | null
+          pay_rate_max?:         number | null
+          pay_rate_type?:        string | null
           deleted_at?:           string | null
         }
       }
@@ -484,26 +496,37 @@ export type Database = {
       }
       project_boolean_strings: {
         Row: {
-          id:              string
-          project_id:      string
-          user_id:         string
-          linkedin_string: string
-          indeed_string:   string
-          is_active:       boolean
-          created_by:      string | null
-          created_at:      string
+          id:                        string
+          project_id:                string
+          user_id:                   string
+          linkedin_string:           string
+          indeed_string:             string
+          is_active:                 boolean
+          is_edited:                 boolean
+          original_linkedin_string:  string | null
+          original_indeed_string:    string | null
+          created_by:                string | null
+          created_at:                string
         }
         Insert: {
-          id?:              string
-          project_id:       string
-          user_id:          string
-          linkedin_string:  string
-          indeed_string:    string
-          is_active?:       boolean
-          created_by?:      string | null
+          id?:                        string
+          project_id:                 string
+          user_id:                    string
+          linkedin_string:            string
+          indeed_string:              string
+          is_active?:                 boolean
+          is_edited?:                 boolean
+          original_linkedin_string?:  string | null
+          original_indeed_string?:    string | null
+          created_by?:                string | null
         }
         Update: {
-          is_active?: boolean
+          is_active?:                boolean
+          linkedin_string?:          string
+          indeed_string?:            string
+          is_edited?:                boolean
+          original_linkedin_string?: string | null
+          original_indeed_string?:   string | null
         }
       }
       project_activity: {
@@ -854,10 +877,8 @@ export type CandidateStatus    = 'reviewing' | 'screening' | 'submitted' | 'reje
 export type PipelineStage      =
   | 'sourced'
   | 'contacted'
-  | 'phone_screen'
-  | 'am_review'
-  | 'assessment_sent'
   | 'internal_submittal'
+  | 'assessment'
   | 'submitted'
   | 'placed'
   | 'rejected'

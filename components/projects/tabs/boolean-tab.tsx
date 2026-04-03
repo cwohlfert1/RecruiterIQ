@@ -55,16 +55,19 @@ function CopyButton({ text }: { text: string }) {
 type FeedbackBucket = '< 100' | '100-500' | '500-2000' | '2000+'
 
 interface BooleanString {
-  id:               string
-  user_id:          string
-  user_email:       string
-  linkedin_string:  string
-  indeed_string:    string
-  variant_type:     string | null
-  refinement_count: number
-  feedback:         string | null
-  created_at:       string
-  broad?:           BooleanString | null
+  id:                       string
+  user_id:                  string
+  user_email:               string
+  linkedin_string:          string
+  indeed_string:            string
+  variant_type:             string | null
+  refinement_count:         number
+  feedback:                 string | null
+  is_edited:                boolean
+  original_linkedin_string: string | null
+  original_indeed_string:   string | null
+  created_at:               string
+  broad?:                   BooleanString | null
 }
 
 interface BooleanData {
@@ -284,11 +287,42 @@ function VariantSection({
       })
       const data = await res.json()
       if (!res.ok) { toast.error(data.error ?? 'Save failed'); return }
-      onRefined({ linkedin_string: editLinkedin.trim(), indeed_string: editIndeed.trim() })
+      onRefined({
+        linkedin_string: editLinkedin.trim(),
+        indeed_string:   editIndeed.trim(),
+        is_edited:       true,
+        original_linkedin_string: stringRow.original_linkedin_string ?? stringRow.linkedin_string,
+        original_indeed_string:   stringRow.original_indeed_string   ?? stringRow.indeed_string,
+      })
       setEditing(false)
-      toast.success('Boolean string updated')
+      toast.success('Search string saved')
     } catch {
       toast.error('Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleReset() {
+    setSaving(true)
+    try {
+      const res  = await fetch(`/api/projects/${projectId}/boolean`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ string_id: stringRow.id, reset: true }),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error ?? 'Reset failed'); return }
+      onRefined({
+        linkedin_string: data.linkedin_string,
+        indeed_string:   data.indeed_string,
+        is_edited:       false,
+      })
+      setEditLinkedin(data.linkedin_string)
+      setEditIndeed(data.indeed_string)
+      toast.success('Reset to Cortex-generated version')
+    } catch {
+      toast.error('Reset failed')
     } finally {
       setSaving(false)
     }
@@ -308,6 +342,11 @@ function VariantSection({
           <div className="flex items-center gap-2">
             <span className="text-base">💼</span>
             <span className="text-xs font-semibold text-slate-300">LinkedIn Recruiter</span>
+            {stringRow.is_edited && !editing && (
+              <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full">
+                Edited
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1">
             {!editing && <CopyButton text={stringRow.linkedin_string} />}
@@ -382,6 +421,17 @@ function VariantSection({
             {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
+      )}
+
+      {/* Reset to original — only shown if manually edited */}
+      {stringRow.is_edited && !editing && (stringRow.original_linkedin_string || stringRow.original_indeed_string) && (
+        <button
+          onClick={handleReset}
+          disabled={saving}
+          className="text-xs text-slate-600 hover:text-slate-400 transition-colors disabled:opacity-40"
+        >
+          ↩ Reset to Cortex-generated version
+        </button>
       )}
 
       {(stringRow.refinement_count ?? 0) > 0 && (
