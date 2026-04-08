@@ -159,7 +159,27 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
             </motion.li>
           ))}
 
-          {/* Flagged Candidates — agency-level DNU registry */}
+          {/* ── Tools section ─────────────────────────────── */}
+          <SectionDivider label="Tools" />
+
+          {TOOLS_NAV.map(({ label, href, icon: Icon }) => (
+            <motion.li key={href} variants={itemVariants}>
+              <Link
+                href={href}
+                className={cn('nav-item', isActive(href) && 'nav-active')}
+              >
+                <Icon className="w-4 h-4 flex-shrink-0" />
+                <span>{label}</span>
+                {href === '/dashboard/ranking' && profile.plan_tier === 'free' && (
+                  <span className="ml-auto text-[10px] font-semibold text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded-full">
+                    PRO
+                  </span>
+                )}
+              </Link>
+            </motion.li>
+          ))}
+
+          {/* Flagged Candidates */}
           <motion.li variants={itemVariants}>
             <Link
               href="/dashboard/flagged"
@@ -180,26 +200,6 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
               <span>Spread Tracker</span>
             </Link>
           </motion.li>
-
-          {/* ── Tools section ─────────────────────────────── */}
-          <SectionDivider label="Tools" />
-
-          {TOOLS_NAV.map(({ label, href, icon: Icon }) => (
-            <motion.li key={href} variants={itemVariants}>
-              <Link
-                href={href}
-                className={cn('nav-item', isActive(href) && 'nav-active')}
-              >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                <span>{label}</span>
-                {href === '/dashboard/ranking' && profile.plan_tier === 'free' && (
-                  <span className="ml-auto text-[10px] font-semibold text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded-full">
-                    PRO
-                  </span>
-                )}
-              </Link>
-            </motion.li>
-          ))}
 
           {/* ── Assessments section (manager only) ────────── */}
           {isManager && (
