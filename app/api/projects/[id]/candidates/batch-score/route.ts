@@ -4,6 +4,7 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { anthropic, MODEL, validateWordCount } from '@/lib/anthropic'
 import { incrementAICallCount } from '@/lib/ai-gate'
 import type { BreakdownJson, ProjectActivityType } from '@/types/database'
+import { CQI_SYSTEM_PROMPT, buildCqiUserPrompt } from '@/lib/cqi/scoring-prompt'
 
 interface ClaudeBreakdownCategory { score: number; weight: number; weighted: number; explanation: string }
 interface ClaudeScoreResponse {
@@ -87,33 +88,9 @@ export async function POST(
           const response = await anthropic.messages.create({
             model:      MODEL,
             max_tokens: 1024,
-            system:     'You are an expert technical recruiter. Return ONLY valid JSON.',
+            system:     CQI_SYSTEM_PROMPT,
             messages:   [{
-              role: 'user', content: `Score this resume against this job description using the CQI framework.
-
-Categories: Technical Fit (40%), Domain Experience (15%), Scope & Impact (15%), Communication (15%), Catfish Risk (15% inverted).
-Catfish Risk is inverted: score 0=no risk (full 15pts), score 100=high risk (0pts).
-overall_score = (technical_fit*0.40) + (domain_experience*0.15) + (scope_impact*0.15) + (communication*0.15) + ((100-catfish_risk)*0.15)
-recommendation: "Strong Submit" (>=85), "Submit" (70-84), "Borderline" (55-69), "Pass" (<55)
-
-Job Description:
-${project.jd_text}
-
-Resume:
-${candidate.resume_text}
-
-Return ONLY JSON:
-{
-  "overall_score": <integer 0-100>,
-  "recommendation": "<Strong Submit|Submit|Borderline|Pass>",
-  "breakdown": {
-    "technical_fit":     { "score": <0-100>, "weight": 0.40, "weighted": <rounded>, "explanation": "" },
-    "domain_experience": { "score": <0-100>, "weight": 0.15, "weighted": <rounded>, "explanation": "" },
-    "scope_impact":      { "score": <0-100>, "weight": 0.15, "weighted": <rounded>, "explanation": "" },
-    "communication":     { "score": <0-100>, "weight": 0.15, "weighted": <rounded>, "explanation": "" },
-    "catfish_risk":      { "score": <0-100>, "weight": 0.15, "weighted": <(100-score)*0.15 rounded>, "explanation": "" }
-  }
-}`,
+              role: 'user', content: buildCqiUserPrompt(project.jd_text, candidate.resume_text),
             }],
           })
 

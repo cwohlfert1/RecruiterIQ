@@ -4,6 +4,7 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { anthropic, MODEL, validateWordCount } from '@/lib/anthropic'
 import { incrementAICallCount } from '@/lib/ai-gate'
 import type { BreakdownJson, ProjectActivityType } from '@/types/database'
+import { CQI_SYSTEM_PROMPT, buildCqiUserPrompt } from '@/lib/cqi/scoring-prompt'
 
 interface ClaudeBreakdownCategory {
   score: number; weight: number; weighted: number; explanation: string
@@ -57,45 +58,13 @@ export async function POST(
     return NextResponse.json({ error: 'Resume too long' }, { status: 400 })
   }
 
-  const userPrompt = `Score this resume against this job description using the CQI (Candidate Quality Index) framework.
-
-Scoring categories and weights:
-- Technical Fit (40%): exact match to required tools/stack and depth of hands-on experience
-- Domain Experience (15%): relevance of industry background and environment
-- Scope & Impact (15%): ownership, complexity, and measurable contributions
-- Communication (15%): clarity, articulation, and stakeholder interaction signals from the resume
-- Catfish Risk (15%): inconsistencies, vague experience, or overinflated skills — score 0-100 where 100 = very high risk
-
-IMPORTANT for Catfish Risk: this score is INVERTED when computing overall_score.
-overall_score = (technical_fit*0.40) + (domain_experience*0.15) + (scope_impact*0.15) + (communication*0.15) + ((100-catfish_risk)*0.15)
-
-recommendation: "Strong Submit" (>=85), "Submit" (70-84), "Borderline" (55-69), "Pass" (<55)
-
-Job Description:
-${project.jd_text}
-
-Resume:
-${candidate.resume_text}
-
-Return ONLY JSON:
-{
-  "overall_score": <integer 0-100>,
-  "job_title": "",
-  "recommendation": "<Strong Submit|Submit|Borderline|Pass>",
-  "breakdown": {
-    "technical_fit":     { "score": <0-100>, "weight": 0.40, "weighted": <score*0.40 rounded>, "explanation": "<sentence>" },
-    "domain_experience": { "score": <0-100>, "weight": 0.15, "weighted": <score*0.15 rounded>, "explanation": "<sentence>" },
-    "scope_impact":      { "score": <0-100>, "weight": 0.15, "weighted": <score*0.15 rounded>, "explanation": "<sentence>" },
-    "communication":     { "score": <0-100>, "weight": 0.15, "weighted": <score*0.15 rounded>, "explanation": "<sentence>" },
-    "catfish_risk":      { "score": <0-100>, "weight": 0.15, "weighted": <(100-score)*0.15 rounded>, "explanation": "<sentence>" }
-  }
-}`
+  const userPrompt = buildCqiUserPrompt(project.jd_text, candidate.resume_text)
 
   let claudeData: ClaudeScoreResponse
   try {
     const response = await anthropic.messages.create({
       model: MODEL, max_tokens: 1024,
-      system: 'You are an expert technical recruiter. Return ONLY valid JSON.',
+      system: CQI_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userPrompt }],
     })
     const raw     = response.content[0].type === 'text' ? response.content[0].text : ''

@@ -3,6 +3,7 @@ import { anthropic, MODEL, validateWordCount } from '@/lib/anthropic'
 import { checkAIGate, incrementAICallCount } from '@/lib/ai-gate'
 import { createClient } from '@/lib/supabase/server'
 import type { BreakdownJson } from '@/types/database'
+import { CQI_SYSTEM_PROMPT, buildCqiUserPrompt } from '@/lib/cqi/scoring-prompt'
 
 interface ClaudeBreakdownCategory {
   score: number
@@ -56,57 +57,8 @@ export async function POST(req: NextRequest) {
   }
 
   // 3. Call Claude API
-  const systemPrompt =
-    'You are an expert technical recruiter. Evaluate the resume against the job description.\n' +
-    'Return ONLY valid JSON, no markdown, no explanation outside the JSON.'
-
-  const userPrompt = `Score this resume against this job description using the CQI (Candidate Quality Index) framework.
-
-Scoring categories and weights:
-- Technical Fit (40%): exact match to required tools/stack and depth of hands-on experience
-- Domain Experience (15%): relevance of industry background and environment
-- Scope & Impact (15%): ownership, complexity, and measurable contributions
-- Communication (15%): clarity, articulation, and stakeholder interaction signals from the resume
-- Catfish Risk (15%): inconsistencies, vague experience, or overinflated skills — score 0-100 where 100 = very high risk
-
-IMPORTANT for Catfish Risk: this score is INVERTED when computing overall_score.
-A candidate with catfish_risk score of 0 (no red flags) contributes the full 15 points.
-A candidate with catfish_risk score of 100 (extreme red flags) contributes 0 points.
-
-Weighted contribution formula:
-- technical_fit:     score * 0.40
-- domain_experience: score * 0.15
-- scope_impact:      score * 0.15
-- communication:     score * 0.15
-- catfish_risk:      (100 - score) * 0.15
-
-overall_score = sum of all weighted contributions (integer 0-100)
-
-recommendation:
-- "Strong Submit" if overall_score >= 85
-- "Submit" if overall_score 70-84
-- "Borderline" if overall_score 55-69
-- "Pass" if overall_score < 55
-
-Job Description:
-${jd_text}
-
-Resume:
-${resume_text}
-
-Return ONLY this JSON structure:
-{
-  "overall_score": <integer 0-100>,
-  "job_title": "<extracted job title from JD or empty string>",
-  "recommendation": "<Strong Submit|Submit|Borderline|Pass>",
-  "breakdown": {
-    "technical_fit":     { "score": <0-100>, "weight": 0.40, "weighted": <score*0.40 rounded>, "explanation": "<sentence>" },
-    "domain_experience": { "score": <0-100>, "weight": 0.15, "weighted": <score*0.15 rounded>, "explanation": "<sentence>" },
-    "scope_impact":      { "score": <0-100>, "weight": 0.15, "weighted": <score*0.15 rounded>, "explanation": "<sentence>" },
-    "communication":     { "score": <0-100>, "weight": 0.15, "weighted": <score*0.15 rounded>, "explanation": "<sentence>" },
-    "catfish_risk":      { "score": <0-100>, "weight": 0.15, "weighted": <(100-score)*0.15 rounded>, "explanation": "<sentence>" }
-  }
-}`
+  const systemPrompt = CQI_SYSTEM_PROMPT
+  const userPrompt = buildCqiUserPrompt(jd_text as string, resume_text as string)
 
   let claudeData: ClaudeResponse
   try {

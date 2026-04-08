@@ -4,6 +4,7 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { anthropic, MODEL, validateWordCount } from '@/lib/anthropic'
 import { incrementAICallCount } from '@/lib/ai-gate'
 import type { BreakdownJson, ProjectActivityType } from '@/types/database'
+import { CQI_SYSTEM_PROMPT, buildCqiUserPrompt } from '@/lib/cqi/scoring-prompt'
 
 // ─── Claude scoring ────────────────────────────────────────────
 
@@ -31,38 +32,13 @@ async function scoreWithClaude(
   resumeText: string,
   jdText: string,
 ): Promise<{ score: number; breakdownJson: BreakdownJson } | null> {
-  const userPrompt = `Score this resume against this job description using the CQI framework.
-
-Categories: Technical Fit (40%), Domain Experience (15%), Scope & Impact (15%), Communication (15%), Catfish Risk (15% inverted).
-Catfish Risk is inverted: score 0=no risk (full 15pts), score 100=high risk (0pts).
-overall_score = (technical_fit*0.40) + (domain_experience*0.15) + (scope_impact*0.15) + (communication*0.15) + ((100-catfish_risk)*0.15)
-recommendation: "Strong Submit" (>=85), "Submit" (70-84), "Borderline" (55-69), "Pass" (<55)
-
-Job Description:
-${jdText}
-
-Resume:
-${resumeText}
-
-Return ONLY this JSON:
-{
-  "overall_score": <integer 0-100>,
-  "job_title": "<extracted job title or empty string>",
-  "recommendation": "<Strong Submit|Submit|Borderline|Pass>",
-  "breakdown": {
-    "technical_fit":     { "score": <0-100>, "weight": 0.40, "weighted": <rounded>, "explanation": "<sentence>" },
-    "domain_experience": { "score": <0-100>, "weight": 0.15, "weighted": <rounded>, "explanation": "<sentence>" },
-    "scope_impact":      { "score": <0-100>, "weight": 0.15, "weighted": <rounded>, "explanation": "<sentence>" },
-    "communication":     { "score": <0-100>, "weight": 0.15, "weighted": <rounded>, "explanation": "<sentence>" },
-    "catfish_risk":      { "score": <0-100>, "weight": 0.15, "weighted": <(100-score)*0.15 rounded>, "explanation": "<sentence>" }
-  }
-}`
+  const userPrompt = buildCqiUserPrompt(jdText, resumeText)
 
   try {
     const response = await anthropic.messages.create({
       model:      MODEL,
       max_tokens: 1024,
-      system:     'You are an expert technical recruiter. Return ONLY valid JSON, no markdown.',
+      system:     CQI_SYSTEM_PROMPT,
       messages:   [{ role: 'user', content: userPrompt }],
     })
     const raw     = response.content[0].type === 'text' ? response.content[0].text : ''
