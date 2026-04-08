@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { TrendingUp, Plus, Search, Lock, DollarSign, Clock, AlertTriangle, Award } from 'lucide-react'
+import { TrendingUp, Plus, Search, Lock, DollarSign, Clock, AlertTriangle, Award, Upload } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { PlacementDrawer, type Placement } from './placement-drawer'
+import { ImportModal } from './import-modal'
 
 type StatusFilter = 'all' | 'active' | 'locked_up' | 'falling_off'
 
@@ -67,6 +68,7 @@ export function SpreadTrackerClient({ planTier, isAgencyOwner }: SpreadTrackerPr
   const [search, setSearch]         = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Placement | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
 
   // Team view (Phase 4)
   const [teamView, setTeamView]       = useState(false)
@@ -200,13 +202,22 @@ export function SpreadTrackerClient({ planTier, isAgencyOwner }: SpreadTrackerPr
             </div>
           )}
           {!teamView && (
-            <button
-              onClick={openAdd}
-              className="flex items-center gap-1.5 py-2 px-3.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-400 hover:to-violet-400 transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              Add Placement
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setImportOpen(true)}
+                className="flex items-center gap-1.5 py-2 px-3.5 rounded-xl text-sm font-medium text-slate-300 border border-white/12 hover:border-white/24 hover:text-white transition-all"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                Import CSV
+              </button>
+              <button
+                onClick={openAdd}
+                className="flex items-center gap-1.5 py-2 px-3.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-400 hover:to-violet-400 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                Add Placement
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -355,6 +366,12 @@ export function SpreadTrackerClient({ planTier, isAgencyOwner }: SpreadTrackerPr
         readOnly={teamView}
         onClose={() => setDrawerOpen(false)}
         onSaved={loadData}
+      />
+
+      <ImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={loadData}
       />
     </div>
   )
