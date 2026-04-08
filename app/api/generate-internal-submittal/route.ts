@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 import { checkAIGate } from '@/lib/ai-gate'
+import { checkRateLimit, getRateLimitKey, rateLimitResponse, RATE_AI } from '@/lib/security/rate-limit'
 
 const client = new Anthropic()
 
@@ -14,6 +15,10 @@ export async function POST(req: NextRequest) {
 
   const gate = await checkAIGate(user.id)
   if (!gate.allowed) return NextResponse.json({ error: gate.reason }, { status: 403 })
+
+  // Rate limit: 20 AI calls/min per user
+  const rl = checkRateLimit(getRateLimitKey(req, 'gen-submittal', user.id), RATE_AI)
+  if (!rl.allowed) return rateLimitResponse(rl)
 
   let body: {
     candidate_id:   string

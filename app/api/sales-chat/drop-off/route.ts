@@ -1,8 +1,13 @@
 import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Resend } from 'resend'
+import { checkRateLimit, getRateLimitKey, rateLimitResponse, RATE_PUBLIC } from '@/lib/security/rate-limit'
 
 export async function POST(req: NextRequest) {
+  // Rate limit: 30 req/min per IP (public endpoint)
+  const rl = checkRateLimit(getRateLimitKey(req, 'sales-dropoff'), RATE_PUBLIC)
+  if (!rl.allowed) return rateLimitResponse(rl)
+
   let body: {
     session_id?: unknown
     event?: unknown

@@ -61,14 +61,20 @@ export async function POST(
   const admin     = createAdminClient() as any
   const { token } = params
 
+  // Security: verify token is valid, in-progress, AND not expired
   const { data: invite } = await admin
     .from('assessment_invites')
-    .select('id, assessment_id, created_by, candidate_name, candidate_email')
+    .select('id, assessment_id, created_by, candidate_name, candidate_email, expires_at')
     .eq('token', token)
     .eq('status', 'started')
-    .single() as { data: { id: string; assessment_id: string; created_by: string; candidate_name: string; candidate_email: string } | null }
+    .single() as { data: { id: string; assessment_id: string; created_by: string; candidate_name: string; candidate_email: string; expires_at: string | null } | null }
 
   if (!invite) return NextResponse.json({ error: 'Invalid token' }, { status: 403 })
+
+  // Reject submissions on expired invites
+  if (invite.expires_at && new Date(invite.expires_at).getTime() < Date.now()) {
+    return NextResponse.json({ error: 'Assessment has expired' }, { status: 410 })
+  }
 
   const { data: session } = await admin
     .from('assessment_sessions')

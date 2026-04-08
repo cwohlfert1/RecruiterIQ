@@ -4,6 +4,7 @@ import { checkAIGate, incrementAICallCount } from '@/lib/ai-gate'
 import { createClient } from '@/lib/supabase/server'
 import type { BreakdownJson } from '@/types/database'
 import { CQI_SYSTEM_PROMPT, buildCqiUserPrompt } from '@/lib/cqi/scoring-prompt'
+import { checkRateLimit, getRateLimitKey, rateLimitResponse, RATE_AI } from '@/lib/security/rate-limit'
 
 interface ClaudeBreakdownCategory {
   score: number
@@ -32,6 +33,10 @@ export async function POST(req: NextRequest) {
     const status = gate.reason === 'unauthenticated' ? 401 : 403
     return NextResponse.json({ error: gate.reason }, { status })
   }
+
+  // Rate limit: 20 AI calls/min per user
+  const rl = checkRateLimit(getRateLimitKey(req, 'score-resume', gate.userId), RATE_AI)
+  if (!rl.allowed) return rateLimitResponse(rl)
 
   // 2. Parse and validate inputs
   let body: { jd_text?: unknown; resume_text?: unknown }

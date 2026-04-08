@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { checkRateLimit, getRateLimitKey, rateLimitResponse, RATE_EMAIL } from '@/lib/security/rate-limit'
 
 const MAX_SEATS = 5 // owner + 4 invites
 const INVITE_TTL_DAYS = 7
@@ -14,6 +15,10 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 })
     }
+
+    // Rate limit: 10 invite emails/min per user
+    const rl = checkRateLimit(getRateLimitKey(req, 'team-invite', user.id), RATE_EMAIL)
+    if (!rl.allowed) return rateLimitResponse(rl)
 
     // ── Plan check: agency only ───────────────────────────────────────────
     const { data: profileData } = await supabase
@@ -29,7 +34,8 @@ export async function POST(req: NextRequest) {
     }
 
     const { email } = await req.json() as { email: string }
-    if (!email || !email.includes('@')) {
+    // Security: strict email validation
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) {
       return NextResponse.json({ error: 'Valid email required' }, { status: 400 })
     }
 

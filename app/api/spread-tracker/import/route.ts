@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { recalcWatermark } from '@/lib/spread-tracker/watermark'
+import { checkRateLimit, getRateLimitKey, rateLimitResponse, RATE_BULK } from '@/lib/security/rate-limit'
 
 interface ImportRow {
   consultant_name?: string
@@ -25,12 +26,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'plan_required' }, { status: 403 })
   }
 
+  // Rate limit: 5 bulk imports/min per user
+  const rl = checkRateLimit(getRateLimitKey(req, 'spread-import', user.id), RATE_BULK)
+  if (!rl.allowed) return rateLimitResponse(rl)
+
   let body: { rows?: ImportRow[]; client_color_map?: Record<string, string> }
   try { body = await req.json() } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const rows = Array.isArray(body.rows) ? body.rows : []
+  // Security: cap bulk import at 500 rows to prevent abuse
+  const MAX_IMPORT_ROWS = 500
+  const rows = Array.isArray(body.rows) ? body.rows.slice(0, MAX_IMPORT_ROWS) : []
   const colorMap: Record<string, string> = body.client_color_map && typeof body.client_color_map === 'object' ? body.client_color_map : {}
   if (rows.length === 0) {
     return NextResponse.json({ error: 'No rows provided' }, { status: 400 })

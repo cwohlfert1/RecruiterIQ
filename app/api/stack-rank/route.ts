@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { anthropic, MODEL, validateWordCount } from '@/lib/anthropic'
 import { checkAIGate, incrementAICallCount } from '@/lib/ai-gate'
 import { createClient } from '@/lib/supabase/server'
+import { checkRateLimit, getRateLimitKey, rateLimitResponse, RATE_AI } from '@/lib/security/rate-limit'
 
 // ─── Request / Claude response types ──────────────────────────────────────────
 
@@ -44,6 +45,10 @@ export async function POST(req: NextRequest) {
       { status },
     )
   }
+
+  // Rate limit: 20 AI calls/min per user
+  const rl = checkRateLimit(getRateLimitKey(req, 'stack-rank', gate.userId), RATE_AI)
+  if (!rl.allowed) return rateLimitResponse(rl)
 
   // 2. Parse body
   let body: Partial<RequestBody>

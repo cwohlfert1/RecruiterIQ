@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Resend } from 'resend'
 import { isWhitelistedEmail } from '@/lib/whitelist'
+import { isSafeRedirect } from '@/lib/security/validate'
 
 // Log the Supabase callback URL once on startup so it can be confirmed in LinkedIn app settings.
 // This must be the ONLY redirect URI registered in the LinkedIn Developer App.
@@ -15,7 +16,9 @@ console.log(
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/dashboard'
+  // Security: validate redirect path to prevent open redirect attacks
+  const rawNext = searchParams.get('next') ?? '/dashboard'
+  const next = isSafeRedirect(rawNext) ? rawNext : '/dashboard'
 
   if (code) {
     const cookieStore = cookies()

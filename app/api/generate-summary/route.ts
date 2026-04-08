@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { anthropic, MODEL, validateWordCount } from '@/lib/anthropic'
 import { checkAIGate, incrementAICallCount } from '@/lib/ai-gate'
 import { createClient } from '@/lib/supabase/server'
+import { checkRateLimit, getRateLimitKey, rateLimitResponse, RATE_AI } from '@/lib/security/rate-limit'
 
 export async function POST(req: NextRequest) {
   // 1. Auth + plan gate — Pro and above required
@@ -13,6 +14,10 @@ export async function POST(req: NextRequest) {
       { status },
     )
   }
+
+  // Rate limit: 20 AI calls/min per user
+  const rl = checkRateLimit(getRateLimitKey(req, 'gen-summary', gate.userId), RATE_AI)
+  if (!rl.allowed) return rateLimitResponse(rl)
 
   // 2. Parse body
   let body: { jobTitle?: unknown; companyName?: unknown; notes?: unknown; assessmentSessionId?: unknown }
