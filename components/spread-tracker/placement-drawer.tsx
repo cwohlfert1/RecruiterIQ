@@ -26,6 +26,8 @@ interface DrawerProps {
   readOnly?: boolean
   onClose: () => void
   onSaved: () => void
+  clientColorMap?: Record<string, string>
+  clientNames?: string[]
 }
 
 const EMPTY: Omit<Placement, 'id'> = {
@@ -39,11 +41,12 @@ const EMPTY: Omit<Placement, 'id'> = {
   notes: null,
 }
 
-export function PlacementDrawer({ open, placement, readOnly, onClose, onSaved }: DrawerProps) {
+export function PlacementDrawer({ open, placement, readOnly, onClose, onSaved, clientColorMap = {}, clientNames = [] }: DrawerProps) {
   const [form, setForm] = useState<Omit<Placement, 'id'>>(EMPTY)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [colorMatched, setColorMatched] = useState(false)
   const nameRef = useRef<HTMLInputElement>(null)
 
   const isEdit = !!placement
@@ -65,6 +68,7 @@ export function PlacementDrawer({ open, placement, readOnly, onClose, onSaved }:
         setForm(EMPTY)
       }
       setConfirmDelete(false)
+      setColorMatched(false)
       setTimeout(() => nameRef.current?.focus(), 200)
     }
   }, [open, placement])
@@ -170,11 +174,30 @@ export function PlacementDrawer({ open, placement, readOnly, onClose, onSaved }:
                 <input
                   type="text"
                   value={form.client_company}
-                  onChange={e => set('client_company', e.target.value)}
+                  onChange={e => {
+                    const val = e.target.value
+                    set('client_company', val)
+                    const match = clientColorMap[val.toLowerCase()]
+                    if (match) {
+                      set('client_color', match)
+                      setColorMatched(true)
+                    } else {
+                      setColorMatched(false)
+                    }
+                  }}
+                  list="client-company-list"
                   disabled={readOnly}
                   className="w-full bg-white/6 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 disabled:opacity-50"
                   placeholder="e.g., Acme Corp"
                 />
+                <datalist id="client-company-list">
+                  {clientNames.map(name => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
+                {colorMatched && !isEdit && (
+                  <p className="text-[10px] text-slate-500 mt-1">Color matched from existing placement</p>
+                )}
               </Field>
 
               <Field label="Client Color">

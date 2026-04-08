@@ -25,12 +25,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'plan_required' }, { status: 403 })
   }
 
-  let body: { rows?: ImportRow[] }
+  let body: { rows?: ImportRow[]; client_color_map?: Record<string, string> }
   try { body = await req.json() } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
   const rows = Array.isArray(body.rows) ? body.rows : []
+  const colorMap: Record<string, string> = body.client_color_map && typeof body.client_color_map === 'object' ? body.client_color_map : {}
   if (rows.length === 0) {
     return NextResponse.json({ error: 'No rows provided' }, { status: 400 })
   }
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest) {
       user_id: user.id,
       consultant_name: name,
       client_company: company,
-      client_color: '#6366F1',
+      client_color: colorMap[company.toLowerCase()] || '#6366F1',
       role,
       weekly_spread: spread,
       contract_end_date: endDate,

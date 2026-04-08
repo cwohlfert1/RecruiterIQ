@@ -133,6 +133,13 @@ export function SpreadTrackerClient({ planTier, isAgencyOwner }: SpreadTrackerPr
     setDrawerOpen(true)
   }
 
+  // ── Client color registry (derived from placements) ──
+  const clientColorMap: Record<string, string> = {}
+  for (const p of placements) {
+    const key = p.client_company.toLowerCase()
+    if (!clientColorMap[key]) clientColorMap[key] = p.client_color
+  }
+
   // ── Stats ──
   const activeData = teamView
     ? teamMembers.flatMap(m => m.placements)
@@ -413,12 +420,15 @@ export function SpreadTrackerClient({ planTier, isAgencyOwner }: SpreadTrackerPr
         readOnly={teamView}
         onClose={() => setDrawerOpen(false)}
         onSaved={loadData}
+        clientColorMap={clientColorMap}
+        clientNames={Array.from(new Set(placements.map(p => p.client_company)))}
       />
 
       <ImportModal
         open={importOpen}
         onClose={() => setImportOpen(false)}
         onImported={loadData}
+        clientColorMap={clientColorMap}
       />
     </div>
   )

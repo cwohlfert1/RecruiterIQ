@@ -11,6 +11,7 @@ interface ImportModalProps {
   open: boolean
   onClose: () => void
   onImported: () => void
+  clientColorMap?: Record<string, string>
 }
 
 interface ParsedRow {
@@ -53,7 +54,7 @@ const AUTO_MAP: Record<string, string> = {
   'notes':              'notes',
 }
 
-export function ImportModal({ open, onClose, onImported }: ImportModalProps) {
+export function ImportModal({ open, onClose, onImported, clientColorMap = {} }: ImportModalProps) {
   const [step, setStep] = useState<'upload' | 'map' | 'preview' | 'importing' | 'done'>('upload')
   const [rawHeaders, setRawHeaders] = useState<string[]>([])
   const [rawRows, setRawRows] = useState<ParsedRow[]>([])
@@ -144,7 +145,7 @@ export function ImportModal({ open, onClose, onImported }: ImportModalProps) {
       const res = await fetch('/api/spread-tracker/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows }),
+        body: JSON.stringify({ rows, client_color_map: clientColorMap }),
       })
 
       if (!res.ok) throw new Error()
