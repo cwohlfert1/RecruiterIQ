@@ -1,13 +1,15 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { TrendingUp, Plus, Search, Lock, DollarSign, Clock, AlertTriangle, Award, Upload } from 'lucide-react'
+import { TrendingUp, Plus, Search, Lock, DollarSign, Clock, AlertTriangle, Award, Upload, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { PlacementDrawer, type Placement } from './placement-drawer'
 import { ImportModal } from './import-modal'
 
 type StatusFilter = 'all' | 'active' | 'locked_up' | 'falling_off'
+type SortKey = 'consultant_name' | 'client_company' | 'role' | 'weekly_spread' | 'contract_end_date' | 'status'
+type SortDir = 'asc' | 'desc'
 
 interface Watermark {
   high_amount: number
@@ -69,6 +71,8 @@ export function SpreadTrackerClient({ planTier, isAgencyOwner }: SpreadTrackerPr
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Placement | null>(null)
   const [importOpen, setImportOpen] = useState(false)
+  const [sortKey, setSortKey]   = useState<SortKey | null>(null)
+  const [sortDir, setSortDir]   = useState<SortDir>('asc')
 
   // Team view (Phase 4)
   const [teamView, setTeamView]       = useState(false)
@@ -136,6 +140,16 @@ export function SpreadTrackerClient({ planTier, isAgencyOwner }: SpreadTrackerPr
     ? teamMembers.flatMap(m => m.placements.map(p => ({ ...p, _recruiter: m.name })))
     : placements.map(p => ({ ...p, _recruiter: undefined as string | undefined }))
 
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      if (sortDir === 'asc') { setSortDir('desc') }
+      else { setSortKey(null); setSortDir('asc') } // third click → reset
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
+
   const filtered = displayData
     .filter(p => filter === 'all' || p.status === filter)
     .filter(p => {
@@ -143,7 +157,22 @@ export function SpreadTrackerClient({ planTier, isAgencyOwner }: SpreadTrackerPr
       const q = search.toLowerCase()
       return p.consultant_name.toLowerCase().includes(q) || p.client_company.toLowerCase().includes(q)
     })
-    .sort((a, b) => Number(b.weekly_spread) - Number(a.weekly_spread))
+    .sort((a, b) => {
+      // Default sort when no column is active
+      if (!sortKey) return Number(b.weekly_spread) - Number(a.weekly_spread)
+
+      const dir = sortDir === 'asc' ? 1 : -1
+      if (sortKey === 'weekly_spread') {
+        return (Number(a.weekly_spread) - Number(b.weekly_spread)) * dir
+      }
+      if (sortKey === 'contract_end_date') {
+        return (new Date(a.contract_end_date).getTime() - new Date(b.contract_end_date).getTime()) * dir
+      }
+      // String columns
+      const av = (a[sortKey] ?? '').toLowerCase()
+      const bv = (b[sortKey] ?? '').toLowerCase()
+      return av < bv ? -1 * dir : av > bv ? 1 * dir : 0
+    })
 
   // ── Locked state ──
   if (isLocked) {
@@ -307,12 +336,12 @@ export function SpreadTrackerClient({ planTier, isAgencyOwner }: SpreadTrackerPr
                 <tr className="border-b border-white/8">
                   <th className="w-1" />
                   {teamView && <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Recruiter</th>}
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Consultant</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Company</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Role</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Weekly Spread</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Contract End</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Status</th>
+                  <SortTh k="consultant_name"   label="Consultant"    sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                  <SortTh k="client_company"     label="Company"       sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                  <SortTh k="role"               label="Role"          sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                  <SortTh k="weekly_spread"      label="Weekly Spread" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right" />
+                  <SortTh k="contract_end_date"  label="Contract End"  sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                  <SortTh k="status"             label="Status"        sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 </tr>
               </thead>
               <tbody>
@@ -401,5 +430,33 @@ function StatCard({ label, value, icon: Icon, accent, accentBg }: {
         <CountUp target={value} prefix="$" />
       </p>
     </div>
+  )
+}
+
+function SortTh({ k, label, sortKey, sortDir, onSort, align }: {
+  k: SortKey; label: string; sortKey: SortKey | null; sortDir: SortDir; onSort: (k: SortKey) => void; align?: 'right'
+}) {
+  const active = sortKey === k
+  return (
+    <th
+      onClick={() => onSort(k)}
+      className={cn(
+        'px-4 py-3 text-xs font-medium uppercase tracking-wide cursor-pointer select-none transition-colors group',
+        align === 'right' ? 'text-right' : 'text-left',
+        active ? 'text-slate-200' : 'text-slate-500',
+        'hover:bg-white/3',
+      )}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {active ? (
+          sortDir === 'asc'
+            ? <ChevronUp className="w-3 h-3" />
+            : <ChevronDown className="w-3 h-3" />
+        ) : (
+          <ChevronsUpDown className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+        )}
+      </span>
+    </th>
   )
 }
