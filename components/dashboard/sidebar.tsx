@@ -18,6 +18,7 @@ import {
   FolderOpen,
   BookOpen,
   AlertOctagon,
+  TrendingUp,
 } from 'lucide-react'
 import { CandidLogo } from '@/components/candid-logo'
 import { UserAvatar } from '@/components/ui/user-avatar'
@@ -166,6 +167,17 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
             >
               <AlertOctagon className="w-4 h-4 flex-shrink-0 text-rose-400" />
               <span>Flagged Candidates</span>
+            </Link>
+          </motion.li>
+
+          {/* Spread Tracker */}
+          <motion.li variants={itemVariants}>
+            <Link
+              href="/dashboard/spread-tracker"
+              className={cn('nav-item', isActive('/dashboard/spread-tracker') && 'nav-active')}
+            >
+              <TrendingUp className="w-4 h-4 flex-shrink-0" />
+              <span>Spread Tracker</span>
             </Link>
           </motion.li>
 
