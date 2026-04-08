@@ -43,8 +43,12 @@ export async function POST(req: NextRequest) {
     const name = typeof r.consultant_name === 'string' ? r.consultant_name.trim() : ''
     const company = typeof r.client_company === 'string' ? r.client_company.trim() : ''
     const role = typeof r.role === 'string' ? r.role.trim() : ''
-    const spread = Number(r.weekly_spread)
-    const endDate = typeof r.contract_end_date === 'string' ? r.contract_end_date.trim() : ''
+    const spreadRaw = typeof r.weekly_spread === 'string'
+      ? r.weekly_spread.replace(/[$,\s]/g, '')
+      : r.weekly_spread
+    const spread = Number(spreadRaw)
+    const rawDate = r.contract_end_date
+    const endDate = parseDate(rawDate)
     const status = typeof r.status === 'string' && VALID_STATUSES.includes(r.status.trim().toLowerCase().replace(/\s+/g, '_'))
       ? r.status.trim().toLowerCase().replace(/\s+/g, '_')
       : 'active'
@@ -54,11 +58,7 @@ export async function POST(req: NextRequest) {
     if (!company) { errors.push({ row: i + 1, reason: 'Missing client company' }); continue }
     if (!role) { errors.push({ row: i + 1, reason: 'Missing role' }); continue }
     if (!spread || isNaN(spread) || spread <= 0) { errors.push({ row: i + 1, reason: 'Invalid weekly spread' }); continue }
-    if (!endDate) { errors.push({ row: i + 1, reason: 'Missing contract end date' }); continue }
-
-    // Validate date format
-    const parsed = new Date(endDate)
-    if (isNaN(parsed.getTime())) { errors.push({ row: i + 1, reason: 'Invalid date format' }); continue }
+    if (!endDate) { errors.push({ row: i + 1, reason: 'Missing or invalid contract end date' }); continue }
 
     valid.push({
       user_id: user.id,
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       client_color: '#6366F1',
       role,
       weekly_spread: spread,
-      contract_end_date: parsed.toISOString().split('T')[0],
+      contract_end_date: endDate,
       status,
       notes,
     })
@@ -86,4 +86,48 @@ export async function POST(req: NextRequest) {
     skipped: errors.length,
     errors,
   })
+}
+
+/**
+ * Parse dates from various formats:
+ * - ISO strings: "2025-06-30"
+ * - US format: "6/30/2025", "06/30/2025"
+ * - Excel serial numbers: 45658 (days since 1900-01-01, with Excel's leap year bug)
+ * - Formatted strings from SheetJS with cellDates: "6/30/25", "Jun 30, 2025", etc.
+ * Returns YYYY-MM-DD string or null if unparseable.
+ */
+function parseDate(raw: unknown): string | null {
+  if (raw == null || raw === '') return null
+
+  // Excel serial number (numeric)
+  if (typeof raw === 'number' && raw > 0 && raw < 200000) {
+    // Excel epoch: Jan 1 1900 = serial 1, but Excel incorrectly treats 1900 as leap year
+    // So serial 60 = Feb 29 1900 (doesn't exist). For dates > 60, subtract 1.
+    const adjusted = raw > 60 ? raw - 1 : raw
+    const ms = (adjusted - 1) * 86400000
+    const epoch = new Date(1900, 0, 1).getTime()
+    const d = new Date(epoch + ms)
+    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
+    return null
+  }
+
+  const str = String(raw).trim()
+  if (!str) return null
+
+  // Try direct parse (handles ISO, most US/EU formats)
+  const d = new Date(str)
+  if (!isNaN(d.getTime()) && d.getFullYear() > 1990 && d.getFullYear() < 2100) {
+    return d.toISOString().split('T')[0]
+  }
+
+  // Try MM/DD/YY with 2-digit year
+  const shortMatch = str.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2})$/)
+  if (shortMatch) {
+    const [, m, day, y] = shortMatch
+    const year = Number(y) + (Number(y) < 50 ? 2000 : 1900)
+    const d2 = new Date(year, Number(m) - 1, Number(day))
+    if (!isNaN(d2.getTime())) return d2.toISOString().split('T')[0]
+  }
+
+  return null
 }

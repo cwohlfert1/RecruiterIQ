@@ -90,9 +90,9 @@ export function ImportModal({ open, onClose, onImported }: ImportModalProps) {
     reader.onload = (evt) => {
       try {
         const data = new Uint8Array(evt.target?.result as ArrayBuffer)
-        const workbook = XLSX.read(data, { type: 'array' })
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true })
         const sheet = workbook.Sheets[workbook.SheetNames[0]]
-        const json = XLSX.utils.sheet_to_json<ParsedRow>(sheet, { defval: '' })
+        const json = XLSX.utils.sheet_to_json<ParsedRow>(sheet, { defval: '', raw: false })
 
         if (json.length === 0) {
           toast.error('No data found in file')
