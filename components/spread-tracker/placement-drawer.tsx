@@ -229,6 +229,30 @@ export function PlacementDrawer({ open, placement, readOnly, onClose, onSaved }:
                   <option value="locked_up">Locked Up</option>
                   <option value="falling_off">Falling Off</option>
                 </select>
+
+                <label className="flex items-center gap-2.5 mt-3 cursor-pointer group">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={form.status === 'locked_up'}
+                    disabled={readOnly}
+                    onClick={() => set('status', form.status === 'locked_up' ? 'active' : 'locked_up')}
+                    className={cn(
+                      'relative w-9 h-5 rounded-full transition-colors flex-shrink-0',
+                      form.status === 'locked_up' ? 'bg-indigo-500' : 'bg-white/10',
+                      readOnly && 'opacity-50 cursor-not-allowed',
+                    )}
+                  >
+                    <span className={cn(
+                      'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform',
+                      form.status === 'locked_up' && 'translate-x-4',
+                    )} />
+                  </button>
+                  <span className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors leading-tight">
+                    Mark as Locked Up
+                    <span className="block text-[10px] text-slate-600">Candidate accepted, in onboarding — not yet billing</span>
+                  </span>
+                </label>
               </Field>
 
               <Field label="Notes">

@@ -28,6 +28,15 @@ interface SpreadTrackerProps {
   isAgencyOwner: boolean
 }
 
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+
+function isExpiringSoon(p: { status: string; contract_end_date: string }): boolean {
+  if (p.status !== 'active') return false
+  const end = new Date(p.contract_end_date).getTime()
+  const now = Date.now()
+  return end >= now && end <= now + THIRTY_DAYS_MS
+}
+
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   active:      { label: 'Active',      cls: 'bg-green-500/15 text-green-400 border-green-500/25' },
   locked_up:   { label: 'Locked Up',   cls: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/25' },
@@ -131,7 +140,7 @@ export function SpreadTrackerClient({ planTier, isAgencyOwner }: SpreadTrackerPr
 
   const totalActive     = activeData.filter(p => p.status === 'active').reduce((s, p) => s + Number(p.weekly_spread), 0)
   const totalLockedUp   = activeData.filter(p => p.status === 'locked_up').reduce((s, p) => s + Number(p.weekly_spread), 0)
-  const totalFallingOff = activeData.filter(p => p.status === 'falling_off').reduce((s, p) => s + Number(p.weekly_spread), 0)
+  const totalFallingOff = activeData.filter(p => p.status === 'falling_off' || isExpiringSoon(p)).reduce((s, p) => s + Number(p.weekly_spread), 0)
   const athAmount       = Number(watermark.high_amount)
   const athDate         = watermark.achieved_at ? new Date(watermark.achieved_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null
 
@@ -151,7 +160,11 @@ export function SpreadTrackerClient({ planTier, isAgencyOwner }: SpreadTrackerPr
   }
 
   const filtered = displayData
-    .filter(p => filter === 'all' || p.status === filter)
+    .filter(p => {
+      if (filter === 'all') return true
+      if (filter === 'falling_off') return p.status === 'falling_off' || isExpiringSoon(p)
+      return p.status === filter
+    })
     .filter(p => {
       if (!search) return true
       const q = search.toLowerCase()
@@ -374,7 +387,12 @@ export function SpreadTrackerClient({ planTier, isAgencyOwner }: SpreadTrackerPr
                       ${fmt(Number(p.weekly_spread))}
                     </td>
                     <td className="px-4 py-4 text-slate-400 tabular-nums text-xs">
-                      {new Date(p.contract_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      <span className="inline-flex items-center gap-1">
+                        {new Date(p.contract_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {isExpiringSoon(p) && (
+                          <AlertTriangle className="w-3 h-3 text-amber-400 flex-shrink-0" />
+                        )}
+                      </span>
                     </td>
                     <td className="px-4 py-4">
                       <span className={cn('text-[11px] font-semibold px-2 py-0.5 rounded-full border', STATUS_BADGE[p.status]?.cls)}>
