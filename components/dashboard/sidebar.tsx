@@ -98,6 +98,9 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
   const initials  = userEmail.slice(0, 2).toUpperCase()
   const isManager = profile.role === 'manager'
 
+  const wlDomains = (process.env.NEXT_PUBLIC_WHITELISTED_DOMAINS ?? '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean)
+  const isBetaUser = wlDomains.length > 0 && wlDomains.includes(userEmail.split('@')[1]?.toLowerCase() ?? '')
+
   function isActive(href: string) {
     if (href === '/dashboard') return pathname === href
     return pathname === href || pathname.startsWith(href + '/')
@@ -257,11 +260,18 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
                 {(profile as UserProfile & { job_title?: string | null }).job_title}
               </p>
             ) : (
-              <span className={cn(
-                'inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full border mt-0.5',
-                planBadgeClass
-              )}>
-                {getPlanLabel(profile.plan_tier)}
+              <span className="inline-flex items-center gap-1 mt-0.5">
+                <span className={cn(
+                  'inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full border',
+                  planBadgeClass
+                )}>
+                  {getPlanLabel(profile.plan_tier)}
+                </span>
+                {isBetaUser && (
+                  <span className="text-[9px] font-semibold text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded-full border border-emerald-500/25">
+                    Beta
+                  </span>
+                )}
               </span>
             )}
           </div>

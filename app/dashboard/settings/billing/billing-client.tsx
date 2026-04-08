@@ -27,11 +27,20 @@ const PLAN_BADGE: Record<string, string> = {
   agency: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
 }
 
-interface BillingClientProps {
-  profile: UserProfile
+const WHITELISTED_DOMAINS = (process.env.NEXT_PUBLIC_WHITELISTED_DOMAINS ?? '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean)
+
+function isWhitelisted(email: string): boolean {
+  if (WHITELISTED_DOMAINS.length === 0) return false
+  const domain = email.split('@')[1]?.toLowerCase()
+  return !!domain && WHITELISTED_DOMAINS.includes(domain)
 }
 
-export function BillingClient({ profile: initialProfile }: BillingClientProps) {
+interface BillingClientProps {
+  profile: UserProfile
+  userEmail?: string
+}
+
+export function BillingClient({ profile: initialProfile, userEmail = '' }: BillingClientProps) {
   const router = useRouter()
   const [profile, setProfile] = useState(initialProfile)
   const [upgradeTarget, setUpgradeTarget] = useState<PaidPlanKey | null>(null)
@@ -39,6 +48,7 @@ export function BillingClient({ profile: initialProfile }: BillingClientProps) {
 
   const callLimit = PLAN_LIMIT[profile.plan_tier]
   const isCancelling = profile.subscription_status === 'cancelling'
+  const whitelisted = isWhitelisted(userEmail)
 
   const cancelEndDate = profile.billing_period_end
     ? new Date(profile.billing_period_end).toLocaleDateString('en-US', {
@@ -91,13 +101,18 @@ export function BillingClient({ profile: initialProfile }: BillingClientProps) {
           </div>
 
           {/* Cancel / canceling state */}
-          {profile.plan_tier !== 'free' && !isCancelling && (
+          {profile.plan_tier !== 'free' && !isCancelling && !whitelisted && (
             <button
               onClick={() => setShowCancel(true)}
               className="text-xs text-slate-500 hover:text-red-400 transition-colors"
             >
               Cancel subscription
             </button>
+          )}
+          {whitelisted && (
+            <span className="text-xs text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
+              Complimentary
+            </span>
           )}
           {isCancelling && cancelEndDate && (
             <span className="text-xs text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20">
@@ -140,8 +155,23 @@ export function BillingClient({ profile: initialProfile }: BillingClientProps) {
         )}
       </motion.div>
 
+      {/* Whitelisted: complimentary message instead of upgrade cards */}
+      {whitelisted && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="glass-card p-6 text-center"
+        >
+          <p className="text-sm text-slate-300">
+            Your organization has <span className="text-emerald-400 font-semibold">complimentary Agency access</span>.
+          </p>
+          <p className="text-xs text-slate-500 mt-2">All features are unlocked — no payment required.</p>
+        </motion.div>
+      )}
+
       {/* Plan cards — show upgrades available */}
-      {profile.plan_tier === 'free' && (
+      {!whitelisted && profile.plan_tier === 'free' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {(['pro', 'agency'] as PaidPlanKey[]).map((key, i) => (
             <PlanCard
@@ -154,7 +184,7 @@ export function BillingClient({ profile: initialProfile }: BillingClientProps) {
         </div>
       )}
 
-      {profile.plan_tier === 'pro' && (
+      {!whitelisted && profile.plan_tier === 'pro' && (
         <div className="max-w-sm">
           <PlanCard planKey="agency" delay={0} onUpgrade={() => setUpgradeTarget('agency')} />
         </div>

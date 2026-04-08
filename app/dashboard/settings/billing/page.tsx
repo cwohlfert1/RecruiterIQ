@@ -17,5 +17,5 @@ export default async function BillingPage() {
 
   if (!profile) redirect('/login')
 
-  return <BillingClient profile={profile} />
+  return <BillingClient profile={profile} userEmail={user.email ?? ''} />
 }
