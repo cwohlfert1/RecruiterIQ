@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { LayoutDashboard, Users, Kanban, FileText, Search, Activity, Settings, GripVertical } from 'lucide-react'
+import { LayoutDashboard, Users, Kanban, FileText, Search, Activity, Settings, GripVertical, Share2 } from 'lucide-react'
 import {
   DndContext,
   closestCenter,
@@ -227,16 +227,31 @@ export function ProjectTabs({
           </SortableContext>
         </DndContext>
 
-        {/* Settings tab — always last, not draggable */}
-        <button
-          onClick={() => setActive('settings')}
-          className={cn(
-            'relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ml-auto',
-            active === 'settings' ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+        {/* Right-aligned actions — always last, not draggable */}
+        <div className="flex items-center ml-auto gap-1">
+          {/* Share button — owner only */}
+          {isOwner && (
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-500 hover:text-slate-300 transition-colors whitespace-nowrap"
+              title={planTier === 'free' ? 'Upgrade to share projects' : 'Share this project'}
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>Share</span>
+            </button>
           )}
-        >
-          <Settings className="w-4 h-4" />
-          <span>Settings</span>
+
+          {/* Settings tab — hidden for viewers */}
+          {canEdit && (
+          <button
+            onClick={() => setActive('settings')}
+            className={cn(
+              'relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0',
+              active === 'settings' ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+            )}
+          >
+            <Settings className="w-4 h-4" />
+            <span>Settings</span>
           {active === 'settings' && (
             <motion.div
               layoutId="project-tab-underline"
@@ -244,6 +259,8 @@ export function ProjectTabs({
             />
           )}
         </button>
+          )}
+        </div>
       </div>
 
       {/* Tab content */}
