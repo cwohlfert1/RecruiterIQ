@@ -107,13 +107,14 @@ export function AddCandidateSlideover({ open, projectId, hasJd, isManager = fals
     debounceRef.current = setTimeout(() => parseResume(text), 500)
   }
 
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
-  const canSubmit  = name.trim() && email.trim() && emailValid && resume.trim() && !parsing && !submitting
+  const emailValid = !email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+  const needsResume = !!hasJd
+  const canSubmit  = name.trim() && emailValid && (needsResume ? resume.trim() : true) && !parsing && !submitting
 
   async function submitCandidate(override = false) {
     setNameError(!name.trim())
-    setEmailError(!email.trim() || !emailValid)
-    if (!name.trim() || !email.trim() || !emailValid || !resume.trim()) return
+    setEmailError(!!email.trim() && !emailValid)
+    if (!name.trim() || !emailValid || (needsResume && !resume.trim())) return
 
     setSubmitting(true)
     try {
@@ -348,25 +349,22 @@ export function AddCandidateSlideover({ open, projectId, hasJd, isManager = fals
                     {/* Email */}
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium text-slate-300">
-                        Email Address <span className="text-red-400">*</span>
+                        Email Address <span className="text-xs text-slate-500 ml-1">(optional)</span>
                       </label>
                       <input
                         type="email"
                         value={email}
                         onChange={e => { setEmail(e.target.value); setEmailError(false) }}
-                        placeholder="jane@example.com"
+                        placeholder="Add email to send assessments and notifications"
                         className={cn(
                           'w-full px-4 py-2.5 rounded-xl bg-white/5 border text-sm text-slate-200 placeholder:text-slate-600',
                           'focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors',
-                          (emailError || (parsed?.email === null && email === ''))
+                          emailError
                             ? 'border-amber-500/60'
                             : 'border-white/10 hover:border-white/20',
                         )}
                       />
-                      {parsed?.email === null && !email && (
-                        <p className="text-xs text-amber-400">Email not found — please enter manually</p>
-                      )}
-                      {emailError && <p className="text-xs text-red-400">Valid email is required</p>}
+                      {emailError && <p className="text-xs text-red-400">Invalid email format</p>}
                     </div>
 
                     {/* Pay Rate */}

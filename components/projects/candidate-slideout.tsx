@@ -765,13 +765,19 @@ export function CandidateSlideout({
             <div className="px-5 py-4 border-t border-white/8 space-y-2">
               <div className="grid grid-cols-2 gap-2">
                 {isManager && !candidate.assessment_invite_id && (
-                  <button
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors"
-                    onClick={() => setAssessOpen(true)}
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    Send Assessment
-                  </button>
+                  candidate.candidate_email ? (
+                    <button
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors"
+                      onClick={() => setAssessOpen(true)}
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      Send Assessment
+                    </button>
+                  ) : (
+                    <p className="text-[10px] text-slate-500 px-3 py-2">
+                      Add this candidate&apos;s email to send them an assessment
+                    </p>
+                  )
                 )}
                 <button
                   onClick={() => setSummaryOpen(true)}

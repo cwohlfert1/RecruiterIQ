@@ -602,7 +602,7 @@ export function CandidatesTable({
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5">{c.candidate_email}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{c.candidate_email || '—'}</p>
                 </button>
               </td>
 
@@ -657,9 +657,13 @@ export function CandidatesTable({
                   </span>
                 ) : (
                   isManager ? (
-                    <button onClick={() => onAssessment(c)} className="text-xs text-indigo-400 hover:text-indigo-200 transition-colors">
-                      Send
-                    </button>
+                    c.candidate_email ? (
+                      <button onClick={() => onAssessment(c)} className="text-xs text-indigo-400 hover:text-indigo-200 transition-colors">
+                        Send
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-slate-600" title="Add email to send assessment">No email</span>
+                    )
                   ) : (
                     <span className="text-slate-600 text-xs">—</span>
                   )

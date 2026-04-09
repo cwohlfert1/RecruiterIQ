@@ -107,37 +107,40 @@ export async function POST(
   if (typeof candidate_name !== 'string' || !candidate_name.trim()) {
     return NextResponse.json({ error: 'candidate_name is required' }, { status: 400 })
   }
-  if (typeof candidate_email !== 'string' || !candidate_email.trim()) {
-    return NextResponse.json({ error: 'candidate_email is required' }, { status: 400 })
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(candidate_email.trim())) {
+  // Email is optional — validate format only if provided
+  const safeEmail = typeof candidate_email === 'string' && candidate_email.trim()
+    ? candidate_email.trim()
+    : ''
+  if (safeEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(safeEmail)) {
     return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
   }
-  if (typeof resume_text !== 'string' || !resume_text.trim()) {
-    return NextResponse.json({ error: 'resume_text is required' }, { status: 400 })
-  }
-  if (!validateWordCount(resume_text, 5000)) {
+  // Resume required only if project has a JD (needed for auto-scoring)
+  if (typeof resume_text === 'string' && resume_text.trim() && !validateWordCount(resume_text, 5000)) {
     return NextResponse.json({ error: 'Resume exceeds 5000 words' }, { status: 400 })
   }
+  if (project.jd_text && (typeof resume_text !== 'string' || !resume_text.trim())) {
+    return NextResponse.json({ error: 'Resume is required when project has a JD' }, { status: 400 })
+  }
+  // Check email uniqueness within project (only if email provided)
+  if (safeEmail) {
+    const { data: existing } = await supabase
+      .from('project_candidates')
+      .select('id')
+      .eq('project_id', params.id)
+      .eq('candidate_email', safeEmail.toLowerCase())
+      .is('deleted_at', null)
+      .single()
 
-  // Check email uniqueness within project
-  const { data: existing } = await supabase
-    .from('project_candidates')
-    .select('id')
-    .eq('project_id', params.id)
-    .eq('candidate_email', candidate_email.trim().toLowerCase())
-    .is('deleted_at', null)
-    .single()
-
-  if (existing) {
-    return NextResponse.json(
-      { error: 'This candidate is already in this project.', existing_id: existing.id },
-      { status: 409 },
-    )
+    if (existing) {
+      return NextResponse.json(
+        { error: 'This candidate is already in this project.', existing_id: existing.id },
+        { status: 409 },
+      )
+    }
   }
 
-  // Check agency-wide DNU/Catfish flag (skip if user explicitly overrides)
-  if (!overrideFlag) {
+  // Check agency-wide DNU/Catfish flag (skip if no email or user explicitly overrides)
+  if (!overrideFlag && safeEmail) {
     const adminCheck = createAdminClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -146,7 +149,7 @@ export async function POST(
       .from('flagged_candidates')
       .select('flag_type, reason, candidate_name')
       .eq('agency_owner_id', project.owner_id)
-      .eq('candidate_email', candidate_email.trim().toLowerCase())
+      .eq('candidate_email', safeEmail.toLowerCase())
       .single()
 
     if (flagRecord) {
@@ -165,8 +168,8 @@ export async function POST(
     .insert({
       project_id:      params.id,
       candidate_name:  candidate_name.trim(),
-      candidate_email: candidate_email.trim().toLowerCase(),
-      resume_text:     resume_text.trim(),
+      candidate_email: safeEmail ? safeEmail.toLowerCase() : '',
+      resume_text:     typeof resume_text === 'string' ? resume_text.trim() : '',
       added_by:        user.id,
       status:          'reviewing',
       pipeline_stage:  insertStage,
@@ -190,8 +193,9 @@ export async function POST(
   let scored = false
   let scoreValue: number | null = null
 
-  if (project.jd_text && validateWordCount(project.jd_text, 2000)) {
-    const result = await scoreWithClaude(resume_text.trim(), project.jd_text)
+  const safeResume = typeof resume_text === 'string' ? resume_text.trim() : ''
+  if (project.jd_text && safeResume && validateWordCount(project.jd_text, 2000)) {
+    const result = await scoreWithClaude(safeResume, project.jd_text)
 
     if (result) {
       await supabase
