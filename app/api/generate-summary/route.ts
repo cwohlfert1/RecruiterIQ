@@ -20,14 +20,14 @@ export async function POST(req: NextRequest) {
   if (!rl.allowed) return rateLimitResponse(rl)
 
   // 2. Parse body
-  let body: { jobTitle?: unknown; companyName?: unknown; notes?: unknown; assessmentSessionId?: unknown }
+  let body: { jobTitle?: unknown; companyName?: unknown; notes?: unknown; jdText?: unknown; recruiterNotes?: unknown; assessmentSessionId?: unknown }
   try {
     body = await req.json()
   } catch {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { jobTitle, companyName, notes, assessmentSessionId } = body
+  const { jobTitle, companyName, notes, jdText, recruiterNotes, assessmentSessionId } = body
 
   // 3. Validate inputs
   if (typeof jobTitle !== 'string' || !jobTitle.trim()) {
@@ -37,14 +37,22 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'Job title must be 100 characters or fewer' }, { status: 400 })
   }
   if (typeof notes !== 'string' || !notes.trim()) {
-    return Response.json({ error: 'Notes are required' }, { status: 400 })
+    return Response.json({ error: 'Resume is required' }, { status: 400 })
   }
-  if (!validateWordCount(notes, 500)) {
-    return Response.json({ error: 'Notes must be 500 words or fewer' }, { status: 400 })
+  if (!validateWordCount(notes, 5000)) {
+    return Response.json({ error: 'Resume must be 5000 words or fewer' }, { status: 400 })
+  }
+  if (jdText && typeof jdText === 'string' && !validateWordCount(jdText, 2000)) {
+    return Response.json({ error: 'Job description must be 2000 words or fewer' }, { status: 400 })
+  }
+  if (recruiterNotes && typeof recruiterNotes === 'string' && !validateWordCount(recruiterNotes, 500)) {
+    return Response.json({ error: 'Recruiter notes must be 500 words or fewer' }, { status: 400 })
   }
 
-  const safeCompany   = typeof companyName === 'string' ? companyName.trim() : ''
-  const safeSessionId = typeof assessmentSessionId === 'string' ? assessmentSessionId.trim() : null
+  const safeCompany        = typeof companyName === 'string' ? companyName.trim() : ''
+  const safeJdText         = typeof jdText === 'string' ? jdText.trim() : ''
+  const safeRecruiterNotes = typeof recruiterNotes === 'string' ? recruiterNotes.trim() : ''
+  const safeSessionId      = typeof assessmentSessionId === 'string' ? assessmentSessionId.trim() : null
 
   // Optionally fetch assessment session data
   let assessmentContext = ''
@@ -85,22 +93,37 @@ Incorporate these results naturally into Bullet 4 of the summary. Example format
       try {
         const messageStream = anthropic.messages.stream({
           model: MODEL,
-          max_tokens: 500,
+          max_tokens: 600,
+          system: 'You are a senior technical recruiter writing a 4-bullet client-facing candidate summary. Be concise, specific, and professional.',
           messages: [
             {
               role: 'user',
-              content: `You are a professional recruiter writing a candidate brief to present to a client. Based on the resume below, write exactly ${safeSessionId ? '5' : '4'} bullet points using this precise format — one bullet per line, bold category label, colon, one sentence:
+              content: `Write a ${safeSessionId ? '5' : '4'}-bullet candidate summary for a client submittal.
 
-- **Skills Match**: [how well their skills align with the ${jobTitle.trim()} role]
-- **Background**: [their experience level and most relevant background]
-- **Communication**: [how polished and clear their resume is as a proxy for communication]
-- **Stability**: [their career trajectory and job tenure pattern]${safeSessionId ? '\n- **Assessment**: [incorporate the assessment scores — be factual and brief]' : ''}
+Format:
+- Bullet 1: Years of experience + core title/specialty
+- Bullet 2: Top 3 technical skills or tools with context
+- Bullet 3: Most relevant domain or industry experience
+- Bullet 4: Compensation, availability, or standout differentiator${safeSessionId ? '\n- Bullet 5: Assessment results — be factual, include scores' : ''}
+
+Rules:
+- Each bullet: 1-2 sentences max
+- Use bold label + colon format: **Label**: content
+- Pull specific numbers, tools, companies, and titles from the resume
+- If a JD is provided, tailor each bullet to what the JD is asking for
+- If recruiter notes are provided, incorporate key points naturally — treat them as insider context
+- No fluff, no filler phrases, no emojis
+- Confident, client-ready tone
 
 Job Title: ${jobTitle.trim()}
 Company: ${safeCompany || 'Not specified'}
-Resume: ${notes}${assessmentContext}
 
-Output ONLY the ${safeSessionId ? '5' : '4'} bullet lines. No intro, no outro, no extra text.`,
+Resume:
+${notes}
+${safeJdText ? `\nJob Description:\n${safeJdText}` : ''}
+${safeRecruiterNotes ? `\nRecruiter Notes:\n${safeRecruiterNotes}` : ''}${assessmentContext}
+
+Output ONLY the bullet lines. No intro, no outro, no extra text.`,
             },
           ],
         })

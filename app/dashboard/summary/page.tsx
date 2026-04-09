@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FileText, Loader2, Copy, Check, RefreshCw, ClipboardCheck, ChevronDown } from 'lucide-react'
+import { FileText, Loader2, Copy, Check, RefreshCw, ClipboardCheck, ChevronDown, Plus, Info } from 'lucide-react'
 import { toast } from 'sonner'
 import { UpgradeModal } from '@/components/upgrade-modal'
 import { FileDropTextarea } from '@/components/ui/file-drop-textarea'
@@ -54,13 +54,16 @@ function formatDate(iso: string) {
 // ─── Main component ───────────────────────────────────────
 
 export default function SummaryPage() {
-  const [jobTitle,     setJobTitle]     = useState('')
-  const [companyName,  setCompanyName]  = useState('')
-  const [notes,        setNotes]        = useState('')
-  const [outputText,   setOutputText]   = useState('')
-  const [status,       setStatus]       = useState<Status>('idle')
-  const [errorMsg,     setErrorMsg]     = useState('')
-  const [copied,       setCopied]       = useState(false)
+  const [jobTitle,       setJobTitle]       = useState('')
+  const [companyName,    setCompanyName]    = useState('')
+  const [notes,          setNotes]          = useState('')
+  const [jdText,         setJdText]         = useState('')
+  const [recruiterNotes, setRecruiterNotes] = useState('')
+  const [showJd,         setShowJd]         = useState(false)
+  const [outputText,     setOutputText]     = useState('')
+  const [status,         setStatus]         = useState<Status>('idle')
+  const [errorMsg,       setErrorMsg]       = useState('')
+  const [copied,         setCopied]         = useState(false)
 
   const [sessions,         setSessions]         = useState<AssessmentSessionOption[]>([])
   const [selectedSessionId, setSelectedSessionId] = useState<string>('')
@@ -72,9 +75,11 @@ export default function SummaryPage() {
 
   const abortRef = useRef<AbortController | null>(null)
 
-  const notesWords    = wordCount(notes)
-  const jobTitleChars = jobTitle.length
-  const companyChars  = companyName.length
+  const notesWords         = wordCount(notes)
+  const jdWords            = wordCount(jdText)
+  const recruiterNoteWords = wordCount(recruiterNotes)
+  const jobTitleChars      = jobTitle.length
+  const companyChars       = companyName.length
 
   // Fetch completed assessment sessions on mount
   useEffect(() => {
@@ -95,11 +100,19 @@ export default function SummaryPage() {
       return
     }
     if (!notes.trim()) {
-      toast.error('Notes are required')
+      toast.error('Resume text is required')
       return
     }
-    if (notesWords > 500) {
-      toast.error('Notes must be 500 words or fewer')
+    if (notesWords > 5000) {
+      toast.error('Resume must be 5000 words or fewer')
+      return
+    }
+    if (jdWords > 2000) {
+      toast.error('Job description must be 2000 words or fewer')
+      return
+    }
+    if (recruiterNoteWords > 500) {
+      toast.error('Recruiter notes must be 500 words or fewer')
       return
     }
 
@@ -120,6 +133,8 @@ export default function SummaryPage() {
           jobTitle,
           companyName,
           notes,
+          jdText: jdText.trim() || undefined,
+          recruiterNotes: recruiterNotes.trim() || undefined,
           assessmentSessionId: selectedSessionId || undefined,
         }),
         signal:  controller.signal,
@@ -194,7 +209,7 @@ export default function SummaryPage() {
       setErrorMsg(message)
       toast.error(message)
     }
-  }, [jobTitle, companyName, notes, notesWords, selectedSessionId])
+  }, [jobTitle, companyName, notes, notesWords, jdText, jdWords, recruiterNotes, recruiterNoteWords, selectedSessionId])
 
   function handleReset() {
     abortRef.current?.abort()
@@ -204,6 +219,9 @@ export default function SummaryPage() {
     setJobTitle('')
     setCompanyName('')
     setNotes('')
+    setJdText('')
+    setRecruiterNotes('')
+    setShowJd(false)
     setSelectedSessionId('')
   }
 
@@ -226,7 +244,7 @@ export default function SummaryPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold gradient-text mb-1">Client Summary Generator</h1>
           <p className="text-slate-400 text-sm">
-            Turn raw notes into polished client briefs
+            Generate a client-ready 4-bullet summary tailored to the role
           </p>
         </div>
 
@@ -283,20 +301,76 @@ export default function SummaryPage() {
               />
             </div>
 
-            {/* Notes */}
+            {/* Job Description (collapsible) */}
+            {!showJd ? (
+              <button
+                type="button"
+                onClick={() => setShowJd(true)}
+                className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+              >
+                <Plus className="w-3 h-3" />
+                Add Job Description
+                <span className="inline-flex items-center gap-1 ml-1 text-slate-600">
+                  <Info className="w-3 h-3" />
+                  improves relevance 10x
+                </span>
+              </button>
+            ) : (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="jd-text" className="text-sm font-medium text-slate-300">
+                    Job Description
+                    <span className="text-xs text-slate-500 ml-1.5">(optional)</span>
+                  </label>
+                  <WordCounter count={jdWords} max={2000} />
+                </div>
+                <FileDropTextarea
+                  id="jd-text"
+                  value={jdText}
+                  onChange={setJdText}
+                  placeholder="Paste the JD to tailor the summary to this specific role (optional but recommended)"
+                  rows={6}
+                  minHeight="140px"
+                />
+              </div>
+            )}
+
+            {/* Recruiter Notes */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label htmlFor="recruiter-notes" className="text-sm font-medium text-slate-300">
+                  Your Notes
+                  <span className="text-xs text-slate-500 ml-1.5">(optional)</span>
+                </label>
+                <WordCounter count={recruiterNoteWords} max={500} />
+              </div>
+              <textarea
+                id="recruiter-notes"
+                value={recruiterNotes}
+                onChange={e => setRecruiterNotes(e.target.value)}
+                placeholder="Add any context, talking points, or observations about this candidate (optional)"
+                rows={3}
+                className={cn(
+                  'w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 resize-none',
+                  'focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors',
+                )}
+              />
+            </div>
+
+            {/* Resume */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label htmlFor="notes" className="text-sm font-medium text-slate-300">
-                  Notes / Intake
+                  Resume
                   <span className="text-red-400 ml-0.5">*</span>
                 </label>
-                <WordCounter count={notesWords} max={500} />
+                <WordCounter count={notesWords} max={5000} />
               </div>
               <FileDropTextarea
                 id="notes"
                 value={notes}
                 onChange={setNotes}
-                placeholder="Paste or drag-and-drop raw intake notes, key requirements, culture fit details…"
+                placeholder="Paste or drag-and-drop the candidate's resume…"
                 rows={8}
                 minHeight="200px"
               />
