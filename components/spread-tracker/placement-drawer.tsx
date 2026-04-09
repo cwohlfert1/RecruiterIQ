@@ -17,6 +17,8 @@ export interface Placement {
   contract_end_date: string
   status: 'active' | 'locked_up' | 'falling_off'
   notes: string | null
+  expected_start_date: string | null
+  has_checked_in: boolean
   user_id?: string
 }
 
@@ -39,6 +41,8 @@ const EMPTY: Omit<Placement, 'id'> = {
   contract_end_date: '',
   status: 'active',
   notes: null,
+  expected_start_date: null,
+  has_checked_in: false,
 }
 
 export function PlacementDrawer({ open, placement, readOnly, onClose, onSaved, clientColorMap = {}, clientNames = [] }: DrawerProps) {
@@ -63,6 +67,8 @@ export function PlacementDrawer({ open, placement, readOnly, onClose, onSaved, c
           contract_end_date: placement.contract_end_date,
           status: placement.status,
           notes: placement.notes,
+          expected_start_date: placement.expected_start_date,
+          has_checked_in: placement.has_checked_in,
         })
       } else {
         setForm(EMPTY)
@@ -84,6 +90,10 @@ export function PlacementDrawer({ open, placement, readOnly, onClose, onSaved, c
     }
     if (form.weekly_spread <= 0) {
       toast.error('Weekly spread must be greater than $0')
+      return
+    }
+    if (form.status === 'locked_up' && !form.expected_start_date) {
+      toast.error('Expected start date is required for Locked Up placements')
       return
     }
 
@@ -276,6 +286,24 @@ export function PlacementDrawer({ open, placement, readOnly, onClose, onSaved, c
                     <span className="block text-[10px] text-slate-600">Candidate accepted, in onboarding — not yet billing</span>
                   </span>
                 </label>
+
+                {form.status === 'locked_up' && (
+                  <div className="mt-3 space-y-1.5">
+                    <label className="text-xs font-medium text-slate-400 block">
+                      Expected Start Date <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={form.expected_start_date ?? ''}
+                      onChange={e => set('expected_start_date', e.target.value || null)}
+                      disabled={readOnly}
+                      className="w-full bg-white/6 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 disabled:opacity-50"
+                    />
+                    {isEdit && !form.expected_start_date && (
+                      <p className="text-[10px] text-amber-400">Add an expected start date to enable start day reminders</p>
+                    )}
+                  </div>
+                )}
               </Field>
 
               <Field label="Notes">

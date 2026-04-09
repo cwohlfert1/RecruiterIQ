@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { consultant_name, client_company, client_color, role, weekly_spread, contract_end_date, status, notes } = body
+  const { consultant_name, client_company, client_color, role, weekly_spread, contract_end_date, status, notes, expected_start_date } = body
 
   if (!consultant_name || !client_company || !role || weekly_spread == null || !contract_end_date) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -52,6 +52,8 @@ export async function POST(req: NextRequest) {
     contract_end_date,
     status: status || 'active',
     notes: notes || null,
+    expected_start_date: expected_start_date || null,
+    has_checked_in: false,
   }).select().single()
 
   if (error) return NextResponse.json({ error: 'Failed to create placement' }, { status: 500 })

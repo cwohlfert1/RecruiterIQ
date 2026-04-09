@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { PlacementDrawer, type Placement } from './placement-drawer'
 import { ImportModal } from './import-modal'
+import { CheckinModal } from './checkin-modal'
 
 type StatusFilter = 'all' | 'active' | 'locked_up' | 'falling_off'
 type SortKey = 'consultant_name' | 'client_company' | 'role' | 'weekly_spread' | 'contract_end_date' | 'status'
@@ -80,6 +81,8 @@ export function SpreadTrackerClient({ planTier, isAgencyOwner }: SpreadTrackerPr
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Placement | null>(null)
   const [importOpen, setImportOpen] = useState(false)
+  const [checkinPlacements, setCheckinPlacements] = useState<Placement[]>([])
+  const [checkinDismissed, setCheckinDismissed] = useState(false)
   const [sortKey, setSortKey]   = useState<SortKey | null>(null)
   const [sortDir, setSortDir]   = useState<SortDir>('asc')
 
@@ -118,6 +121,17 @@ export function SpreadTrackerClient({ planTier, isAgencyOwner }: SpreadTrackerPr
   useEffect(() => {
     if (!isLocked) loadData()
   }, [isLocked, loadData])
+
+  // Detect locked_up placements due for check-in (once per page load)
+  useEffect(() => {
+    if (checkinDismissed || placements.length === 0) return
+    const today = new Date().toISOString().split('T')[0]
+    const due = placements
+      .filter(p => p.status === 'locked_up' && p.expected_start_date && p.expected_start_date <= today && !p.has_checked_in)
+      .sort((a, b) => (a.expected_start_date ?? '').localeCompare(b.expected_start_date ?? ''))
+    if (due.length > 0) setCheckinPlacements(due)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placements])
 
   useEffect(() => {
     if (teamView && isAgencyOwner) loadTeam()
@@ -387,7 +401,14 @@ export function SpreadTrackerClient({ planTier, isAgencyOwner }: SpreadTrackerPr
                     {teamView && (
                       <td className="px-4 py-4 text-slate-300 text-xs">{p._recruiter}</td>
                     )}
-                    <td className="px-4 py-4 text-white font-medium">{p.consultant_name}</td>
+                    <td className="px-4 py-4">
+                      <span className="text-white font-medium">{p.consultant_name}</span>
+                      {p.status === 'locked_up' && p.expected_start_date && (
+                        <span className="block text-[10px] text-slate-500 mt-0.5">
+                          Starting {new Date(p.expected_start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-4 text-slate-300">{p.client_company}</td>
                     <td className="px-4 py-4 text-slate-400">{p.role}</td>
                     <td className="px-4 py-4 text-right font-semibold text-white tabular-nums">
@@ -430,6 +451,13 @@ export function SpreadTrackerClient({ planTier, isAgencyOwner }: SpreadTrackerPr
         onImported={loadData}
         clientColorMap={clientColorMap}
       />
+
+      {checkinPlacements.length > 0 && !checkinDismissed && (
+        <CheckinModal
+          placements={checkinPlacements}
+          onDone={() => { setCheckinDismissed(true); setCheckinPlacements([]); loadData() }}
+        />
+      )}
     </div>
   )
 }
