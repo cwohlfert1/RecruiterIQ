@@ -102,22 +102,45 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'jd_text must be at least 50 characters' }, { status: 400 })
   }
 
-  const message = await anthropic.messages.create({
-    model:      MODEL,
-    max_tokens: 4096,
-    messages:   [{ role: 'user', content: buildPrompt(jd_text.trim()) }],
-  })
+  console.log('[analyze-jd] JD length:', jd_text.trim().length, 'chars')
+
+  let message
+  try {
+    message = await anthropic.messages.create({
+      model:      MODEL,
+      max_tokens: 4096,
+      messages:   [{ role: 'user', content: buildPrompt(jd_text.trim().slice(0, 8000)) }],
+    })
+  } catch (err) {
+    console.error('[analyze-jd] Anthropic API error:', err)
+    const errMsg = err instanceof Error ? err.message : 'Unknown error'
+    if (errMsg.includes('401') || errMsg.includes('auth')) {
+      return NextResponse.json({ error: 'AI service authentication failed — contact support' }, { status: 500 })
+    }
+    if (errMsg.includes('429') || errMsg.includes('rate')) {
+      return NextResponse.json({ error: 'AI service is busy — wait a moment and try again' }, { status: 429 })
+    }
+    return NextResponse.json({ error: `AI analysis failed: ${errMsg.slice(0, 100)}` }, { status: 500 })
+  }
 
   const raw     = message.content[0].type === 'text' ? message.content[0].text.trim() : ''
   const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
 
+  if (!cleaned) {
+    console.error('[analyze-jd] Empty response from Claude')
+    return NextResponse.json({ error: 'AI returned an empty response — try a shorter JD' }, { status: 500 })
+  }
+
   let result: unknown
   try {
-    result = JSON.parse(cleaned)
+    // Handle case where Claude wraps JSON in extra text
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) throw new Error('No JSON object found in response')
+    result = JSON.parse(jsonMatch[0])
     if (typeof result !== 'object' || result === null) throw new Error('Expected JSON object')
-  } catch {
-    console.error('Claude returned non-JSON:', cleaned.slice(0, 500))
-    return NextResponse.json({ error: 'Claude returned invalid JSON — try again' }, { status: 500 })
+  } catch (parseErr) {
+    console.error('[analyze-jd] JSON parse error:', parseErr, '\nRaw response:', cleaned.slice(0, 500))
+    return NextResponse.json({ error: 'AI returned an unexpected format — try again' }, { status: 500 })
   }
 
   return NextResponse.json(result)
