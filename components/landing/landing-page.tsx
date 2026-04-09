@@ -6,7 +6,7 @@ import { motion, useInView } from 'framer-motion'
 import {
   FileSearch, FileText, Search, Trophy, FolderOpen, ClipboardCheck,
   Check, ArrowRight, Menu, X, Clock, Users, Download,
-  ChevronRight,
+  ChevronRight, Sparkles,
 } from 'lucide-react'
 import { CandidLogo } from '@/components/candid-logo'
 import { SalesChatWidget } from '@/components/landing/sales-chat-widget'
@@ -218,7 +218,7 @@ function HeroSection() {
               transition={{ duration: 0.4 }}
               className="text-xs font-semibold uppercase tracking-widest text-indigo-400 mb-4"
             >
-              AI Recruiting Platform
+              Built for agency recruiters
             </motion.p>
 
             <motion.h1
@@ -227,8 +227,8 @@ function HeroSection() {
               transition={{ duration: 0.5, delay: 0.08 }}
               className="text-4xl sm:text-5xl font-bold text-white leading-tight mb-5"
             >
-              The AI recruiting platform{' '}
-              <span className="gradient-text">agencies trust.</span>
+              Stop screening resumes.{' '}
+              <span className="gradient-text">Start making placements.</span>
             </motion.h1>
 
             <motion.p
@@ -237,8 +237,7 @@ function HeroSection() {
               transition={{ duration: 0.5, delay: 0.16 }}
               className="text-lg text-slate-400 mb-8 leading-relaxed max-w-lg"
             >
-              Score resumes, manage pipelines, rank candidates, and verify skills — all in one place.
-              Built for recruiters who move fast and need tools that keep up.
+              Candid.ai scores every resume in seconds, writes your client submittals, builds your Boolean strings, and tells you exactly who to call first. You do the closing.
             </motion.p>
 
             <motion.div
@@ -341,8 +340,7 @@ function ProblemSection() {
             Three things that slow every desk down
           </h2>
           <p className="mt-3 text-slate-400 max-w-xl mx-auto">
-            None of these are unique to your agency. Every recruiter deals with them.
-            Most just accept it as part of the job.
+            Every agency recruiter loses hours to these. Most just accept it. You don&apos;t have to.
           </p>
         </Reveal>
 
@@ -409,6 +407,13 @@ const FEATURES = [
     desc:  'Send proctored coding and written assessments straight from a candidate\'s profile. You get a Trust Score and a Skill Score back. Something to show the client besides your gut.',
     badge: 'Agency',
   },
+  {
+    icon:  <Sparkles className="w-5 h-5" />,
+    color: 'bg-indigo-500/15 text-indigo-400',
+    name:  'Cortex AI',
+    desc:  'An AI co-pilot that already knows your JD, your candidates, and their scores. Ask it why someone scored low, how to position an overqualified candidate, or to fix a Boolean string that returns zero results. It lives inside the app — not a chatbot you have to context-switch to.',
+    badge: 'Agency',
+  },
 ]
 
 function FeaturesSection() {
@@ -418,7 +423,7 @@ function FeaturesSection() {
         <Reveal className="text-center mb-14">
           <h2 className="text-3xl font-bold text-white">Built for the tools you actually use</h2>
           <p className="mt-3 text-slate-400 max-w-xl mx-auto">
-            Six features, zero fluff. Each one maps to a specific part of your recruiting workflow.
+            Every feature exists because a recruiter asked for it. Nothing here is filler.
           </p>
         </Reveal>
 
@@ -802,7 +807,7 @@ function CtaSection() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
         <Reveal>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            Stop losing hours to manual review.
+            Your next placement is buried in a stack of resumes. Find it in seconds.
           </h2>
           <p className="text-slate-400 mb-8 text-lg">
             10 free AI calls every month. No credit card.
