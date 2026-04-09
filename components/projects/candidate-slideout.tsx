@@ -12,6 +12,7 @@ import { CandidateNotes }            from '@/components/projects/candidate-notes
 import { FlagCandidateModal }        from '@/components/projects/flag-candidate-modal'
 import { GenerateSummaryModal }      from '@/components/projects/candidates/generate-summary-modal'
 import { InternalSubmittalModal }    from '@/components/projects/candidates/internal-submittal-modal'
+import { SendAssessmentModal }      from '@/components/projects/candidates/send-assessment-modal'
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -42,6 +43,7 @@ interface Props {
   onStageChange:   (candidateId: string, stage: PipelineStage) => void
   onTagsChange:    (candidateId: string, tags: string[]) => void
   onRemove:        (candidateId: string) => void
+  onAssessmentSent?: (candidateId: string, inviteId: string) => void
   members?:        Array<{ user_id: string; role: string; email: string | null }>
 }
 
@@ -200,6 +202,7 @@ export function CandidateSlideout({
   onStageChange,
   onTagsChange,
   onRemove,
+  onAssessmentSent,
   members,
 }: Props) {
   const open = !!candidate
@@ -216,6 +219,7 @@ export function CandidateSlideout({
   const [flagType,       setFlagType]      = useState<string | null>(candidate?.flag_type ?? null)
   const [summaryOpen,    setSummaryOpen]   = useState(false)
   const [submittalOpen,  setSubmittalOpen] = useState(false)
+  const [assessOpen,     setAssessOpen]   = useState(false)
   const [localFlags,    setLocalFlags]    = useState<Array<{ type: string; severity: string; evidence: string; explanation: string }> | null>(null)
   const [localFlagScore, setLocalFlagScore] = useState<number | null>(null)
   const [starred,     setStarred]     = useState(candidate?.starred ?? false)
@@ -763,7 +767,7 @@ export function CandidateSlideout({
                 {isManager && !candidate.assessment_invite_id && (
                   <button
                     className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors"
-                    onClick={() => toast.info('Open Send Assessment from Candidates tab')}
+                    onClick={() => setAssessOpen(true)}
                   >
                     <Send className="w-3.5 h-3.5" />
                     Send Assessment
@@ -855,6 +859,15 @@ export function CandidateSlideout({
               project={project}
               onClose={() => setSubmittalOpen(false)}
               onStageMove={id => onStageChange(id, 'internal_submittal')}
+            />
+
+            {/* Send Assessment modal */}
+            <SendAssessmentModal
+              open={assessOpen}
+              candidate={candidate}
+              project={project}
+              onClose={() => setAssessOpen(false)}
+              onSent={(cId, invId) => { setAssessOpen(false); onAssessmentSent?.(cId, invId) }}
             />
 
             {/* Flag candidate modal */}

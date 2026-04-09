@@ -582,6 +582,7 @@ export function CandidatesTab({
         onStageChange={handleSlideoutStageChange}
         onTagsChange={handleSlideoutTagsChange}
         onRemove={handleSlideoutRemove}
+        onAssessmentSent={handleAssessmentSent}
         members={members.map(m => ({ user_id: m.user_id, role: 'member', email: m.email }))}
       />
 

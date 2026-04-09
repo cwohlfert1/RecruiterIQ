@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, ClipboardList, Loader2, Check } from 'lucide-react'
+import { X, ClipboardList, Loader2, Check, AlertTriangle, FileText } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -17,20 +17,27 @@ interface Assessment {
 interface Props {
   open:      boolean
   candidate: CandidateRow | null
-  project:   { id: string; title: string }
+  project:   { id: string; title: string; client_name?: string; jd_text?: string | null }
   onClose:   () => void
   onSent:    (candidateId: string, inviteId: string) => void
 }
 
 export function SendAssessmentModal({ open, candidate, project, onClose, onSent }: Props) {
-  const [assessments, setAssessments]   = useState<Assessment[]>([])
-  const [loading,     setLoading]       = useState(false)
-  const [selected,    setSelected]      = useState<string | null>(null)
-  const [sending,     setSending]       = useState(false)
+  const [assessments, setAssessments] = useState<Assessment[]>([])
+  const [loading,     setLoading]     = useState(false)
+  const [selected,    setSelected]    = useState<string | null>(null)
+  const [sending,     setSending]     = useState(false)
+  const [showJdEdit,  setShowJdEdit]  = useState(false)
+  const [jdOverride,  setJdOverride]  = useState('')
+
+  const hasProjectJd = !!project.jd_text?.trim()
+  const effectiveJd = showJdEdit ? jdOverride : (project.jd_text ?? '')
 
   useEffect(() => {
     if (open) {
       setSelected(null)
+      setShowJdEdit(false)
+      setJdOverride('')
       setLoading(true)
       fetch('/api/assessments/list-published')
         .then(r => r.json())
@@ -58,6 +65,8 @@ export function SendAssessmentModal({ open, candidate, project, onClose, onSent 
           assessmentId:   selected,
           candidateName:  candidate.candidate_name,
           candidateEmail: candidate.candidate_email,
+          projectId:      project.id,
+          jdText:         effectiveJd.trim() || undefined,
         }),
       })
 
@@ -88,6 +97,8 @@ export function SendAssessmentModal({ open, candidate, project, onClose, onSent 
       setSending(false)
     }
   }
+
+  const jdPreview = project.jd_text?.slice(0, 150) ?? ''
 
   return (
     <AnimatePresence>
@@ -123,8 +134,70 @@ export function SendAssessmentModal({ open, candidate, project, onClose, onSent 
                 </button>
               </div>
 
+              {/* JD context */}
+              <div className="px-5 pt-4 pb-2">
+                {hasProjectJd && !showJdEdit ? (
+                  <div className="rounded-xl bg-indigo-500/5 border border-indigo-500/15 p-3">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <FileText className="w-3 h-3 text-indigo-400" />
+                        <span className="text-[11px] font-medium text-indigo-300">
+                          Using JD from: {project.title}{project.client_name ? ` — ${project.client_name}` : ''}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => { setShowJdEdit(true); setJdOverride(project.jd_text ?? '') }}
+                        className="text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors"
+                      >
+                        Change
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2">
+                      {jdPreview}{jdPreview.length >= 150 ? '…' : ''}
+                    </p>
+                  </div>
+                ) : !hasProjectJd && !showJdEdit ? (
+                  <div className="rounded-xl bg-amber-500/5 border border-amber-500/15 p-3 flex items-start gap-2">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[11px] text-amber-300 font-medium">No JD on this project</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">Add one in Project Settings or paste manually below</p>
+                      <button
+                        onClick={() => setShowJdEdit(true)}
+                        className="text-[10px] text-indigo-400 hover:text-indigo-300 mt-1 transition-colors"
+                      >
+                        Paste JD manually
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-medium text-slate-400">Job Description</label>
+                      {hasProjectJd && (
+                        <button
+                          onClick={() => setShowJdEdit(false)}
+                          className="text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors"
+                        >
+                          Use project JD
+                        </button>
+                      )}
+                    </div>
+                    <textarea
+                      value={jdOverride}
+                      onChange={e => setJdOverride(e.target.value)}
+                      rows={4}
+                      placeholder="Paste job description here…"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 resize-none focus:outline-none focus:border-indigo-500/50"
+                    />
+                  </div>
+                )}
+              </div>
+
               {/* Assessment list */}
-              <div className="px-5 py-4 space-y-2 max-h-72 overflow-y-auto">
+              <div className="px-5 py-3 space-y-2 max-h-56 overflow-y-auto">
+                <p className="text-[11px] text-slate-500 font-medium mb-1">Select assessment to send:</p>
+
                 {loading && (
                   <div className="flex items-center gap-2 text-sm text-slate-500 py-4">
                     <Loader2 className="w-4 h-4 animate-spin" />

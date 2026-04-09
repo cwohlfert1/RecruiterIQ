@@ -26,9 +26,11 @@ export async function POST(req: NextRequest) {
     assessmentId:   string
     candidateName:  string
     candidateEmail: string
+    projectId?:     string
+    jdText?:        string
   }
 
-  const { assessmentId, candidateName, candidateEmail } = body
+  const { assessmentId, candidateName, candidateEmail, projectId, jdText } = body
 
   if (!assessmentId || !candidateName?.trim() || !candidateEmail?.trim()) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -66,16 +68,21 @@ export async function POST(req: NextRequest) {
   const timeRange  = baseMin > 0 ? `${loMin}–${hiMin} minutes` : 'varies'
 
   // Create invite
+  const inviteRow: Record<string, unknown> = {
+    assessment_id:   assessmentId,
+    created_by:      user.id,
+    candidate_name:  candidateName.trim(),
+    candidate_email: candidateEmail.trim(),
+    sent_at:         new Date().toISOString(),
+    expires_at:      expiresAt,
+  }
+  // Attach project context if provided (non-breaking — column may not exist yet)
+  if (projectId) inviteRow.project_id = projectId
+  if (jdText) inviteRow.jd_context = jdText.slice(0, 5000)
+
   const { data: invite, error: inviteError } = await db
     .from('assessment_invites')
-    .insert({
-      assessment_id:   assessmentId,
-      created_by:      user.id,
-      candidate_name:  candidateName.trim(),
-      candidate_email: candidateEmail.trim(),
-      sent_at:         new Date().toISOString(),
-      expires_at:      expiresAt,
-    })
+    .insert(inviteRow)
     .select()
     .single()
 
