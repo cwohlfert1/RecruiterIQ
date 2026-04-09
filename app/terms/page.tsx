@@ -42,7 +42,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-base font-semibold text-white mb-3">5. Subscriptions and billing</h2>
-            <p>Free accounts include 10 AI calls per calendar month at no cost. Pro and Agency subscriptions are billed monthly via Square. Upgrading takes effect immediately. Cancellations take effect at the end of the current billing period — you retain access until then. If a payment fails, you have a 3-day grace period to update your billing before the account reverts to the Free tier.</p>
+            <p>Free accounts include 25 AI calls per calendar month at no cost. Pro and Agency subscriptions are billed monthly via Square. Upgrading takes effect immediately. Cancellations take effect at the end of the current billing period — you retain access until then. If a payment fails, you have a 3-day grace period to update your billing before the account reverts to the Free tier.</p>
           </section>
 
           <section>

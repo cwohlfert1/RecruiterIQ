@@ -85,7 +85,7 @@ export function UpgradeModal({ isOpen, onClose, reason, requiredPlan }: UpgradeM
               <p className="text-sm text-slate-400 mb-5">
                 {isLocked
                   ? `This feature is only available on the ${plan.name} plan.`
-                  : 'Free plan includes 10 screenings/month. Upgrade to unlock unlimited access.'}
+                  : 'Free plan includes 25 screenings/month. Upgrade to unlock unlimited access.'}
               </p>
 
               {/* Plan features */}

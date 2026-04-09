@@ -267,7 +267,7 @@ function HeroSection() {
               transition={{ duration: 0.5, delay: 0.36 }}
               className="mt-4 text-xs text-slate-600"
             >
-              10 free AI calls every month. No credit card required.
+              25 free AI calls every month. No credit card required.
             </motion.p>
           </div>
 
@@ -521,7 +521,7 @@ const PLANS = [
     priceAnnual:  0,
     desc:         'Try it out. No credit card required.',
     features: [
-      '10 AI calls per month',
+      '25 AI calls per month',
       'Resume Scorer',
       'Client Summary Generator',
       'Boolean String Generator',
@@ -810,7 +810,7 @@ function CtaSection() {
             Your next placement is buried in a stack of resumes. Find it in seconds.
           </h2>
           <p className="text-slate-400 mb-8 text-lg">
-            10 free AI calls every month. No credit card.
+            25 free AI calls every month. No credit card.
           </p>
           <Link
             href="/signup"

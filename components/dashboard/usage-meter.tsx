@@ -11,7 +11,7 @@ interface UsageMeterProps {
 
 export function UsageMeter({ profile }: UsageMeterProps) {
   const isFree = profile.plan_tier === 'free'
-  const limit  = isFree ? 10 : null
+  const limit  = isFree ? 25 : null
   const used   = profile.ai_calls_this_month
 
   if (!isFree) {

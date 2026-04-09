@@ -59,7 +59,7 @@ export async function checkAIGate(requiredPlan?: 'pro' | 'agency'): Promise<AIGa
   }
 
   // Free tier call limit
-  if (profile.plan_tier === 'free' && profile.ai_calls_this_month >= 10) {
+  if (profile.plan_tier === 'free' && profile.ai_calls_this_month >= 25) {
     return { allowed: false, reason: 'limit_reached', planTier: 'free' }
   }
 

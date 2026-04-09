@@ -77,7 +77,7 @@ export function CancelModal({ billingPeriodEnd, onClose, onSuccess }: CancelModa
           <p className="text-sm text-slate-400 mb-6 leading-relaxed">
             You&apos;ll keep full access until{' '}
             <span className="text-white font-medium">{endDate}</span>. After that, your
-            account downgrades to the Free plan (10 screenings/month).
+            account downgrades to the Free plan (25 screenings/month).
           </p>
 
           <div className="flex gap-3">

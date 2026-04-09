@@ -11,7 +11,7 @@ Help Enterprise prospects understand how Candid.ai solves their specific recruit
 Candid.ai is an AI-powered recruiting toolkit that dramatically speeds up the most time-consuming parts of agency recruiting: screening candidates, writing client summaries, building Boolean search strings, and ranking candidates against each other.
 
 **Plans:**
-- Free: 10 AI screenings/month — good for solo recruiters testing the waters
+- Free: 25 AI screenings/month — good for solo recruiters testing the waters
 - Pro ($49/month): Unlimited screenings, Resume Scorer, Client Summary Generator, Boolean String Generator
 - Agency ($149/month): Everything in Pro + Stack Ranking, Team management (5 seats), CSV export
 - Enterprise (custom pricing): Everything in Agency + Unlimited seats, Dedicated onboarding, Custom integrations, Priority support, Invoiced billing available
@@ -70,7 +70,7 @@ Say something like: "I've really enjoyed talking through this with you — I thi
 
 **"We're a small team, do we need Enterprise?"** → "Enterprise makes sense when you're hitting Agency limits — mainly unlimited seats or need invoiced billing. If you're 1–5 recruiters, Agency at $149 is probably the right fit."
 
-**"Can we try it before buying?"** → "Absolutely — the free plan gives you 10 screenings to see how the AI performs on your actual roles. Most people know within the first 3 candidates. Want me to walk you through signing up?"
+**"Can we try it before buying?"** → "Absolutely — the free plan gives you 25 screenings to see how the AI performs on your actual roles. Most people know within the first 3 candidates. Want me to walk you through signing up?"
 
 ## Tone and style
 

@@ -27,7 +27,7 @@ export function getPlanLabel(tier: 'free' | 'pro' | 'agency'): string {
 }
 
 export function getPlanLimit(tier: 'free' | 'pro' | 'agency'): number | null {
-  return tier === 'free' ? 10 : null // null = unlimited
+  return tier === 'free' ? 25 : null // null = unlimited
 }
 
 export function getScoreColor(score: number): string {

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { CandidLogo } from '@/components/candid-logo'
 import { UserAvatar } from '@/components/ui/user-avatar'
+import { PulseHint } from '@/components/ui/pulse-hint'
 import { createClient } from '@/lib/supabase/client'
 import { cn, getPlanLabel } from '@/lib/utils'
 import type { UserProfile } from '@/types/database'
@@ -152,35 +153,47 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
 
           {PROJECTS_NAV.map(({ label, href, icon: Icon }) => (
             <motion.li key={href} variants={itemVariants}>
-              <Link
-                href={href}
-                className={cn('nav-item', isActive(href) && 'nav-active')}
+              <PulseHint
+                featureKey={href === '/dashboard/projects/create' ? 'project_create' : ''}
+                aiCallsUsed={profile.ai_calls_this_month}
               >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                <span>{label}</span>
-              </Link>
+                <Link
+                  href={href}
+                  className={cn('nav-item', isActive(href) && 'nav-active')}
+                >
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  <span>{label}</span>
+                </Link>
+              </PulseHint>
             </motion.li>
           ))}
 
           {/* ── Tools section ─────────────────────────────── */}
           <SectionDivider label="Tools" />
 
-          {TOOLS_NAV.map(({ label, href, icon: Icon }) => (
-            <motion.li key={href} variants={itemVariants}>
-              <Link
-                href={href}
-                className={cn('nav-item', isActive(href) && 'nav-active')}
-              >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                <span>{label}</span>
-                {href === '/dashboard/ranking' && profile.plan_tier === 'free' && (
-                  <span className="ml-auto text-[10px] font-semibold text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded-full">
-                    PRO
-                  </span>
-                )}
-              </Link>
-            </motion.li>
-          ))}
+          {TOOLS_NAV.map(({ label, href, icon: Icon }) => {
+            const hintKey = href === '/dashboard/scorer' ? 'resume_scorer'
+              : href === '/dashboard/boolean' ? 'boolean_generator'
+              : ''
+            return (
+              <motion.li key={href} variants={itemVariants}>
+                <PulseHint featureKey={hintKey} aiCallsUsed={profile.ai_calls_this_month}>
+                  <Link
+                    href={href}
+                    className={cn('nav-item', isActive(href) && 'nav-active')}
+                  >
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    <span>{label}</span>
+                    {href === '/dashboard/ranking' && profile.plan_tier === 'free' && (
+                      <span className="ml-auto text-[10px] font-semibold text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded-full">
+                        PRO
+                      </span>
+                    )}
+                  </Link>
+                </PulseHint>
+              </motion.li>
+            )
+          })}
 
           {/* Flagged Candidates */}
           <motion.li variants={itemVariants}>

@@ -19,7 +19,7 @@ import { UpgradeModal } from '@/components/billing/upgrade-modal'
 import { CancelModal } from '@/components/billing/cancel-modal'
 import type { UserProfile } from '@/types/database'
 
-const PLAN_LIMIT = { free: 10, pro: null, agency: null }
+const PLAN_LIMIT = { free: 25, pro: null, agency: null }
 
 const PLAN_BADGE: Record<string, string> = {
   free:   'bg-slate-700 text-slate-300',

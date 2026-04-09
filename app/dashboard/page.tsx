@@ -7,6 +7,7 @@ import { ActivityFeed } from '@/components/dashboard/activity-feed'
 import { UsageMeter } from '@/components/dashboard/usage-meter'
 import { QuickActions } from '@/components/dashboard/quick-actions'
 import { UpgradeBanner } from '@/components/dashboard/upgrade-banner'
+import { OnboardingChecklist } from '@/components/dashboard/onboarding-checklist'
 import type { UserProfile, ActivityLog, Project } from '@/types/database'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -92,20 +93,29 @@ export default async function DashboardPage() {
           </div>
           <div className="flex-1 text-center sm:text-left">
             <h3 className="text-base font-semibold text-white mb-1">
-              Welcome to Candid.ai — Start by creating your first project
+              Welcome to Candid.ai — You have 25 free AI screenings. Let&apos;s use them.
             </h3>
             <p className="text-sm text-slate-400">
-              Projects keep your pipeline organised. Add candidates, score resumes, and collaborate with your team — all in one place.
+              Create a project, add candidates, and let Candid.ai tell you who to call first.
             </p>
           </div>
           <Link
             href="/dashboard/projects/create"
             className="flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-brand hover-glow transition-all duration-150 whitespace-nowrap"
           >
-            Create a Project
+            Create Your First Project →
           </Link>
         </section>
       )}
+
+      {/* Onboarding checklist */}
+      <OnboardingChecklist
+        aiCallsUsed={safeProfile.ai_calls_this_month}
+        hasProjects={stats.activeProjects > 0}
+        hasScoredCandidate={stats.resumes > 0}
+        hasBooleanSearch={stats.booleans > 0}
+        hasSummary={stats.summaries > 0}
+      />
 
       {/* Stat cards */}
       <section>
