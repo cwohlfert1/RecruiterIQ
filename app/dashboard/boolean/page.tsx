@@ -4,7 +4,7 @@ import { useState, useRef, KeyboardEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search, X, Loader2, Copy, Check, Plus, FileText, PenLine, Sparkles,
-  Target, Globe, ChevronDown, ChevronUp,
+  Target, Globe, ChevronDown, ChevronUp, SlidersHorizontal,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { FileDropTextarea } from '@/components/ui/file-drop-textarea'
@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
 
 type InputMode       = 'jd' | 'manual'
 type GenerateStatus  = 'idle' | 'generating' | 'complete' | 'error'
-type ActiveVariant   = 'targeted' | 'broad'
+type ActiveVariant   = 'targeted' | 'balanced' | 'broad'
 type FeedbackBucket  = '< 100' | '100-500' | '500-2000' | '2000+'
 
 interface GateErrorBody {
@@ -27,13 +27,15 @@ interface GateErrorBody {
 interface VariantStrings {
   linkedin_string: string
   indeed_string:   string
+  volume_estimate?: string
 }
 
 interface GenerateResult {
   extracted_title?:  string
   extracted_skills?: string[]
-  targeted: VariantStrings
-  broad:    VariantStrings
+  targeted:  VariantStrings
+  balanced:  VariantStrings
+  broad:     VariantStrings
 }
 
 // ─── Syntax-highlighted Boolean output ───────────────────
@@ -455,11 +457,13 @@ export default function BooleanPage() {
   const [result,           setResult]           = useState<GenerateResult | null>(null)
   const [extractedTitle,   setExtractedTitle]   = useState('')
   const [extractedSkills,  setExtractedSkills]  = useState<string[]>([])
-  const [activeVariant,    setActiveVariant]     = useState<ActiveVariant>('targeted')
-  const [targetedStrings,  setTargetedStrings]  = useState<VariantStrings | null>(null)
-  const [broadStrings,     setBroadStrings]     = useState<VariantStrings | null>(null)
-  const [targetedRefCount, setTargetedRefCount] = useState(0)
-  const [broadRefCount,    setBroadRefCount]    = useState(0)
+  const [activeVariant,     setActiveVariant]      = useState<ActiveVariant>('balanced')
+  const [targetedStrings,   setTargetedStrings]   = useState<VariantStrings | null>(null)
+  const [balancedStrings,   setBalancedStrings]   = useState<VariantStrings | null>(null)
+  const [broadStrings,      setBroadStrings]      = useState<VariantStrings | null>(null)
+  const [targetedRefCount,  setTargetedRefCount]  = useState(0)
+  const [balancedRefCount,  setBalancedRefCount]  = useState(0)
+  const [broadRefCount,     setBroadRefCount]     = useState(0)
 
   // ── Shared ─────────────────────────────────────────────────
   const [showUpgrade,   setShowUpgrade]   = useState(false)
@@ -494,10 +498,12 @@ export default function BooleanPage() {
   function applyResult(data: GenerateResult) {
     setResult(data)
     setTargetedStrings(data.targeted)
+    setBalancedStrings(data.balanced)
     setBroadStrings(data.broad)
     setTargetedRefCount(0)
+    setBalancedRefCount(0)
     setBroadRefCount(0)
-    setActiveVariant('targeted')
+    setActiveVariant('balanced')
     if (data.extracted_title)  setExtractedTitle(data.extracted_title)
     if (data.extracted_skills) setExtractedSkills(data.extracted_skills)
   }
@@ -571,13 +577,15 @@ export default function BooleanPage() {
   }
 
   const generating = mode === 'jd' ? jdStatus === 'generating' : manualStatus === 'generating'
-  const hasResult  = !!result && !!targetedStrings && !!broadStrings
+  const hasResult  = !!result && !!targetedStrings && !!balancedStrings && !!broadStrings
 
   function handleReset() {
     setResult(null)
     setTargetedStrings(null)
+    setBalancedStrings(null)
     setBroadStrings(null)
     setTargetedRefCount(0)
+    setBalancedRefCount(0)
     setBroadRefCount(0)
     setExtractedTitle('')
     setExtractedSkills([])
@@ -780,7 +788,7 @@ export default function BooleanPage() {
 
             {/* Result */}
             <AnimatePresence>
-              {hasResult && targetedStrings && broadStrings && (
+              {hasResult && targetedStrings && balancedStrings && broadStrings && (
                 <motion.div
                   key="result"
                   initial={{ opacity: 0, y: 16 }}
@@ -804,60 +812,52 @@ export default function BooleanPage() {
                     </div>
                   )}
 
-                  {/* Targeted / Broad toggle */}
+                  {/* Strict / Balanced / Broad toggle */}
                   <div className="flex gap-1 p-1 rounded-xl bg-white/5 border border-white/10 w-fit">
-                    <button
-                      onClick={() => setActiveVariant('targeted')}
-                      className={cn(
-                        'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150',
-                        activeVariant === 'targeted'
-                          ? 'bg-indigo-600 text-white shadow-sm'
-                          : 'text-slate-400 hover:text-slate-200',
-                      )}
-                    >
-                      <Target className="w-3.5 h-3.5" />
-                      Targeted
-                      <span className={cn(
-                        'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
-                        activeVariant === 'targeted'
-                          ? 'bg-indigo-500/40 text-indigo-100'
-                          : 'bg-white/10 text-slate-500',
-                      )}>
-                        50–200 results
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => setActiveVariant('broad')}
-                      className={cn(
-                        'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150',
-                        activeVariant === 'broad'
-                          ? 'bg-teal-600 text-white shadow-sm'
-                          : 'text-slate-400 hover:text-slate-200',
-                      )}
-                    >
-                      <Globe className="w-3.5 h-3.5" />
-                      Broad
-                      <span className={cn(
-                        'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
-                        activeVariant === 'broad'
-                          ? 'bg-teal-500/40 text-teal-100'
-                          : 'bg-white/10 text-slate-500',
-                      )}>
-                        500–2k results
-                      </span>
-                    </button>
+                    {([
+                      { key: 'targeted' as const, label: 'Strict',   icon: Target,              color: 'indigo', recommended: false },
+                      { key: 'balanced' as const, label: 'Balanced', icon: SlidersHorizontal,   color: 'violet', recommended: true },
+                      { key: 'broad'    as const, label: 'Broad',    icon: Globe,               color: 'teal',   recommended: false },
+                    ]).map(({ key, label, icon: Icon, color, recommended }) => {
+                      const active = activeVariant === key
+                      const strings = key === 'targeted' ? targetedStrings : key === 'balanced' ? balancedStrings : broadStrings
+                      const activeCls = color === 'indigo' ? 'bg-indigo-600' : color === 'violet' ? 'bg-violet-600' : 'bg-teal-600'
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => setActiveVariant(key)}
+                          className={cn(
+                            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150',
+                            active ? `${activeCls} text-white shadow-sm` : 'text-slate-400 hover:text-slate-200',
+                          )}
+                        >
+                          <Icon className="w-3.5 h-3.5" />
+                          {label}
+                          {recommended && (
+                            <span className={cn('text-[9px] px-1 py-0.5 rounded-full font-semibold', active ? 'bg-white/20 text-white' : 'bg-violet-500/20 text-violet-400')}>
+                              REC
+                            </span>
+                          )}
+                          {strings?.volume_estimate && (
+                            <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full', active ? 'bg-white/15 text-white/80' : 'bg-white/10 text-slate-500')}>
+                              {strings.volume_estimate}
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
                   </div>
 
                   {/* Variant content */}
                   <AnimatePresence mode="wait">
-                    {activeVariant === 'targeted' ? (
-                      <motion.div
-                        key="targeted"
-                        initial={{ opacity: 0, x: -8 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 8 }}
-                        transition={{ duration: 0.15 }}
-                      >
+                    <motion.div
+                      key={activeVariant}
+                      initial={{ opacity: 0, x: 8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -8 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      {activeVariant === 'targeted' && targetedStrings && (
                         <VariantSection
                           variantType="targeted"
                           strings={targetedStrings}
@@ -865,19 +865,25 @@ export default function BooleanPage() {
                           jdText={refinementJdText}
                           refinementCount={targetedRefCount}
                           onRefined={(li, in_, cnt) => {
-                            setTargetedStrings({ linkedin_string: li, indeed_string: in_ })
+                            setTargetedStrings({ ...targetedStrings, linkedin_string: li, indeed_string: in_ })
                             setTargetedRefCount(cnt)
                           }}
                         />
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="broad"
-                        initial={{ opacity: 0, x: 8 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -8 }}
-                        transition={{ duration: 0.15 }}
-                      >
+                      )}
+                      {activeVariant === 'balanced' && balancedStrings && (
+                        <VariantSection
+                          variantType="balanced"
+                          strings={balancedStrings}
+                          jobTitle={refinementJobTitle}
+                          jdText={refinementJdText}
+                          refinementCount={balancedRefCount}
+                          onRefined={(li, in_, cnt) => {
+                            setBalancedStrings({ ...balancedStrings, linkedin_string: li, indeed_string: in_ })
+                            setBalancedRefCount(cnt)
+                          }}
+                        />
+                      )}
+                      {activeVariant === 'broad' && broadStrings && (
                         <VariantSection
                           variantType="broad"
                           strings={broadStrings}
@@ -885,12 +891,12 @@ export default function BooleanPage() {
                           jdText={refinementJdText}
                           refinementCount={broadRefCount}
                           onRefined={(li, in_, cnt) => {
-                            setBroadStrings({ linkedin_string: li, indeed_string: in_ })
+                            setBroadStrings({ ...broadStrings, linkedin_string: li, indeed_string: in_ })
                             setBroadRefCount(cnt)
                           }}
                         />
-                      </motion.div>
-                    )}
+                      )}
+                    </motion.div>
                   </AnimatePresence>
 
                   {/* Actions */}

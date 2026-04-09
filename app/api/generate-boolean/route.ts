@@ -55,37 +55,50 @@ async function handleJdMode(
 
   const systemPrompt = `You are an expert technical recruiter and Boolean search specialist. You build precise, high-performance Boolean strings for LinkedIn Recruiter and Indeed. You understand the difference between candidates who have hands-on experience and those who managed or observed it — and you optimize every string to surface the former.`
 
-  const userPrompt = `Create two Boolean search strings for sourcing candidates based on the job description below.
+  const userPrompt = `Create THREE Boolean search strings for sourcing candidates based on the job description below.
 
 Requirements:
-- Generate TWO versions:
-  1. Strict (high precision, low noise)
-  2. Broad (wider net, more inclusive)
+- Generate THREE versions:
+  1. Strict (highest precision, fewest results)
+  2. Balanced (moderate precision, good volume — RECOMMENDED for most searches)
+  3. Broad (widest net, maximum volume)
 
-Guidelines:
+IMPORTANT CALIBRATION RULES:
+- The Strict string MUST be calibrated to return 50-200 results on LinkedIn Recruiter, NOT zero.
+- If you have more than 4 AND operators, the string is too restrictive — loosen it.
+- Maximum 3 NOT filters on Strict. Broad should have 0-1 NOT filters.
+- Use OR groups LIBERALLY within each concept to catch title/tool variations.
+
+Guidelines for all versions:
 - Identify core must-have technologies and use AND logic
 - Include synonyms and variations using OR logic
-- Add supporting/adjacent tools where relevant
 - Use parentheses correctly for grouping
 - Include common alternate titles for the role
 
-Strict Version:
+Strict Version (Expected: 50-200 results):
+- 3-4 core AND terms maximum
+- Each AND term should use OR groups for variations
+- Maximum 3 NOT filters (only the most disqualifying: intern, student, professor)
 - Prioritize exact tech stack match
-- Minimize OR statements
-- Add NOT filters to remove irrelevant profiles (e.g., BI-only, analysts, non-engineers, directors, managers, entry-level)
-- Designed to surface hands-on practitioners only — not managers who touched it 5 years ago, not entry-level candidates padding their resume
-- Designed to avoid catfish candidates
 
-Broad Version:
-- Expand OR statements for tools and titles
-- Reduce or remove most NOT filters
+Balanced Version (Expected: 200-500 results — RECOMMENDED):
+- 2-3 core AND terms
+- Generous OR groups for title and tool variations
+- 1-2 NOT filters at most
+- Good balance of precision and volume
+
+Broad Version (Expected: 500-2000+ results):
+- 1-2 core AND terms only
+- Expansive OR groups
+- No NOT filters unless critical
 - Allow adjacent or transferable experience
-- Still prioritize hands-on contributors over people-managers where possible
 
-Secret sauce — apply to BOTH versions:
-- Always prioritize candidates with demonstrated hands-on experience for hands-on roles
-- If the JD signals an IC (individual contributor) role, add NOT filters for Director, VP, Head of, Manager where appropriate
-- If the JD signals a senior/lead role, filter out intern, junior, entry-level
+Secret sauce — apply to ALL versions:
+- Prioritize candidates with demonstrated hands-on experience
+- If the JD signals an IC role, include NOT filters for Director, VP (counts toward the NOT limit)
+- If the JD signals a senior/lead role, filter out intern, junior in Strict only
+
+For each string, estimate the expected LinkedIn result volume as one of: "Low (0-50)", "Medium (50-500)", "High (500+)"
 
 From the job description, also extract the job title and top 5-8 required skills.
 
@@ -98,11 +111,18 @@ Return ONLY valid JSON (no markdown, no explanation):
   "extracted_skills": ["skill1", "skill2", "skill3"],
   "targeted": {
     "linkedin_string": "...",
-    "indeed_string": "..."
+    "indeed_string": "...",
+    "volume_estimate": "Medium (50-500)"
+  },
+  "balanced": {
+    "linkedin_string": "...",
+    "indeed_string": "...",
+    "volume_estimate": "Medium (50-500)"
   },
   "broad": {
     "linkedin_string": "...",
-    "indeed_string": "..."
+    "indeed_string": "...",
+    "volume_estimate": "High (500+)"
   }
 }`
 
@@ -136,7 +156,7 @@ Return ONLY valid JSON (no markdown, no explanation):
       required_skills: Array.isArray(parsed.extracted_skills) ? parsed.extracted_skills : [],
       optional_skills: [],
       exclusions:      [],
-      boolean_output:  parsed.targeted.linkedin_string,
+      boolean_output:  parsed.balanced?.linkedin_string ?? parsed.targeted.linkedin_string,
     })
     await db.from('activity_log').insert({
       user_id:     gate.userId,
@@ -151,10 +171,17 @@ Return ONLY valid JSON (no markdown, no explanation):
       targeted: {
         linkedin_string: parsed.targeted.linkedin_string,
         indeed_string:   parsed.targeted.indeed_string ?? '',
+        volume_estimate: parsed.targeted.volume_estimate ?? '',
+      },
+      balanced: {
+        linkedin_string: parsed.balanced?.linkedin_string ?? parsed.targeted.linkedin_string,
+        indeed_string:   parsed.balanced?.indeed_string ?? parsed.targeted.indeed_string ?? '',
+        volume_estimate: parsed.balanced?.volume_estimate ?? '',
       },
       broad: {
         linkedin_string: parsed.broad.linkedin_string,
         indeed_string:   parsed.broad.indeed_string ?? '',
+        volume_estimate: parsed.broad.volume_estimate ?? '',
       },
     })
   } catch (err) {
@@ -205,54 +232,53 @@ async function handleManualMode(
 
   const systemPrompt = `You are an expert technical recruiter and Boolean search specialist. You build precise, high-performance Boolean strings for LinkedIn Recruiter and Indeed. You understand the difference between candidates who have hands-on experience and those who managed or observed it — and you optimize every string to surface the former.`
 
-  const userPrompt = `Create two Boolean search strings for sourcing candidates based on the inputs below.
+  const userPrompt = `Create THREE Boolean search strings for sourcing candidates based on the inputs below.
 
 Requirements:
-- Generate TWO versions:
-  1. Strict (high precision, low noise)
-  2. Broad (wider net, more inclusive)
+- Generate THREE versions:
+  1. Strict (highest precision, fewest results)
+  2. Balanced (moderate precision, good volume — RECOMMENDED)
+  3. Broad (widest net, maximum volume)
 
-Guidelines:
-- Identify core must-have technologies and use AND logic
-- Include synonyms and variations using OR logic
-- Add supporting/adjacent tools where relevant
-- Use parentheses correctly for grouping
-- Include common alternate titles for the role
+IMPORTANT CALIBRATION RULES:
+- The Strict string MUST return 50-200 results, NOT zero.
+- Maximum 4 AND operators on Strict. Maximum 3 NOT filters.
+- Use OR groups LIBERALLY within each concept.
 
-Strict Version:
-- Prioritize exact tech stack match
-- Minimize OR statements
-- Add NOT filters to remove irrelevant profiles (e.g., BI-only, analysts, non-engineers, directors, managers, entry-level)
-- Designed to surface hands-on practitioners only — not managers who touched it 5 years ago, not entry-level candidates padding their resume
-- Designed to avoid catfish candidates
+Strict Version (Expected: 50-200 results):
+- 3-4 core AND terms maximum, each with OR groups for variations
+- Maximum 3 NOT filters
 
-Broad Version:
-- Expand OR statements for tools and titles
-- Reduce or remove most NOT filters
-- Allow adjacent or transferable experience
-- Still prioritize hands-on contributors over people-managers where possible
+Balanced Version (Expected: 200-500 results — RECOMMENDED):
+- 2-3 core AND terms with generous OR groups
+- 1-2 NOT filters at most
 
-Secret sauce — apply to BOTH versions:
-- Always prioritize candidates with demonstrated hands-on experience for hands-on roles
-- If the role signals an IC (individual contributor) role, add NOT filters for Director, VP, Head of, Manager where appropriate
-- If the role signals a senior/lead role, filter out intern, junior, entry-level
+Broad Version (Expected: 500-2000+ results):
+- 1-2 core AND terms, expansive OR groups, no NOT filters unless critical
 
-Additional inputs if provided:
+For each string, estimate volume: "Low (0-50)", "Medium (50-500)", "High (500+)"
+
 Job Title: ${safeJobTitle}
 Must-Have Skills: ${safeRequired.join(', ')}
 Nice-to-Have Skills: ${safeOptional.length > 0 ? safeOptional.join(', ') : 'none provided'}
-Location: not provided
 Exclude Terms: ${safeExclusions.length > 0 ? safeExclusions.join(', ') : 'none provided'}
 
 Return ONLY valid JSON (no markdown, no explanation):
 {
   "targeted": {
     "linkedin_string": "...",
-    "indeed_string": "..."
+    "indeed_string": "...",
+    "volume_estimate": "Medium (50-500)"
+  },
+  "balanced": {
+    "linkedin_string": "...",
+    "indeed_string": "...",
+    "volume_estimate": "Medium (50-500)"
   },
   "broad": {
     "linkedin_string": "...",
-    "indeed_string": "..."
+    "indeed_string": "...",
+    "volume_estimate": "High (500+)"
   }
 }`
 
@@ -286,7 +312,7 @@ Return ONLY valid JSON (no markdown, no explanation):
       required_skills: safeRequired,
       optional_skills: safeOptional,
       exclusions:      safeExclusions,
-      boolean_output:  parsed.targeted.linkedin_string,
+      boolean_output:  parsed.balanced?.linkedin_string ?? parsed.targeted.linkedin_string,
     })
     await db.from('activity_log').insert({
       user_id:     gate.userId,
@@ -299,10 +325,17 @@ Return ONLY valid JSON (no markdown, no explanation):
       targeted: {
         linkedin_string: parsed.targeted.linkedin_string,
         indeed_string:   parsed.targeted.indeed_string ?? '',
+        volume_estimate: parsed.targeted.volume_estimate ?? '',
+      },
+      balanced: {
+        linkedin_string: parsed.balanced?.linkedin_string ?? parsed.targeted.linkedin_string,
+        indeed_string:   parsed.balanced?.indeed_string ?? parsed.targeted.indeed_string ?? '',
+        volume_estimate: parsed.balanced?.volume_estimate ?? '',
       },
       broad: {
         linkedin_string: parsed.broad.linkedin_string,
         indeed_string:   parsed.broad.indeed_string ?? '',
+        volume_estimate: parsed.broad.volume_estimate ?? '',
       },
     })
   } catch (err) {
