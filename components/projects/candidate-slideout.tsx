@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Mail, Loader2, Trash2, FileText, Send, Sparkles, Star, ThumbsUp, ThumbsDown, Crown, AlertOctagon, Maximize2, Minimize2 } from 'lucide-react'
+import { X, Mail, Loader2, Trash2, FileText, Send, Sparkles, Star, ThumbsUp, ThumbsDown, Crown, AlertOctagon, Maximize2, Minimize2, CheckCircle2, XCircle, AlertTriangle, AlertCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -223,7 +223,9 @@ export function CandidateSlideout({
   const [savingReact, setSavingReact] = useState(false)
   const [benchmark,   setBenchmark]   = useState<BenchmarkData | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [activeTab,    setActiveTab]   = useState<'overview' | 'resume' | 'notes'>('overview')
+  const [activeTab,    setActiveTab]   = useState<'overview' | 'resume' | 'notes' | 'insights'>('overview')
+  const [insights,     setInsights]    = useState<{ overqualified: boolean; overqualified_reason: string | null; submit_if: string[]; avoid_if: string[]; key_gaps: string[] } | null>(null)
+  const [insightsLoading, setInsightsLoading] = useState(false)
 
   // Sync star/reaction/flag state when candidate changes
   useEffect(() => {
@@ -235,7 +237,27 @@ export function CandidateSlideout({
     setLocalFlagScore(null)
     setActiveTab('overview')
     setIsFullscreen(false)
+    setInsights(null)
+    setInsightsLoading(false)
   }, [candidate?.id])
+
+  // Fetch insights when tab opens (auto-generate if scored)
+  useEffect(() => {
+    if (activeTab !== 'insights' || !candidate?.cqi_score || !projectId || insightsLoading) return
+    // Use cached if available and score matches
+    const cached = candidate.insights_json as typeof insights & { _cqi_score?: number } | null
+    if (cached && cached._cqi_score === candidate.cqi_score) {
+      setInsights(cached)
+      return
+    }
+    setInsightsLoading(true)
+    fetch(`/api/projects/${projectId}/candidates/${candidate.id}/insights`, { method: 'POST' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.insights) setInsights(data.insights) })
+      .catch(() => {})
+      .finally(() => setInsightsLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, candidate?.id, candidate?.cqi_score])
 
   // Fetch benchmark comparison when candidate has a CQI score
   useEffect(() => {
@@ -454,7 +476,7 @@ export function CandidateSlideout({
 
             {/* Tabs */}
             <div className="flex border-b border-white/8 px-5">
-              {(['overview', 'resume', 'notes'] as const).map(tab => (
+              {(['overview', 'resume', 'notes', ...(candidate.cqi_score ? ['insights' as const] : [])] as const).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -465,7 +487,7 @@ export function CandidateSlideout({
                       : 'border-transparent text-slate-500 hover:text-slate-300',
                   )}
                 >
-                  {tab === 'overview' ? 'Overview' : tab === 'resume' ? 'Resume' : 'Notes'}
+                  {tab === 'overview' ? 'Overview' : tab === 'resume' ? 'Resume' : tab === 'notes' ? 'Notes' : 'Insights'}
                 </button>
               ))}
             </div>
@@ -649,6 +671,88 @@ export function CandidateSlideout({
                     canEdit={canEdit}
                     members={members}
                   />
+                </div>
+              )}
+
+              {/* ── INSIGHTS TAB ── */}
+              {activeTab === 'insights' && !isFullscreen && (
+                <div className="space-y-4">
+                  {insightsLoading && (
+                    <div className="flex flex-col items-center py-12 gap-3">
+                      <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
+                      <p className="text-xs text-slate-500">Generating insights...</p>
+                    </div>
+                  )}
+
+                  {!insightsLoading && !insights && !candidate.cqi_score && (
+                    <div className="flex flex-col items-center py-12 text-center">
+                      <AlertCircle className="w-6 h-6 text-slate-600 mb-2" />
+                      <p className="text-xs text-slate-500">Score this candidate to generate insights.</p>
+                    </div>
+                  )}
+
+                  {!insightsLoading && insights && (
+                    <>
+                      {/* Overqualified warning */}
+                      {insights.overqualified && insights.overqualified_reason && (
+                        <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/8 border border-amber-500/20">
+                          <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-xs font-semibold text-amber-300">Overqualified Flag</p>
+                            <p className="text-xs text-amber-200/70 mt-0.5 leading-relaxed">{insights.overqualified_reason}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Submit If / Avoid If — two columns */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-xl border border-white/8 overflow-hidden">
+                          <div className="flex items-center gap-1.5 px-3 py-2 border-b border-white/8 bg-white/3">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                            <span className="text-xs font-semibold text-green-400">Submit If</span>
+                          </div>
+                          <div className="px-3 py-2.5 border-l-2 border-green-500/40 ml-0">
+                            <ul className="space-y-2">
+                              {insights.submit_if.map((item, i) => (
+                                <li key={i} className="text-xs text-slate-300 leading-relaxed pl-2 relative before:absolute before:left-0 before:top-1.5 before:w-1 before:h-1 before:rounded-full before:bg-green-500/50">
+                                  {item}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-white/8 overflow-hidden">
+                          <div className="flex items-center gap-1.5 px-3 py-2 border-b border-white/8 bg-white/3">
+                            <XCircle className="w-3.5 h-3.5 text-red-400" />
+                            <span className="text-xs font-semibold text-red-400">Avoid If</span>
+                          </div>
+                          <div className="px-3 py-2.5 border-l-2 border-red-500/40 ml-0">
+                            <ul className="space-y-2">
+                              {insights.avoid_if.map((item, i) => (
+                                <li key={i} className="text-xs text-slate-300 leading-relaxed pl-2 relative before:absolute before:left-0 before:top-1.5 before:w-1 before:h-1 before:rounded-full before:bg-red-500/50">
+                                  {item}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Key Gaps */}
+                      {insights.key_gaps.length > 0 && (
+                        <div className="rounded-xl border border-white/8 p-3">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                            <span className="text-xs font-semibold text-amber-400">Key Gaps vs JD</span>
+                          </div>
+                          <p className="text-xs text-slate-400 leading-relaxed">
+                            {insights.key_gaps.join(' · ')}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
             </div>
