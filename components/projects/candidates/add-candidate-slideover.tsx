@@ -50,6 +50,8 @@ export function AddCandidateSlideover({ open, projectId, hasJd, isManager = fals
   const [payMax,       setPayMax]       = useState('')
   const [submitting,   setSubmitting]   = useState(false)
   const [addedCount,   setAddedCount]   = useState(0)
+  const [linkedinUrl,  setLinkedinUrl]  = useState('')
+  const [linkedinError, setLinkedinError] = useState(false)
   const [nameError,    setNameError]    = useState(false)
   const [emailError,   setEmailError]   = useState(false)
   const [flagWarning,  setFlagWarning]  = useState<FlagWarning | null>(null)
@@ -58,10 +60,10 @@ export function AddCandidateSlideover({ open, projectId, hasJd, isManager = fals
   // Reset on open
   useEffect(() => {
     if (open) {
-      setResume(''); setOriginalFile(null); setParsed(null); setName(''); setEmail('')
+      setResume(''); setOriginalFile(null); setParsed(null); setName(''); setEmail(''); setLinkedinUrl('')
       setPayMin(''); setPayMax('')
       setSubmitting(false); setParsing(false); setAddedCount(0)
-      setNameError(false); setEmailError(false)
+      setNameError(false); setEmailError(false); setLinkedinError(false)
     }
   }, [open])
 
@@ -108,13 +110,15 @@ export function AddCandidateSlideover({ open, projectId, hasJd, isManager = fals
   }
 
   const emailValid = !email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+  const linkedinValid = !linkedinUrl.trim() || linkedinUrl.trim().includes('linkedin.com/in/')
   const needsResume = !!hasJd
-  const canSubmit  = name.trim() && emailValid && (needsResume ? resume.trim() : true) && !parsing && !submitting
+  const canSubmit  = name.trim() && emailValid && linkedinValid && (needsResume ? resume.trim() : true) && !parsing && !submitting
 
   async function submitCandidate(override = false) {
     setNameError(!name.trim())
     setEmailError(!!email.trim() && !emailValid)
-    if (!name.trim() || !emailValid || (needsResume && !resume.trim())) return
+    setLinkedinError(!!linkedinUrl.trim() && !linkedinValid)
+    if (!name.trim() || !emailValid || !linkedinValid || (needsResume && !resume.trim())) return
 
     setSubmitting(true)
     try {
@@ -130,6 +134,7 @@ export function AddCandidateSlideover({ open, projectId, hasJd, isManager = fals
           ...(payMin ? { pay_rate_min: Number(payMin) } : {}),
           ...(payMax ? { pay_rate_max: Number(payMax) } : {}),
           ...(payMin || payMax ? { pay_rate_type: 'hourly' } : {}),
+          ...(linkedinUrl.trim() ? { linkedin_url: linkedinUrl.trim() } : {}),
         }),
       })
 
@@ -344,6 +349,25 @@ export function AddCandidateSlideover({ open, projectId, hasJd, isManager = fals
                         )}
                       />
                       {nameError && <p className="text-xs text-red-400">Name is required</p>}
+                    </div>
+
+                    {/* LinkedIn URL */}
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-slate-300">
+                        LinkedIn URL <span className="text-xs text-slate-500 ml-1">(optional)</span>
+                      </label>
+                      <input
+                        type="url"
+                        value={linkedinUrl}
+                        onChange={e => { setLinkedinUrl(e.target.value); setLinkedinError(false) }}
+                        placeholder="https://linkedin.com/in/username"
+                        className={cn(
+                          'w-full px-4 py-2.5 rounded-xl bg-white/5 border text-sm text-slate-200 placeholder:text-slate-600',
+                          'focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors',
+                          linkedinError ? 'border-amber-500/60' : 'border-white/10 hover:border-white/20',
+                        )}
+                      />
+                      {linkedinError && <p className="text-xs text-red-400">Please enter a valid LinkedIn profile URL</p>}
                     </div>
 
                     {/* Email */}

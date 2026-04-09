@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Mail, Loader2, Trash2, FileText, Send, Sparkles, Star, ThumbsUp, ThumbsDown, Crown, AlertOctagon, Maximize2, Minimize2, CheckCircle2, XCircle, AlertTriangle, AlertCircle } from 'lucide-react'
+import { X, Mail, Loader2, Trash2, FileText, Send, Sparkles, Star, ThumbsUp, ThumbsDown, Crown, AlertOctagon, Maximize2, Minimize2, CheckCircle2, XCircle, AlertTriangle, AlertCircle, Linkedin } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -386,7 +386,14 @@ export function CandidateSlideout({
             <div className="px-5 py-4 border-b border-white/8 flex items-start gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold text-white truncate">{candidate.candidate_name}</h2>
+                  <h2 className="text-sm font-semibold text-white truncate">
+                    {candidate.candidate_name}
+                    {candidate.linkedin_url && (
+                      <a href={candidate.linkedin_url} target="_blank" rel="noopener noreferrer" className="inline-block ml-1.5 align-middle" onClick={e => e.stopPropagation()}>
+                        <Linkedin className="w-3.5 h-3.5 text-indigo-400 hover:text-indigo-300 transition-colors" />
+                      </a>
+                    )}
+                  </h2>
                   {candidate.hired && (
                     <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-500/15 border border-amber-500/25 px-1.5 py-0.5 rounded-full flex-shrink-0">
                       <Crown className="w-3 h-3" />

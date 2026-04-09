@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MoreHorizontal, Trophy, Medal, Eye, FileText, Flag, Send, Trash2, Loader2, Star, Crown, GitCompare } from 'lucide-react'
+import { MoreHorizontal, Trophy, Medal, Eye, FileText, Flag, Send, Trash2, Loader2, Star, Crown, GitCompare, Linkedin } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { CandidateRow } from '@/app/dashboard/projects/[id]/page'
@@ -594,7 +594,14 @@ export function CandidatesTable({
               <td className="py-4 pr-4">
                 <button onClick={() => onViewResume(c)} className="text-left group/name">
                   <div className="flex items-center gap-1.5">
-                    <p className="font-medium text-white group-hover/name:text-indigo-300 transition-colors">{c.candidate_name}</p>
+                    <p className="font-medium text-white group-hover/name:text-indigo-300 transition-colors">
+                      {c.candidate_name}
+                      {c.linkedin_url && (
+                        <a href={c.linkedin_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-block ml-1 align-middle">
+                          <Linkedin className="w-3 h-3 text-indigo-400 hover:text-indigo-300 transition-colors" />
+                        </a>
+                      )}
+                    </p>
                     {c.hired && (
                       <span className="flex items-center gap-0.5 text-[9px] font-bold text-amber-400 bg-amber-500/15 border border-amber-500/25 px-1.5 py-0.5 rounded-full flex-shrink-0">
                         <Crown className="w-2.5 h-2.5" />

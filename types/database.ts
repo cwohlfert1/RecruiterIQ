@@ -429,6 +429,7 @@ export type Database = {
           pay_rate_max:         number | null
           pay_rate_type:        string | null
           insights_json:        Record<string, unknown> | null
+          linkedin_url:         string | null
           deleted_at:           string | null
           created_at:           string
           updated_at:           string
@@ -454,6 +455,7 @@ export type Database = {
           pay_rate_max?:         number | null
           pay_rate_type?:        string | null
           insights_json?:        Record<string, unknown> | null
+          linkedin_url?:         string | null
         }
         Update: {
           candidate_name?:       string
@@ -476,6 +478,7 @@ export type Database = {
           pay_rate_max?:         number | null
           pay_rate_type?:        string | null
           insights_json?:        Record<string, unknown> | null
+          linkedin_url?:         string | null
           deleted_at?:           string | null
         }
       }

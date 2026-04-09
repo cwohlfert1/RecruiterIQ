@@ -95,14 +95,14 @@ export async function POST(
   if (!canEdit) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   // Parse body
-  let body: { candidate_name?: unknown; candidate_email?: unknown; resume_text?: unknown; pipeline_stage?: unknown; override?: boolean; pay_rate_min?: unknown; pay_rate_max?: unknown; pay_rate_type?: unknown }
+  let body: { candidate_name?: unknown; candidate_email?: unknown; resume_text?: unknown; pipeline_stage?: unknown; override?: boolean; pay_rate_min?: unknown; pay_rate_max?: unknown; pay_rate_type?: unknown; linkedin_url?: unknown }
   try {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { candidate_name, candidate_email, resume_text, pipeline_stage, override: overrideFlag, pay_rate_min, pay_rate_max, pay_rate_type } = body
+  const { candidate_name, candidate_email, resume_text, pipeline_stage, override: overrideFlag, pay_rate_min, pay_rate_max, pay_rate_type, linkedin_url } = body
 
   if (typeof candidate_name !== 'string' || !candidate_name.trim()) {
     return NextResponse.json({ error: 'candidate_name is required' }, { status: 400 })
@@ -176,6 +176,7 @@ export async function POST(
       ...(typeof pay_rate_min === 'number' ? { pay_rate_min } : {}),
       ...(typeof pay_rate_max === 'number' ? { pay_rate_max } : {}),
       ...(typeof pay_rate_type === 'string' ? { pay_rate_type } : {}),
+      ...(typeof linkedin_url === 'string' && linkedin_url.trim() ? { linkedin_url: linkedin_url.trim() } : {}),
     })
     .select()
     .single()
