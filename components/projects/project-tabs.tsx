@@ -1,8 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { LayoutDashboard, Users, Kanban, FileText, Search, Activity, Settings } from 'lucide-react'
+import { LayoutDashboard, Users, Kanban, FileText, Search, Activity, Settings, GripVertical } from 'lucide-react'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { cn } from '@/lib/utils'
 import type { CandidateRow } from '@/app/dashboard/projects/[id]/page'
 import type { PipelineStage } from '@/types/database'
@@ -55,15 +70,76 @@ interface Props {
 
 // ─── Tabs Config ─────────────────────────────────────────────
 
-const TABS: Tab[] = [
-  { key: 'overview',   label: 'Overview',        icon: LayoutDashboard },
-  { key: 'candidates', label: 'Candidates',       icon: Users           },
-  { key: 'pipeline',   label: 'Pipeline',         icon: Kanban          },
-  { key: 'jd',         label: 'Job Description',  icon: FileText        },
-  { key: 'boolean',    label: 'Boolean Strings',  icon: Search          },
-  { key: 'activity',   label: 'Activity Feed',    icon: Activity        },
-  { key: 'settings',   label: 'Settings',         icon: Settings        },
-]
+const DEFAULT_TAB_ORDER: TabKey[] = ['overview', 'candidates', 'pipeline', 'jd', 'boolean', 'activity']
+
+const TAB_META: Record<TabKey, { label: string; icon: React.ElementType }> = {
+  overview:   { label: 'Overview',        icon: LayoutDashboard },
+  candidates: { label: 'Candidates',      icon: Users           },
+  pipeline:   { label: 'Pipeline',        icon: Kanban          },
+  jd:         { label: 'Job Description', icon: FileText        },
+  boolean:    { label: 'Boolean Strings', icon: Search          },
+  activity:   { label: 'Activity Feed',   icon: Activity        },
+  settings:   { label: 'Settings',        icon: Settings        },
+}
+
+function getStorageKey(projectId: string) {
+  return `candidai_tab_order_${projectId}`
+}
+
+// ─── Sortable Tab ────────────────────────────────────────────
+
+function SortableTab({
+  tabKey,
+  active,
+  onClick,
+}: {
+  tabKey: TabKey
+  active: boolean
+  onClick: () => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tabKey })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+  }
+
+  const meta = TAB_META[tabKey]
+  const Icon = meta.icon
+
+  return (
+    <button
+      ref={setNodeRef}
+      style={style}
+      onClick={onClick}
+      className={cn(
+        'relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 group',
+        active ? 'text-white' : 'text-slate-500 hover:text-slate-300',
+        isDragging && 'opacity-80 shadow-lg shadow-indigo-500/10 rounded-lg border border-indigo-500/30 bg-[#12141F]',
+      )}
+      {...attributes}
+    >
+      {/* Drag handle — visible on hover */}
+      <span
+        {...listeners}
+        className="opacity-0 group-hover:opacity-40 transition-opacity cursor-grab active:cursor-grabbing flex-shrink-0 -ml-1.5 mr--0.5"
+        onClick={e => e.stopPropagation()}
+      >
+        <GripVertical className="w-3 h-3" />
+      </span>
+
+      <Icon className="w-4 h-4" />
+      <span>{meta.label}</span>
+      {active && !isDragging && (
+        <motion.div
+          layoutId="project-tab-underline"
+          className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-400 rounded-full"
+        />
+      )}
+    </button>
+  )
+}
 
 // ─── Component ───────────────────────────────────────────────
 
@@ -82,8 +158,43 @@ export function ProjectTabs({
   const [members,               setMembers]               = useState<Member[]>(initialMembers)
   const [showShareModal,        setShowShareModal]        = useState(false)
   const [pipelineStageFilter,   setPipelineStageFilter]   = useState<PipelineStage | undefined>(undefined)
+  const [tabOrder,              setTabOrder]              = useState<TabKey[]>(DEFAULT_TAB_ORDER)
 
   const isOwner = project.owner_id === userId
+
+  // Load saved tab order from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(getStorageKey(project.id))
+      if (saved) {
+        const parsed = JSON.parse(saved) as TabKey[]
+        // Validate: must contain all default keys
+        if (Array.isArray(parsed) && DEFAULT_TAB_ORDER.every(k => parsed.includes(k))) {
+          setTabOrder(parsed.filter(k => DEFAULT_TAB_ORDER.includes(k)))
+        }
+      }
+    } catch { /* ignore */ }
+  }, [project.id])
+
+  const saveOrder = useCallback((order: TabKey[]) => {
+    setTabOrder(order)
+    try {
+      localStorage.setItem(getStorageKey(project.id), JSON.stringify(order))
+    } catch { /* ignore */ }
+  }, [project.id])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active: dragActive, over } = event
+    if (!over || dragActive.id === over.id) return
+    const oldIndex = tabOrder.indexOf(dragActive.id as TabKey)
+    const newIndex = tabOrder.indexOf(over.id as TabKey)
+    if (oldIndex === -1 || newIndex === -1) return
+    saveOrder(arrayMove(tabOrder, oldIndex, newIndex))
+  }
 
   function handleJdSaved(text: string | null) {
     setJdText(text)
@@ -102,29 +213,37 @@ export function ProjectTabs({
   return (
     <div>
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-white/8 mb-6 overflow-x-auto">
-        {TABS.map(tab => {
-          const Icon = tab.icon
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setActive(tab.key)}
-              className={cn(
-                'relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0',
-                active === tab.key ? 'text-white' : 'text-slate-500 hover:text-slate-300'
-              )}
-            >
-              <Icon className="w-4 h-4" />
-              <span>{tab.label}</span>
-              {active === tab.key && (
-                <motion.div
-                  layoutId="project-tab-underline"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-400 rounded-full"
-                />
-              )}
-            </button>
-          )
-        })}
+      <div className="flex border-b border-white/8 mb-6 overflow-x-auto">
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={tabOrder} strategy={horizontalListSortingStrategy}>
+            {tabOrder.map(key => (
+              <SortableTab
+                key={key}
+                tabKey={key}
+                active={active === key}
+                onClick={() => setActive(key)}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
+
+        {/* Settings tab — always last, not draggable */}
+        <button
+          onClick={() => setActive('settings')}
+          className={cn(
+            'relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ml-auto',
+            active === 'settings' ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+          )}
+        >
+          <Settings className="w-4 h-4" />
+          <span>Settings</span>
+          {active === 'settings' && (
+            <motion.div
+              layoutId="project-tab-underline"
+              className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-400 rounded-full"
+            />
+          )}
+        </button>
       </div>
 
       {/* Tab content */}
