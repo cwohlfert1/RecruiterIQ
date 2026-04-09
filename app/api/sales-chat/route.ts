@@ -198,7 +198,8 @@ async function checkWasQualified(
       .eq('session_id', sessionId)
       .single()
     return data?.qualified === true
-  } catch {
+  } catch (err) {
+    console.error('[sales-chat] checkWasQualified error:', err)
     return false
   }
 }

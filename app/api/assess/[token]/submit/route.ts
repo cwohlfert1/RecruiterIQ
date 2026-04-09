@@ -171,7 +171,8 @@ Events:\n${eventSummary}
       }],
     })
     aiSummary = (msg.content[0] as { text: string }).text.trim()
-  } catch {
+  } catch (err) {
+    console.error('[assess/submit] AI summary generation failed:', err)
     aiSummary = `${invite.candidate_name} completed the assessment with a trust score of ${trustScore}/100. ${events.length} proctoring event(s) were recorded. Detailed event logs are available in the proctoring timeline.`
   }
 
@@ -271,7 +272,7 @@ Events:\n${eventSummary}
           message: `${assessment?.title ?? 'Assessment'} — Trust: ${trustScore} | Skill: ${skillScore}`,
           link:    reportUrl,
           read:    false,
-        }).catch(() => null)
+        }).catch((err: unknown) => console.error('[assess/submit] notification insert failed:', err))
       }
     }
   }

@@ -99,8 +99,8 @@ Return ONLY valid JSON:
     const parsed  = JSON.parse(cleaned) as { keywords?: string[]; summary?: string }
     roleKeywords  = Array.isArray(parsed.keywords) ? parsed.keywords : []
     resumeSummary = typeof parsed.summary === 'string' ? parsed.summary : ''
-  } catch {
-    // Non-fatal — still mark hired without benchmark keywords
+  } catch (err) {
+    console.error('[hired] keyword extraction failed:', err)
     roleKeywords  = [project.title]
     resumeSummary = `${candidate.candidate_name} was selected for the ${project.title} role.`
   }
@@ -169,7 +169,7 @@ Return ONLY valid JSON:
           ],
         }],
       }),
-    }).catch(() => {/* silent */})
+    }).catch((err) => console.error('[hired] Teams webhook failed:', err))
   }
 
   return NextResponse.json({

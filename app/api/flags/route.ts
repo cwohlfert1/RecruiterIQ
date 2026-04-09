@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Manager access required' }, { status: 403 })
   }
 
-  const body = await req.json().catch(() => ({}))
+  const body = await req.json().catch((err) => { console.error('[flags] JSON parse error:', err); return {} })
   const { candidate_email, candidate_name, flag_type, reason } =
     body as { candidate_email?: string; candidate_name?: string; flag_type?: string; reason?: string }
 

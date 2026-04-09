@@ -203,9 +203,9 @@ export async function POST(
           title:      `📝 Note on ${candidateName}`,
           text:       `**${actorName}** added a note in [${project.title}](/dashboard/projects/${params.id}):\n\n${content.trim().slice(0, 200)}`,
         }),
-      }).catch(() => null)
+      }).catch((err) => console.error('[notes] webhook send failed:', err))
     }
-  } catch { /* non-critical */ }
+  } catch (err) { console.error('[notes] activity/webhook error:', err) }
 
   return NextResponse.json({
     note: { ...note, user_email: user.email ?? null },

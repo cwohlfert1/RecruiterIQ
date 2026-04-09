@@ -63,7 +63,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
   }
 
-  const body = await req.json().catch(() => ({}))
+  const body = await req.json().catch((err) => { console.error('[projects/patch] JSON parse error:', err); return {} })
 
   // Only allow whitelisted fields
   const allowed = ['teams_webhook_url', 'job_boards'] as const

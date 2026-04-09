@@ -11,7 +11,7 @@ export async function PATCH(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })
 
-  const body = await req.json().catch(() => ({}))
+  const body = await req.json().catch((err) => { console.error('[tags] JSON parse error:', err); return {} })
   const { tags } = body as { tags: unknown }
 
   if (!Array.isArray(tags) || !tags.every(t => typeof t === 'string')) {

@@ -17,7 +17,7 @@ export async function PATCH(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })
 
-  const body = await req.json().catch(() => ({}))
+  const body = await req.json().catch((err) => { console.error('[stage] JSON parse error:', err); return {} })
   const { stage } = body as { stage: PipelineStage }
 
   if (!VALID_STAGES.includes(stage)) {

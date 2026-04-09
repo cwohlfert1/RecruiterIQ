@@ -87,8 +87,8 @@ export async function POST(req: NextRequest) {
                 logoEntry?.formats?.find((f: any) => f.format === 'png')?.src ||
                 null
     }
-  } catch {
-    // Brandfetch unreachable — fall through to favicon fallback
+  } catch (err) {
+    console.error('[fetch-logo] Brandfetch error:', err)
   }
 
   // ── Fallback: Google favicon ──────────────────────────────────

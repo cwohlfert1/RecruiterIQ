@@ -164,7 +164,8 @@ Output ONLY the bullet lines. No intro, no outro, no extra text.`,
         })
 
         await incrementAICallCount(gate.userId)
-      } catch {
+      } catch (err) {
+        console.error('[generate-summary] streaming error:', err)
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({ error: 'Generation failed' })}\n\n`,

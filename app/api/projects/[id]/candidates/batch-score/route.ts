@@ -122,7 +122,8 @@ export async function POST(
             current:      scored + failed,
             total,
           })
-        } catch {
+        } catch (err) {
+          console.error('[batch-score] scoring failed for candidate:', candidate.id, err)
           failed++
           send({ type: 'error', candidateId: candidate.id, current: scored + failed, total, error: 'Scoring failed' })
         }

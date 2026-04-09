@@ -31,7 +31,7 @@ export async function POST(
 
   if (!callerRole) return NextResponse.json({ error: 'Access denied' }, { status: 403 })
 
-  const body = await req.json().catch(() => ({}))
+  const body = await req.json().catch((err) => { console.error('[flag] JSON parse error:', err); return {} })
   const { flag_type, reason } = body as { flag_type: string; reason?: string }
 
   if (!['catfish', 'dnu', 'watch'].includes(flag_type)) {
