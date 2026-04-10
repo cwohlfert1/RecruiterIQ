@@ -10,13 +10,20 @@ export default async function AssessLandingPage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createAdminClient() as any
 
-  const { data: invite } = await admin
+  const { data: invite, error: inviteError } = await admin
     .from('assessment_invites')
     .select('id, assessment_id, candidate_name, expires_at, status')
     .eq('token', params.token)
-    .single() as { data: { id: string; assessment_id: string; candidate_name: string; expires_at: string | null; status: string } | null }
+    .single() as { data: { id: string; assessment_id: string; candidate_name: string; expires_at: string | null; status: string } | null; error: unknown }
 
-  if (!invite || invite.status === 'completed') notFound()
+  if (inviteError || !invite) {
+    console.error('[assess] Token lookup failed:', params.token, inviteError)
+    notFound()
+  }
+  if (invite.status === 'completed') {
+    console.log('[assess] Token already completed:', params.token)
+    notFound()
+  }
 
   const expired = invite.expires_at ? new Date(invite.expires_at) < new Date() : false
 
