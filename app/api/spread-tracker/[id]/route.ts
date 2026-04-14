@@ -27,7 +27,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const allowed = ['consultant_name', 'client_company', 'client_color', 'role', 'weekly_spread', 'contract_end_date', 'status', 'notes', 'expected_start_date', 'has_checked_in']
+  const allowed = ['consultant_name', 'client_company', 'client_color', 'role', 'weekly_spread', 'contract_end_date', 'status', 'notes', 'expected_start_date', 'has_checked_in', 'end_date_checked_in']
   const updates: Record<string, unknown> = {}
   for (const key of allowed) {
     if (body[key] !== undefined) {

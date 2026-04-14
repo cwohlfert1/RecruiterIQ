@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sparkles, X, Trash2, Copy, Check, ArrowUp, Lock } from 'lucide-react'
+import { Sparkles, X, Trash2, Copy, Check, ArrowUp, Lock, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { buildPageContext, getContextLabel } from '@/lib/cortex/context-builder'
+import { parseFile } from '@/components/ui/file-drop-textarea'
 
 interface Message {
   id?: string
@@ -316,7 +317,27 @@ export function CortexPanel({ open, onClose, planTier }: CortexPanelProps) {
             </div>
 
             {/* Input */}
-            <div className="px-3 py-3 border-t border-white/8 flex-shrink-0">
+            <div className="px-3 py-3 border-t border-white/8 flex-shrink-0 space-y-2">
+              {/* Resume drop zone */}
+              <div
+                onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('border-indigo-500/40', 'bg-indigo-500/5') }}
+                onDragLeave={e => { e.currentTarget.classList.remove('border-indigo-500/40', 'bg-indigo-500/5') }}
+                onDrop={async e => {
+                  e.preventDefault()
+                  e.currentTarget.classList.remove('border-indigo-500/40', 'bg-indigo-500/5')
+                  const file = e.dataTransfer.files[0]
+                  if (!file) return
+                  try {
+                    const text = await parseFile(file)
+                    if (text.trim()) sendMessage(`Here is a resume:\n\n${text.slice(0, 3000)}\n\nWhat do you think about this candidate for the current role?`)
+                    else toast.error('Could not extract text from file')
+                  } catch { toast.error('Failed to parse file') }
+                }}
+                className="flex items-center justify-center gap-1.5 py-1.5 border border-dashed border-white/10 rounded-lg text-[10px] text-slate-600 hover:text-slate-400 hover:border-white/20 transition-colors cursor-default"
+              >
+                <Upload className="w-3 h-3" />
+                Drop a resume to analyze it
+              </div>
               <div className="flex items-end gap-2 bg-white/5 rounded-xl px-3 py-2">
                 <textarea
                   ref={inputRef}

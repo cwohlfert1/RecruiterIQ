@@ -410,6 +410,59 @@ export default function RankingPage() {
     URL.revokeObjectURL(url)
   }
 
+  function buildExportHtml(): string {
+    if (!result) return ''
+    const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    const rows = resultCandidates.map(c => `
+      <tr>
+        <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:center;font-weight:bold">#${c.rank}</td>
+        <td style="padding:8px;border-bottom:1px solid #e2e8f0">${c.name}</td>
+        <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:center">${c.cqi_score}/100</td>
+        <td style="padding:8px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#16a34a">${c.strengths.map(s => `+ ${s}`).join('<br>')}</td>
+        <td style="padding:8px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#dc2626">${c.gaps.map(g => `- ${g}`).join('<br>')}</td>
+        <td style="padding:8px;border-bottom:1px solid #e2e8f0;font-size:12px">${c.notes ?? '—'}</td>
+      </tr>
+    `).join('')
+
+    return `<html><head><meta charset="utf-8"><title>Stack Ranking Results</title></head><body style="font-family:Arial,sans-serif;max-width:900px;margin:0 auto;padding:40px">
+      <p style="color:#6366f1;font-size:12px;font-weight:600">Prepared by Candid.ai — ${date}</p>
+      <h1 style="margin:8px 0 4px">Stack Ranking Results</h1>
+      <p style="color:#64748b;margin:0 0 24px">${result.jobTitle}</p>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0">
+        <thead><tr style="background:#f1f5f9">
+          <th style="padding:8px;text-align:center;border-bottom:2px solid #e2e8f0">Rank</th>
+          <th style="padding:8px;text-align:left;border-bottom:2px solid #e2e8f0">Candidate</th>
+          <th style="padding:8px;text-align:center;border-bottom:2px solid #e2e8f0">CQI</th>
+          <th style="padding:8px;text-align:left;border-bottom:2px solid #e2e8f0">Strengths</th>
+          <th style="padding:8px;text-align:left;border-bottom:2px solid #e2e8f0">Gaps</th>
+          <th style="padding:8px;text-align:left;border-bottom:2px solid #e2e8f0">Notes</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p style="color:#94a3b8;font-size:11px;margin-top:32px;border-top:1px solid #e2e8f0;padding-top:12px">Confidential — for internal use only</p>
+    </body></html>`
+  }
+
+  function handleExportPdf() {
+    const html = buildExportHtml()
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    setTimeout(() => { win.print() }, 500)
+  }
+
+  function handleExportWord() {
+    const html = buildExportHtml()
+    const blob = new Blob([html], { type: 'application/msword' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `stack-ranking-${result?.jobTitle.replace(/\s+/g, '-').toLowerCase() ?? 'results'}.doc`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   if (!planChecked) {
@@ -732,13 +785,21 @@ export default function RankingPage() {
 
             {/* Bottom actions */}
             <div className="flex gap-3 pt-2">
-              <button
-                onClick={handleExportCSV}
-                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-semibold text-white bg-gradient-brand hover-glow transition-all duration-150"
-              >
-                <Download className="w-4 h-4" />
-                Export CSV
-              </button>
+              <div className="flex-1 relative group">
+                <button
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-semibold text-white bg-gradient-brand hover-glow transition-all duration-150"
+                >
+                  <Download className="w-4 h-4" />
+                  Export Results
+                </button>
+                <div className="absolute bottom-full left-0 right-0 mb-1 hidden group-hover:block z-10">
+                  <div className="bg-[#12141F] border border-white/10 rounded-xl shadow-xl overflow-hidden">
+                    <button onClick={handleExportCSV} className="w-full px-4 py-2.5 text-left text-xs text-slate-300 hover:bg-white/5 transition-colors">Export as CSV</button>
+                    <button onClick={handleExportPdf} className="w-full px-4 py-2.5 text-left text-xs text-slate-300 hover:bg-white/5 transition-colors border-t border-white/5">Export as PDF</button>
+                    <button onClick={handleExportWord} className="w-full px-4 py-2.5 text-left text-xs text-slate-300 hover:bg-white/5 transition-colors border-t border-white/5">Export as Word Doc</button>
+                  </div>
+                </div>
+              </div>
               <button
                 onClick={handleReset}
                 className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-semibold text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-colors"

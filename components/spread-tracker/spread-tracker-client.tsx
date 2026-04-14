@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { PlacementDrawer, type Placement } from './placement-drawer'
 import { ImportModal } from './import-modal'
 import { CheckinModal } from './checkin-modal'
+import { EndDateCheckinModal } from './end-date-checkin-modal'
 
 type StatusFilter = 'all' | 'active' | 'locked_up' | 'falling_off'
 type SortKey = 'consultant_name' | 'client_company' | 'role' | 'weekly_spread' | 'contract_end_date' | 'status'
@@ -83,6 +84,8 @@ export function SpreadTrackerClient({ planTier, isAgencyOwner }: SpreadTrackerPr
   const [importOpen, setImportOpen] = useState(false)
   const [checkinPlacements, setCheckinPlacements] = useState<Placement[]>([])
   const [checkinDismissed, setCheckinDismissed] = useState(false)
+  const [endDatePlacements, setEndDatePlacements] = useState<Placement[]>([])
+  const [endDateDismissed, setEndDateDismissed] = useState(false)
   const [sortKey, setSortKey]   = useState<SortKey | null>(null)
   const [sortDir, setSortDir]   = useState<SortDir>('asc')
 
@@ -130,6 +133,17 @@ export function SpreadTrackerClient({ planTier, isAgencyOwner }: SpreadTrackerPr
       .filter(p => p.status === 'locked_up' && p.expected_start_date && p.expected_start_date <= today && !p.has_checked_in)
       .sort((a, b) => (a.expected_start_date ?? '').localeCompare(b.expected_start_date ?? ''))
     if (due.length > 0) setCheckinPlacements(due)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placements])
+
+  // Detect active placements past contract end date
+  useEffect(() => {
+    if (endDateDismissed || placements.length === 0) return
+    const today = new Date().toISOString().split('T')[0]
+    const expired = placements
+      .filter(p => p.status === 'active' && p.contract_end_date <= today && !p.end_date_checked_in)
+      .sort((a, b) => a.contract_end_date.localeCompare(b.contract_end_date))
+    if (expired.length > 0) setEndDatePlacements(expired)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [placements])
 
@@ -456,6 +470,13 @@ export function SpreadTrackerClient({ planTier, isAgencyOwner }: SpreadTrackerPr
         <CheckinModal
           placements={checkinPlacements}
           onDone={() => { setCheckinDismissed(true); setCheckinPlacements([]); loadData() }}
+        />
+      )}
+
+      {endDatePlacements.length > 0 && !endDateDismissed && checkinDismissed && (
+        <EndDateCheckinModal
+          placements={endDatePlacements}
+          onDone={() => { setEndDateDismissed(true); setEndDatePlacements([]); loadData() }}
         />
       )}
     </div>

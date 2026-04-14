@@ -56,7 +56,7 @@ async function parseDocx(file: File): Promise<string> {
   return result.value.trim()
 }
 
-async function parseFile(file: File): Promise<string> {
+export async function parseFile(file: File): Promise<string> {
   if (file.type === 'application/pdf')                                                          return parsePdf(file)
   if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return parseDocx(file)
   return parseTxt(file)

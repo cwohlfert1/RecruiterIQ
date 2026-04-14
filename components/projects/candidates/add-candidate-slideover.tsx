@@ -20,9 +20,10 @@ interface Props {
   open:          boolean
   projectId:     string
   hasJd:         boolean
-  isManager?:    boolean
-  initialStage?: PipelineStage
-  onClose:       () => void
+  isManager?:      boolean
+  initialStage?:   PipelineStage
+  initialResume?:  string | null
+  onClose:         () => void
   onAdded:       (candidate: CandidateRow) => void
 }
 
@@ -39,7 +40,7 @@ function emptyParsed(): ParsedFields {
   return { name: null, email: null, phone: null, current_title: null, years_experience: null, location: null }
 }
 
-export function AddCandidateSlideover({ open, projectId, hasJd, isManager = false, initialStage, onClose, onAdded }: Props) {
+export function AddCandidateSlideover({ open, projectId, hasJd, isManager = false, initialStage, initialResume, onClose, onAdded }: Props) {
   const [resume,       setResume]       = useState('')
   const [originalFile, setOriginalFile] = useState<File | null>(null)
   const [parsing,      setParsing]      = useState(false)
@@ -60,7 +61,7 @@ export function AddCandidateSlideover({ open, projectId, hasJd, isManager = fals
   // Reset on open
   useEffect(() => {
     if (open) {
-      setResume(''); setOriginalFile(null); setParsed(null); setName(''); setEmail(''); setLinkedinUrl('')
+      setResume(initialResume ?? ''); setOriginalFile(null); setParsed(null); setName(''); setEmail(''); setLinkedinUrl('')
       setPayMin(''); setPayMax('')
       setSubmitting(false); setParsing(false); setAddedCount(0)
       setNameError(false); setEmailError(false); setLinkedinError(false)

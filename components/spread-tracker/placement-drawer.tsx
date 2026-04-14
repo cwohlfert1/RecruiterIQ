@@ -19,6 +19,7 @@ export interface Placement {
   notes: string | null
   expected_start_date: string | null
   has_checked_in: boolean
+  end_date_checked_in: boolean
   user_id?: string
 }
 
@@ -43,6 +44,7 @@ const EMPTY: Omit<Placement, 'id'> = {
   notes: null,
   expected_start_date: null,
   has_checked_in: false,
+  end_date_checked_in: false,
 }
 
 export function PlacementDrawer({ open, placement, readOnly, onClose, onSaved, clientColorMap = {}, clientNames = [] }: DrawerProps) {
@@ -69,6 +71,7 @@ export function PlacementDrawer({ open, placement, readOnly, onClose, onSaved, c
           notes: placement.notes,
           expected_start_date: placement.expected_start_date,
           has_checked_in: placement.has_checked_in,
+          end_date_checked_in: placement.end_date_checked_in,
         })
       } else {
         setForm(EMPTY)

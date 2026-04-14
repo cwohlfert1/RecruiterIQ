@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef, useMemo, useCallback } from 'react'
-import { UserPlus, Users, Loader2, Search, X, ChevronDown } from 'lucide-react'
+import { useState, useRef, useMemo, useCallback, DragEvent } from 'react'
+import { UserPlus, Users, Loader2, Search, X, ChevronDown, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { CandidateRow } from '@/app/dashboard/projects/[id]/page'
@@ -13,6 +13,7 @@ import { SendAssessmentModal }    from '@/components/projects/candidates/send-as
 import { CandidatesTable }        from '@/components/projects/candidates/candidates-table'
 import { BatchScoreBar }          from '@/components/projects/candidates/batch-score-bar'
 import { CandidateFilters, DEFAULT_FILTERS } from '@/components/projects/candidate-filters'
+import { parseFile } from '@/components/ui/file-drop-textarea'
 import { CandidateSlideout }      from '@/components/projects/candidate-slideout'
 import { CandidateCompare }       from '@/components/projects/candidate-compare'
 import type { FilterState }       from '@/components/projects/candidate-filters'
@@ -62,6 +63,8 @@ export function CandidatesTab({
   const [assessOpen,     setAssessOpen]     = useState(false)
   const [batchState,     setBatchState]     = useState<BatchState | null>(null)
   const [confirmBatch,   setConfirmBatch]   = useState(false)
+  const [dragOver,       setDragOver]       = useState(false)
+  const [dropResume,     setDropResume]     = useState<string | null>(null)
   const [scoringIds,     setScoringIds]     = useState<Set<string>>(new Set())
   const [compareBase,    setCompareBase]    = useState<CandidateRow | null>(null)
 
@@ -354,8 +357,44 @@ export function CandidatesTab({
   const allSelected   = selected.size > 0 && selected.size === filtered.length
   const someSelected  = selected.size > 0 && !allSelected
 
+  function handleDragOver(e: DragEvent) { e.preventDefault(); setDragOver(true) }
+  function handleDragLeave() { setDragOver(false) }
+  async function handleDrop(e: DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (!file) return
+    const ext = file.name.split('.').pop()?.toLowerCase()
+    if (!ext || !['pdf', 'docx', 'txt'].includes(ext)) {
+      toast.error('Drop a .pdf, .docx, or .txt file')
+      return
+    }
+    try {
+      const text = await parseFile(file)
+      if (!text.trim()) { toast.error('Could not extract text from file'); return }
+      setDropResume(text)
+      setAddOpen(true)
+    } catch {
+      toast.error('Failed to parse file')
+    }
+  }
+
   return (
-    <div>
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className="relative"
+    >
+      {/* Drop zone overlay */}
+      {dragOver && (
+        <div className="absolute inset-0 z-30 bg-indigo-500/10 border-2 border-dashed border-indigo-500/40 rounded-2xl flex items-center justify-center pointer-events-none">
+          <div className="flex items-center gap-2 text-indigo-300 font-medium text-sm">
+            <Upload className="w-5 h-5" />
+            Drop resume to add candidate
+          </div>
+        </div>
+      )}
       {/* Header row */}
       <div className="flex items-center justify-between mb-3 gap-4 flex-wrap">
         <div className="flex items-center gap-3">
@@ -566,7 +605,8 @@ export function CandidatesTab({
         projectId={project.id}
         hasJd={hasJd}
         isManager={isManager}
-        onClose={() => setAddOpen(false)}
+        initialResume={dropResume}
+        onClose={() => { setAddOpen(false); setDropResume(null) }}
         onAdded={handleAdded}
       />
 

@@ -36,12 +36,12 @@ export async function POST(req: NextRequest) {
   const candidateContext = typeof body.candidate_context === 'string' ? body.candidate_context.slice(0, 2000) : ''
 
   // Fetch last 20 messages for continuity
-  const { data: history } = await supabase
-    .from('cortex_conversations')
-    .select('role, content')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: true })
-    .limit(20)
+  const [{ data: history }, { data: memoryRows }] = await Promise.all([
+    supabase.from('cortex_conversations').select('role, content').eq('user_id', user.id).order('created_at', { ascending: true }).limit(20),
+    supabase.from('cortex_memory').select('memory_value').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(10),
+  ])
+
+  const memoryEntries = (memoryRows ?? []).map((r: { memory_value: string }) => r.memory_value)
 
   const messages: MessageParam[] = []
   for (const msg of (history ?? [])) {
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
   }
   messages.push({ role: 'user', content: message })
 
-  const systemPrompt = buildCortexSystemPrompt(pageContext, candidateContext)
+  const systemPrompt = buildCortexSystemPrompt(pageContext, candidateContext, memoryEntries)
   const encoder = new TextEncoder()
 
   const stream = new ReadableStream({
@@ -81,6 +81,11 @@ export async function POST(req: NextRequest) {
           { user_id: user.id, role: 'assistant', content: fullResponse, page_context: null },
         ])
 
+        // Background memory extraction — non-blocking
+        extractMemory(user.id, message, db).catch((err: unknown) =>
+          console.error('[cortex/chat] memory extraction error:', err)
+        )
+
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`))
       } catch (err) {
         console.error('[cortex/chat] error:', err)
@@ -101,4 +106,49 @@ export async function POST(req: NextRequest) {
       Connection: 'keep-alive',
     },
   })
+}
+
+/**
+ * Lightweight memory extraction — runs after each user message.
+ * Uses Claude to check if the message contains facts worth remembering.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function extractMemory(userId: string, userMessage: string, db: any) {
+  // Only attempt extraction on messages > 20 chars (skip short replies)
+  if (userMessage.length < 20) return
+
+  const response = await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 200,
+    messages: [{
+      role: 'user',
+      content: `Extract any memorable facts from this recruiter's message. Only extract things worth remembering across sessions — client names, industries, roles they work on, pay rate ranges, team size, preferences. Return ONLY a JSON array of {key, value} pairs, or an empty array if nothing worth remembering.
+
+Examples of good extractions:
+[{"key":"common_clients","value":"Works with CenterPoint Energy and DTE"},{"key":"target_rates","value":"Typically targets $40-80/hr W2"}]
+
+Message: "${userMessage.slice(0, 1000)}"
+
+Return ONLY valid JSON array:`,
+    }],
+  })
+
+  const raw = response.content[0].type === 'text' ? response.content[0].text.trim() : ''
+  const match = raw.match(/\[[\s\S]*\]/)
+  if (!match) return
+
+  try {
+    const entries = JSON.parse(match[0]) as Array<{ key: string; value: string }>
+    if (!Array.isArray(entries) || entries.length === 0) return
+
+    for (const entry of entries.slice(0, 3)) {
+      if (!entry.key || !entry.value) continue
+      await db.from('cortex_memory').upsert(
+        { user_id: userId, memory_key: entry.key, memory_value: entry.value, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id,memory_key' },
+      )
+    }
+  } catch {
+    // Parse failure — skip silently
+  }
 }
