@@ -520,11 +520,21 @@ export function CandidatesTable({
   onStatusChange, onRemove, onViewResume, onSummary, onAssessment, onScoreIndividual, onRedFlag, onCompare,
 }: Props) {
 
-  // Compute ranks by CQI (scored candidates only, descending)
+  // Sort candidates: flagged (catfish/DNU) last, then CQI desc, unscored last
+  const sortedCandidates = [...candidates].sort((a, b) => {
+    const aFlagged = !!a.flag_type
+    const bFlagged = !!b.flag_type
+    if (aFlagged !== bFlagged) return aFlagged ? 1 : -1
+    const aScore = a.cqi_score ?? -1
+    const bScore = b.cqi_score ?? -1
+    return bScore - aScore
+  })
+
+  // Compute ranks by CQI (scored + unflagged candidates only)
   const ranks: Record<string, number | null> = {}
-  const scored = [...candidates].filter(c => c.cqi_score !== null).sort((a, b) => (b.cqi_score ?? 0) - (a.cqi_score ?? 0))
+  const scored = sortedCandidates.filter(c => c.cqi_score !== null && !c.flag_type).sort((a, b) => (b.cqi_score ?? 0) - (a.cqi_score ?? 0))
   scored.forEach((c, i) => { ranks[c.id] = i + 1 })
-  candidates.filter(c => c.cqi_score === null).forEach(c => { ranks[c.id] = null })
+  sortedCandidates.filter(c => c.cqi_score === null || !!c.flag_type).forEach(c => { ranks[c.id] = null })
 
   async function handleRemove(candidate: CandidateRow) {
     const confirmed = confirm(`Remove ${candidate.candidate_name} from this project?`)
@@ -571,7 +581,7 @@ export function CandidatesTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
-          {candidates.map(c => (
+          {sortedCandidates.map(c => (
             <tr key={c.id} className={cn('hover:bg-white/2 transition-colors group', selected.has(c.id) && 'bg-indigo-500/5')}>
               {/* Checkbox */}
               <td className="py-4 pr-2 pl-1 w-8">
@@ -606,6 +616,12 @@ export function CandidatesTable({
                       <span className="flex items-center gap-0.5 text-[9px] font-bold text-amber-400 bg-amber-500/15 border border-amber-500/25 px-1.5 py-0.5 rounded-full flex-shrink-0">
                         <Crown className="w-2.5 h-2.5" />
                         Hired
+                      </span>
+                    )}
+                    {c.flag_type && (
+                      <span className="flex items-center gap-0.5 text-[9px] font-bold text-red-400 bg-red-500/15 border border-red-500/25 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                        <Flag className="w-2.5 h-2.5" />
+                        {c.flag_type === 'catfish' ? 'Catfish' : c.flag_type === 'dnu' ? 'DNU' : 'Flagged'}
                       </span>
                     )}
                   </div>

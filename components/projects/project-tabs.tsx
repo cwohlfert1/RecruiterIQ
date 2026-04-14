@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { LayoutDashboard, Users, Kanban, FileText, Search, Activity, Settings, GripVertical, Share2 } from 'lucide-react'
 import {
@@ -29,6 +29,7 @@ import { BooleanTab }     from '@/components/projects/tabs/boolean-tab'
 import { ActivityTab }    from '@/components/projects/tabs/activity-tab'
 import { SettingsTab }    from '@/components/projects/tabs/settings-tab'
 import { ShareModal }     from '@/components/projects/share-modal'
+import { setProjectContext } from '@/lib/cortex/context-builder'
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -161,6 +162,22 @@ export function ProjectTabs({
   const [tabOrder,              setTabOrder]              = useState<TabKey[]>(DEFAULT_TAB_ORDER)
 
   const isOwner = project.owner_id === userId
+
+  // Inject project context for Cortex AI
+  useEffect(() => {
+    setProjectContext({
+      title: project.title,
+      clientName: project.client_name,
+      jdText: jdText,
+      candidates: candidates.map(c => ({
+        name: c.candidate_name,
+        cqiScore: c.cqi_score,
+        recommendation: (c.cqi_breakdown_json as Record<string, unknown> | null)?.recommendation as string | null ?? null,
+        flagType: c.flag_type,
+      })),
+    })
+    return () => setProjectContext(null)
+  }, [project.title, project.client_name, jdText, candidates])
 
   // Load saved tab order from localStorage
   useEffect(() => {
