@@ -46,13 +46,13 @@ interface Props {
 // ─── Pipeline stage config ────────────────────────────────────
 
 const PIPELINE_STAGES: Array<{ key: PipelineStage; label: string; color: string; bar: string }> = [
-  { key: 'sourced',            label: 'Sourced',            color: 'text-slate-300',   bar: 'bg-slate-500'   },
-  { key: 'contacted',          label: 'Contacted',          color: 'text-blue-300',    bar: 'bg-blue-500'    },
-  { key: 'internal_submittal', label: 'Int. Submittal',     color: 'text-indigo-300',  bar: 'bg-indigo-500'  },
-  { key: 'assessment',         label: 'Assessment',         color: 'text-cyan-300',    bar: 'bg-cyan-500'    },
-  { key: 'submitted',          label: 'Submitted',          color: 'text-emerald-300', bar: 'bg-emerald-500' },
-  { key: 'placed',             label: 'Placed',             color: 'text-yellow-300',  bar: 'bg-yellow-500'  },
-  { key: 'rejected',           label: 'Rejected',           color: 'text-red-300',     bar: 'bg-red-500'     },
+  { key: 'reviewing',          label: 'Reviewing',          color: 'text-slate-300',   bar: 'bg-slate-500'   },
+  { key: 'screened',            label: 'Screened',           color: 'text-blue-300',    bar: 'bg-blue-500'    },
+  { key: 'internal_submittal',  label: 'Int. Submittal',     color: 'text-indigo-300',  bar: 'bg-indigo-500'  },
+  { key: 'client_submittal',    label: 'Client Submittal',   color: 'text-violet-300',  bar: 'bg-violet-500'  },
+  { key: 'interviewing',        label: 'Interviewing',       color: 'text-amber-300',   bar: 'bg-amber-500'   },
+  { key: 'placed',              label: 'Placed',             color: 'text-green-300',   bar: 'bg-green-500'   },
+  { key: 'rejected',            label: 'Rejected',           color: 'text-red-300',     bar: 'bg-red-500'     },
 ]
 
 // ─── Avatar ───────────────────────────────────────────────────
@@ -187,7 +187,7 @@ export function OverviewTab({
     const counts: Partial<Record<PipelineStage, number>> = {}
     for (const s of PIPELINE_STAGES) counts[s.key] = 0
     for (const c of candidates) {
-      const stage = (c.pipeline_stage ?? 'sourced') as PipelineStage
+      const stage = (c.pipeline_stage ?? 'reviewing') as PipelineStage
       counts[stage] = (counts[stage] ?? 0) + 1
     }
     return counts
@@ -257,9 +257,9 @@ export function OverviewTab({
   }
 
   const STAGE_LABEL: Record<PipelineStage, string> = {
-    sourced: 'Sourced', contacted: 'Contacted',
-    internal_submittal: 'Int. Submittal', assessment: 'Assessment',
-    submitted: 'Submitted', placed: 'Placed', rejected: 'Rejected',
+    reviewing: 'Reviewing', screened: 'Screened',
+    internal_submittal: 'Int. Submittal', client_submittal: 'Client Submittal',
+    interviewing: 'Interviewing', placed: 'Placed', rejected: 'Rejected',
   }
 
   return (
@@ -404,7 +404,7 @@ export function OverviewTab({
                   <span className="text-xs font-bold text-slate-600 w-4 tabular-nums">#{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white truncate">{c.candidate_name}</p>
-                    <p className="text-[11px] text-slate-500">{STAGE_LABEL[(c.pipeline_stage ?? 'sourced') as PipelineStage]}</p>
+                    <p className="text-[11px] text-slate-500">{STAGE_LABEL[(c.pipeline_stage ?? 'reviewing') as PipelineStage]}</p>
                   </div>
                   {c.cqi_score !== null && <CqiBadge score={c.cqi_score} />}
                 </div>

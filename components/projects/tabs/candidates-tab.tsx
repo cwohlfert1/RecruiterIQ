@@ -45,9 +45,9 @@ interface Props {
 }
 
 const PIPELINE_STAGE_LABELS: Record<PipelineStage, string> = {
-  sourced: 'Sourced', contacted: 'Contacted',
-  internal_submittal: 'Internal Submittal', assessment: 'Assessment',
-  submitted: 'Submitted', placed: 'Placed', rejected: 'Rejected',
+  reviewing: 'Reviewing', screened: 'Screened',
+  internal_submittal: 'Internal Submittal', client_submittal: 'Client Submittal',
+  interviewing: 'Interviewing', placed: 'Placed', rejected: 'Rejected',
 }
 
 export function CandidatesTab({
@@ -107,7 +107,7 @@ export function CandidatesTab({
       // Search
       if (q && !c.candidate_name.toLowerCase().includes(q) && !c.candidate_email.toLowerCase().includes(q)) return false
       // Stages
-      if (filters.stages.length > 0 && !filters.stages.includes((c.pipeline_stage ?? 'sourced') as PipelineStage)) return false
+      if (filters.stages.length > 0 && !filters.stages.includes((c.pipeline_stage ?? 'reviewing') as PipelineStage)) return false
       // CQI range (only if scored)
       if (c.cqi_score !== null) {
         if (c.cqi_score < filters.cqiMin || c.cqi_score > filters.cqiMax) return false
@@ -200,7 +200,7 @@ export function CandidatesTab({
       ...selectedCandidates.map(c => [
         c.candidate_name,
         c.candidate_email,
-        PIPELINE_STAGE_LABELS[(c.pipeline_stage ?? 'sourced') as PipelineStage],
+        PIPELINE_STAGE_LABELS[(c.pipeline_stage ?? 'reviewing') as PipelineStage],
         c.cqi_score?.toString() ?? '',
         c.red_flag_score !== null ? (((c.red_flags_json as unknown[])?.length ?? 0) + ' flags') : 'Not checked',
         c.invite_status ?? 'Not sent',

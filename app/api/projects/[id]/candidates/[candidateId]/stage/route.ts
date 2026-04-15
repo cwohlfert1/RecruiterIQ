@@ -3,8 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import type { PipelineStage } from '@/types/database'
 
 const VALID_STAGES: PipelineStage[] = [
-  'sourced', 'contacted', 'internal_submittal',
-  'assessment', 'submitted', 'placed', 'rejected',
+  'reviewing', 'screened', 'internal_submittal',
+  'client_submittal', 'interviewing', 'placed', 'rejected',
 ]
 
 export async function PATCH(
@@ -27,7 +27,7 @@ export async function PATCH(
   // Verify project access + collaborator+ role
   const { data: project } = await supabase
     .from('projects')
-    .select('id, owner_id, project_members(user_id, role)')
+    .select('id, owner_id, title, client_name, project_members(user_id, role)')
     .eq('id', params.id)
     .single()
 
@@ -81,5 +81,25 @@ export async function PATCH(
     },
   })
 
-  return NextResponse.json({ stage })
+  // Auto-create Spread Tracker entry when moved to Placed
+  let spreadCreated = false
+  if (stage === 'placed') {
+    try {
+      await supabase.from('spread_placements').insert({
+        user_id:           user.id,
+        consultant_name:   candidate.candidate_name,
+        client_company:    project.client_name ?? '',
+        client_color:      '#6366F1',
+        role:              project.title ?? '',
+        weekly_spread:     0,
+        contract_end_date: new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0], // 90 days default
+        status:            'locked_up',
+      })
+      spreadCreated = true
+    } catch (err) {
+      console.error('[stage] spread auto-create failed:', err)
+    }
+  }
+
+  return NextResponse.json({ stage, spreadCreated })
 }

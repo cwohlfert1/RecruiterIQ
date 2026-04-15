@@ -40,11 +40,11 @@ function isDefaultFilter(f: FilterState): boolean {
 }
 
 const STAGES: Array<{ key: PipelineStage; label: string }> = [
-  { key: 'sourced',            label: 'Sourced'            },
-  { key: 'contacted',          label: 'Contacted'          },
+  { key: 'reviewing',          label: 'Reviewing'          },
+  { key: 'screened',           label: 'Screened'           },
   { key: 'internal_submittal', label: 'Internal Submittal' },
-  { key: 'assessment',         label: 'Assessment'         },
-  { key: 'submitted',          label: 'Submitted'          },
+  { key: 'client_submittal',   label: 'Client Submittal'   },
+  { key: 'interviewing',       label: 'Interviewing'       },
   { key: 'placed',             label: 'Placed'             },
   { key: 'rejected',           label: 'Rejected'           },
 ]

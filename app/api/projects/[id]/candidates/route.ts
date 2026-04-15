@@ -157,10 +157,10 @@ export async function POST(
     }
   }
 
-  const VALID_STAGES = ['sourced','contacted','internal_submittal','assessment','submitted','placed','rejected']
+  const VALID_STAGES = ['reviewing','screened','internal_submittal','client_submittal','interviewing','placed','rejected']
   const insertStage  = (typeof pipeline_stage === 'string' && VALID_STAGES.includes(pipeline_stage))
     ? pipeline_stage
-    : 'sourced'
+    : 'reviewing'
 
   // Insert candidate (unscored initially)
   const { data: candidate, error: insertError } = await supabase

@@ -50,11 +50,11 @@ interface Props {
 // ─── Pipeline stage options ────────────────────────────────────
 
 const STAGES: Array<{ key: PipelineStage; label: string }> = [
-  { key: 'sourced',            label: 'Sourced'            },
-  { key: 'contacted',          label: 'Contacted'          },
+  { key: 'reviewing',          label: 'Reviewing'          },
+  { key: 'screened',           label: 'Screened'           },
   { key: 'internal_submittal', label: 'Internal Submittal' },
-  { key: 'assessment',         label: 'Assessment'         },
-  { key: 'submitted',          label: 'Submitted'          },
+  { key: 'client_submittal',   label: 'Client Submittal'   },
+  { key: 'interviewing',       label: 'Interviewing'       },
   { key: 'placed',             label: 'Placed'             },
   { key: 'rejected',           label: 'Rejected'           },
 ]
@@ -154,8 +154,15 @@ function StageDropdown({
         body:    JSON.stringify({ stage: next }),
       })
       if (!res.ok) { toast.error('Failed to update stage'); return }
+      const data = await res.json().catch(() => ({}))
       onChange(next)
-      toast.success(`Moved to ${STAGES.find(s => s.key === next)?.label}`)
+      if (next === 'placed' && data.spreadCreated) {
+        toast.success(`Marked as Placed — added to Spread Tracker as Locked Up`, {
+          action: { label: 'Add spread details →', onClick: () => window.location.href = '/dashboard/spread-tracker' },
+        })
+      } else {
+        toast.success(`Moved to ${STAGES.find(s => s.key === next)?.label}`)
+      }
     } catch {
       toast.error('Failed to update stage')
     } finally { setSaving(false) }
@@ -350,7 +357,7 @@ export function CandidateSlideout({
   const breakdown     = candidate?.cqi_breakdown_json as (BreakdownJson & { recommendation?: CqiRecommendation }) | null
   const flags         = localFlags ?? (candidate?.red_flags_json as Array<{ type: string; severity: string; evidence: string; explanation: string }> | null)
   const flagScore     = localFlagScore ?? candidate?.red_flag_score ?? null
-  const currentStage  = (candidate?.pipeline_stage ?? 'sourced') as PipelineStage
+  const currentStage  = (candidate?.pipeline_stage ?? 'reviewing') as PipelineStage
   const tags         = (candidate?.tags_json ?? []) as string[]
 
   return (

@@ -22,11 +22,11 @@ import type { PipelineStage } from '@/types/database'
 // ─── Stage config ─────────────────────────────────────────────
 
 export const PIPELINE_STAGES: Array<{ key: PipelineStage; label: string }> = [
-  { key: 'sourced',            label: 'Sourced'            },
-  { key: 'contacted',          label: 'Contacted'          },
+  { key: 'reviewing',          label: 'Reviewing'          },
+  { key: 'screened',           label: 'Screened'           },
   { key: 'internal_submittal', label: 'Internal Submittal' },
-  { key: 'assessment',         label: 'Assessment'         },
-  { key: 'submitted',          label: 'Submitted'          },
+  { key: 'client_submittal',   label: 'Client Submittal'   },
+  { key: 'interviewing',       label: 'Interviewing'       },
   { key: 'placed',             label: 'Placed'             },
   { key: 'rejected',           label: 'Rejected'           },
 ]
@@ -74,11 +74,11 @@ export function KanbanBoard({
   // Group candidates by stage
   const byStage = useMemo(() => {
     const map: Record<PipelineStage, CandidateRow[]> = {
-      sourced: [], contacted: [], internal_submittal: [],
-      assessment: [], submitted: [], placed: [], rejected: [],
+      reviewing: [], screened: [], internal_submittal: [],
+      client_submittal: [], interviewing: [], placed: [], rejected: [],
     }
     for (const c of candidates) {
-      const stage = (c.pipeline_stage ?? 'sourced') as PipelineStage
+      const stage = (c.pipeline_stage ?? 'reviewing') as PipelineStage
       // Apply stage filter if set (from overview funnel click)
       if (stageFilter && stage !== stageFilter) continue
       map[stage].push(c)
@@ -114,7 +114,7 @@ export function KanbanBoard({
     const candidate = candidates.find(c => c.id === candidateId)
     if (!candidate) return
 
-    const currentStage = (candidate.pipeline_stage ?? 'sourced') as PipelineStage
+    const currentStage = (candidate.pipeline_stage ?? 'reviewing') as PipelineStage
     if (currentStage === newStage) return
 
     // Optimistic update
@@ -126,9 +126,9 @@ export function KanbanBoard({
     )
 
     const stageLabelMap: Record<PipelineStage, string> = {
-      sourced: 'Sourced', contacted: 'Contacted',
-      internal_submittal: 'Internal Submittal', assessment: 'Assessment',
-      submitted: 'Submitted', placed: 'Placed', rejected: 'Rejected',
+      reviewing: 'Reviewing', screened: 'Screened',
+      internal_submittal: 'Internal Submittal', client_submittal: 'Client Submittal',
+      interviewing: 'Interviewing', placed: 'Placed', rejected: 'Rejected',
     }
 
     try {
