@@ -7,6 +7,9 @@ import { cn } from '@/lib/utils'
 import type { CandidateRow } from '@/app/dashboard/projects/[id]/page'
 import type { CandidateStatus, BreakdownJson, PipelineStage } from '@/types/database'
 import { AddCandidateSlideover }  from '@/components/projects/candidates/add-candidate-slideover'
+import { InternalSubmittalModal } from '@/components/projects/candidates/internal-submittal-modal'
+import { ClientSubmittalModal }   from '@/components/projects/candidates/client-submittal-modal'
+import { RejectionReasonModal }   from '@/components/projects/rejection-reason-modal'
 import { ViewResumeSlideover }    from '@/components/projects/candidates/view-resume-slideover'
 import { GenerateSummaryModal }   from '@/components/projects/candidates/generate-summary-modal'
 import { SendAssessmentModal }    from '@/components/projects/candidates/send-assessment-modal'
@@ -65,6 +68,9 @@ export function CandidatesTab({
   const [confirmBatch,   setConfirmBatch]   = useState(false)
   const [dragOver,       setDragOver]       = useState(false)
   const [dropResume,     setDropResume]     = useState<string | null>(null)
+  const [intSubTarget,   setIntSubTarget]   = useState<CandidateRow | null>(null)
+  const [clientSubTarget, setClientSubTarget] = useState<CandidateRow | null>(null)
+  const [rejectionTarget, setRejectionTarget] = useState<CandidateRow | null>(null)
   const [scoringIds,     setScoringIds]     = useState<Set<string>>(new Set())
   const [compareBase,    setCompareBase]    = useState<CandidateRow | null>(null)
 
@@ -228,6 +234,29 @@ export function CandidatesTab({
 
   function handleTableStageChange(id: string, stage: PipelineStage) {
     setCandidates(prev => prev.map(c => c.id === id ? { ...c, pipeline_stage: stage } : c))
+    const candidate = candidates.find(c => c.id === id)
+    if (!candidate) return
+
+    if (stage === 'internal_submittal') {
+      toast.success(`Moved to Internal Submittal`, {
+        action: { label: 'Generate Submittal', onClick: () => setIntSubTarget(candidate) },
+      })
+    } else if (stage === 'client_submittal') {
+      toast.success(`Moved to Client Submittal`, {
+        action: { label: 'Generate Submittal', onClick: () => setClientSubTarget(candidate) },
+      })
+    } else if (stage === 'placed') {
+      // Auto-save placed outcome
+      fetch(`/api/projects/${project.id}/candidates/${id}/outcome`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ outcome: 'placed' }),
+      }).catch((err: unknown) => console.error('[table] placed outcome error:', err))
+      toast.success(`${candidate.candidate_name} marked as Placed — added to Spread Tracker`, {
+        action: { label: 'Add spread details →', onClick: () => window.location.href = '/dashboard/spread-tracker' },
+      })
+    } else if (stage === 'rejected') {
+      setTimeout(() => setRejectionTarget(candidate), 500)
+    }
   }
 
   // ── Remove ───────────────────────────────────────────────────
@@ -653,6 +682,33 @@ export function CandidatesTab({
           candidates={candidates}
           projectId={project.id}
           onClose={() => setCompareBase(null)}
+        />
+      )}
+
+      {/* Stage change action modals */}
+      <InternalSubmittalModal
+        open={!!intSubTarget}
+        candidate={intSubTarget}
+        project={project}
+        onClose={() => setIntSubTarget(null)}
+        onStageMove={() => {}}
+      />
+
+      <ClientSubmittalModal
+        open={!!clientSubTarget}
+        candidate={clientSubTarget}
+        project={project}
+        onClose={() => setClientSubTarget(null)}
+      />
+
+      {rejectionTarget && (
+        <RejectionReasonModal
+          open={!!rejectionTarget}
+          candidateName={rejectionTarget.candidate_name}
+          candidateId={rejectionTarget.id}
+          projectId={project.id}
+          onClose={() => setRejectionTarget(null)}
+          onSaved={() => setRejectionTarget(null)}
         />
       )}
     </div>
