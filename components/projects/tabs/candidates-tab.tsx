@@ -224,10 +224,10 @@ export function CandidatesTab({
     setCandidates(prev => [candidate, ...prev])
   }
 
-  // ── Status change ────────────────────────────────────────────
+  // ── Stage change from table dropdown ─────────────────────────
 
-  function handleStatusChange(id: string, status: CandidateStatus) {
-    setCandidates(prev => prev.map(c => c.id === id ? { ...c, status } : c))
+  function handleTableStageChange(id: string, stage: PipelineStage) {
+    setCandidates(prev => prev.map(c => c.id === id ? { ...c, pipeline_stage: stage } : c))
   }
 
   // ── Remove ───────────────────────────────────────────────────
@@ -563,7 +563,7 @@ export function CandidatesTab({
           onSelectAll={selectAll}
           allSelected={allSelected}
           someSelected={someSelected}
-          onStatusChange={handleStatusChange}
+          onStageChange={handleTableStageChange}
           onScored={() => {}}
           onRedFlag={handleRedFlag}
           onRemove={handleRemove}

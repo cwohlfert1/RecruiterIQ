@@ -7,22 +7,28 @@ import { MoreHorizontal, Trophy, Medal, Eye, FileText, Flag, Send, Trash2, Loade
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { CandidateRow } from '@/app/dashboard/projects/[id]/page'
-import type { CandidateStatus, BreakdownJson, RedFlag } from '@/types/database'
+import type { PipelineStage, BreakdownJson, RedFlag } from '@/types/database'
 
-const STATUS_OPTIONS: CandidateStatus[] = ['reviewing', 'screening', 'submitted', 'rejected']
+const STAGE_OPTIONS: PipelineStage[] = ['reviewing', 'screened', 'internal_submittal', 'client_submittal', 'interviewing', 'placed', 'rejected']
 
-const STATUS_LABEL: Record<CandidateStatus, string> = {
-  reviewing: 'Reviewing',
-  screening: 'Screening',
-  submitted: 'Submitted',
-  rejected:  'Rejected',
+const STAGE_LABEL: Record<PipelineStage, string> = {
+  reviewing:          'Reviewing',
+  screened:           'Screened',
+  internal_submittal: 'Int. Submittal',
+  client_submittal:   'Client Submittal',
+  interviewing:       'Interviewing',
+  placed:             'Placed',
+  rejected:           'Rejected',
 }
 
-const STATUS_CLASS: Record<CandidateStatus, string> = {
-  reviewing: 'bg-slate-500/15 text-slate-400 border-slate-500/20',
-  screening: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/20',
-  submitted: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
-  rejected:  'bg-red-500/15 text-red-400 border-red-500/20',
+const STAGE_CLASS: Record<PipelineStage, string> = {
+  reviewing:          'bg-slate-500/15 text-slate-400 border-slate-500/20',
+  screened:           'bg-blue-500/15 text-blue-400 border-blue-500/20',
+  internal_submittal: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/20',
+  client_submittal:   'bg-violet-500/15 text-violet-400 border-violet-500/20',
+  interviewing:       'bg-amber-500/15 text-amber-400 border-amber-500/20',
+  placed:             'bg-green-500/15 text-green-400 border-green-500/20',
+  rejected:           'bg-red-500/15 text-red-400 border-red-500/20',
 }
 
 const BREAKDOWN_CATS: Array<{ key: keyof BreakdownJson; label: string; inverted?: boolean }> = [
@@ -335,13 +341,13 @@ function RankCell({ rank }: { rank: number | null }) {
 function StatusDropdown({
   candidateId,
   projectId,
-  status,
+  stage,
   onChange,
 }: {
   candidateId: string
   projectId:   string
-  status:      CandidateStatus
-  onChange:    (next: CandidateStatus) => void
+  stage:       PipelineStage
+  onChange:    (next: PipelineStage) => void
 }) {
   const [open,     setOpen]    = useState(false)
   const [saving,   setSaving]  = useState(false)
@@ -364,19 +370,19 @@ function StatusDropdown({
     setOpen(true)
   }
 
-  async function pick(next: CandidateStatus) {
-    if (next === status) { setOpen(false); return }
+  async function pick(next: PipelineStage) {
+    if (next === stage) { setOpen(false); return }
     setOpen(false); setSaving(true)
     try {
-      const res = await fetch(`/api/projects/${projectId}/candidates/${candidateId}`, {
+      const res = await fetch(`/api/projects/${projectId}/candidates/${candidateId}/stage`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ status: next }),
+        body:    JSON.stringify({ stage: next }),
       })
-      if (!res.ok) { toast.error('Failed to update status'); return }
+      if (!res.ok) { toast.error('Failed to update stage'); return }
       onChange(next)
     } catch {
-      toast.error('Failed to update status')
+      toast.error('Failed to update stage')
     } finally { setSaving(false) }
   }
 
@@ -386,22 +392,22 @@ function StatusDropdown({
         ref={btnRef}
         onClick={openDropdown}
         disabled={saving}
-        className={cn('text-[11px] font-semibold px-2 py-0.5 rounded-full border transition-colors hover:opacity-80', STATUS_CLASS[status])}
+        className={cn('text-[11px] font-semibold px-2 py-0.5 rounded-full border transition-colors hover:opacity-80', STAGE_CLASS[stage])}
       >
-        {saving ? <Loader2 className="w-3 h-3 animate-spin inline" /> : STATUS_LABEL[status]}
+        {saving ? <Loader2 className="w-3 h-3 animate-spin inline" /> : STAGE_LABEL[stage]}
       </button>
       {open && dropPos && createPortal(
         <div
           style={{ position: 'fixed', top: dropPos.top, left: dropPos.left, zIndex: 9999 }}
-          className="w-32 bg-[#1A1D2E] border border-white/10 rounded-xl shadow-xl overflow-hidden"
+          className="w-40 bg-[#1A1D2E] border border-white/10 rounded-xl shadow-xl overflow-hidden"
         >
-          {STATUS_OPTIONS.map(s => (
+          {STAGE_OPTIONS.map(s => (
             <button
               key={s}
               onClick={() => pick(s)}
-              className={cn('w-full text-left px-3 py-2 text-xs transition-colors', s === status ? 'opacity-40 cursor-default' : 'hover:bg-white/5', STATUS_CLASS[s].split(' ')[1])}
+              className={cn('w-full text-left px-3 py-2 text-xs transition-colors', s === stage ? 'opacity-40 cursor-default' : 'hover:bg-white/5', STAGE_CLASS[s].split(' ')[1])}
             >
-              {STATUS_LABEL[s]}
+              {STAGE_LABEL[s]}
             </button>
           ))}
         </div>,
@@ -503,7 +509,7 @@ interface Props {
   someSelected?: boolean
   onToggleSelect?: (id: string) => void
   onSelectAll?:   () => void
-  onStatusChange: (id: string, status: CandidateStatus) => void
+  onStageChange: (id: string, stage: PipelineStage) => void
   onScored:     (id: string, score: number) => void
   onRedFlag:    (id: string) => void
   onRemove:     (id: string) => void
@@ -517,7 +523,7 @@ interface Props {
 export function CandidatesTable({
   candidates, projectId, userId, canEdit, isOwner, isManager,
   selected = new Set(), allSelected, someSelected, onToggleSelect, onSelectAll,
-  onStatusChange, onRemove, onViewResume, onSummary, onAssessment, onScoreIndividual, onRedFlag, onCompare,
+  onStageChange, onRemove, onViewResume, onSummary, onAssessment, onScoreIndividual, onRedFlag, onCompare,
 }: Props) {
 
   // Sort candidates: flagged (catfish/DNU) last, then CQI desc, unscored last
@@ -693,18 +699,18 @@ export function CandidatesTable({
                 )}
               </td>
 
-              {/* Status */}
-              <td className="py-4 pr-4 w-28">
+              {/* Stage */}
+              <td className="py-4 pr-4 w-32">
                 {canEdit ? (
                   <StatusDropdown
                     candidateId={c.id}
                     projectId={projectId}
-                    status={c.status as CandidateStatus}
-                    onChange={next => onStatusChange(c.id, next)}
+                    stage={(c.pipeline_stage ?? 'reviewing') as PipelineStage}
+                    onChange={next => onStageChange(c.id, next)}
                   />
                 ) : (
-                  <span className={cn('text-[11px] font-semibold px-2 py-0.5 rounded-full border', STATUS_CLASS[c.status as CandidateStatus])}>
-                    {STATUS_LABEL[c.status as CandidateStatus]}
+                  <span className={cn('text-[11px] font-semibold px-2 py-0.5 rounded-full border', STAGE_CLASS[(c.pipeline_stage ?? 'reviewing') as PipelineStage])}>
+                    {STAGE_LABEL[(c.pipeline_stage ?? 'reviewing') as PipelineStage]}
                   </span>
                 )}
               </td>
