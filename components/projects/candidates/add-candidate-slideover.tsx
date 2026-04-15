@@ -58,15 +58,26 @@ export function AddCandidateSlideover({ open, projectId, hasJd, isManager = fals
   const [flagWarning,  setFlagWarning]  = useState<FlagWarning | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Reset on open
+  // Reset on open — trigger resume parsing if initialResume is provided (drag-drop flow)
   useEffect(() => {
     if (open) {
-      setResume(initialResume ?? ''); setOriginalFile(null); setParsed(null); setName(''); setEmail(''); setLinkedinUrl('')
+      const resumeText = initialResume ?? ''
+      setOriginalFile(null); setParsed(null); setName(''); setEmail(''); setLinkedinUrl('')
       setPayMin(''); setPayMax('')
-      setSubmitting(false); setParsing(false); setAddedCount(0)
+      setSubmitting(false); setAddedCount(0)
       setNameError(false); setEmailError(false); setLinkedinError(false)
+      if (resumeText) {
+        // Use handleResumeChange to trigger the same parsing pipeline as manual paste
+        setResume(resumeText)
+        setParsing(true)
+        parseResume(resumeText)
+      } else {
+        setResume('')
+        setParsing(false)
+      }
     }
-  }, [open])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialResume])
 
   // Escape key
   useEffect(() => {
