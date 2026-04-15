@@ -112,5 +112,5 @@ export function getContextLabel(pathname: string): string {
   if (pathname === '/dashboard/summary') return 'Summary Generator'
   if (pathname === '/dashboard/spread-tracker') return 'Spread Tracker'
   if (pathname === '/dashboard/ranking') return 'Stack Ranking'
-  return 'General assistant'
+  return 'Recruiting Expert'
 }
