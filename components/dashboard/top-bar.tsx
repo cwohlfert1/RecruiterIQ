@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
-import { Sparkles } from 'lucide-react'
+import { CortexOrb } from '@/components/cortex/cortex-orb'
 import { getPlanLimit } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import type { UserProfile } from '@/types/database'
@@ -74,14 +74,14 @@ export function TopBar({ profile }: TopBarProps) {
         <button
           onClick={toggleCortex}
           className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all',
             cortexOpen
-              ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shadow-[0_0_12px_0_rgba(99,102,241,0.15)]'
+              ? 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 shadow-[0_0_16px_0_rgba(99,102,241,0.2)]'
               : 'text-slate-400 hover:text-slate-200 hover:bg-white/5',
           )}
           title="Cortex AI (Cmd+J)"
         >
-          <Sparkles className="w-3.5 h-3.5" />
+          <CortexOrb size={18} active={cortexOpen} />
           <span className="hidden lg:inline">Cortex AI</span>
         </button>
 

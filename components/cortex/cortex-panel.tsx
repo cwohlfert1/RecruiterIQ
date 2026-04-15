@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sparkles, X, Trash2, Copy, Check, ArrowUp, Lock, Upload } from 'lucide-react'
+import { X, Trash2, Copy, Check, ArrowUp, Lock, Upload } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { CortexOrb } from '@/components/cortex/cortex-orb'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { buildPageContext, getContextLabel } from '@/lib/cortex/context-builder'
@@ -190,20 +192,22 @@ export function CortexPanel({ open, onClose, planTier }: CortexPanelProps) {
       )}
 
       {/* Panel */}
-      <div
+      <AnimatePresence>
+        {open && (
+      <motion.div
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: '100%' }}
+        transition={{ type: 'spring', stiffness: 400, damping: 35, mass: 0.8 }}
         className={cn(
           'fixed top-0 right-0 h-full w-[380px] z-40 flex flex-col',
           'bg-[#0F1117] border-l border-white/10 shadow-2xl shadow-black/40',
-          'transition-transform duration-300 ease-out',
-          open ? 'translate-x-0' : 'translate-x-full',
         )}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/8 flex-shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-indigo-500/15 flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-            </div>
+            <CortexOrb size={28} active />
             <div>
               <p className="text-sm font-semibold text-white leading-none">Cortex AI</p>
               <p className="text-[10px] text-slate-500 mt-0.5 leading-none">{contextLabel}</p>
@@ -238,9 +242,7 @@ export function CortexPanel({ open, onClose, planTier }: CortexPanelProps) {
               {/* Empty state */}
               {messages.length === 0 && !streaming && !busy && (
                 <div className="flex flex-col items-center text-center pt-12 gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
-                    <Sparkles className="w-6 h-6 text-indigo-400" />
-                  </div>
+                  <CortexOrb size={48} active />
                   <div>
                     <p className="text-sm text-white font-medium">Hi, I&apos;m Cortex.</p>
                     <p className="text-xs text-slate-500 mt-1">Ask me anything about your candidates, search strings, or this role.</p>
@@ -363,7 +365,9 @@ export function CortexPanel({ open, onClose, planTier }: CortexPanelProps) {
             </div>
           </>
         )}
-      </div>
+      </motion.div>
+        )}
+      </AnimatePresence>
     </>
   )
 }
