@@ -13,6 +13,7 @@ import { FlagCandidateModal }        from '@/components/projects/flag-candidate-
 import { GenerateSummaryModal }      from '@/components/projects/candidates/generate-summary-modal'
 import { InternalSubmittalModal }    from '@/components/projects/candidates/internal-submittal-modal'
 import { SendAssessmentModal }      from '@/components/projects/candidates/send-assessment-modal'
+import { ClientSubmittalModal }     from '@/components/projects/candidates/client-submittal-modal'
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -134,12 +135,14 @@ function StageDropdown({
   stage,
   canEdit,
   onChange,
+  onSubmittalPrompt,
 }: {
   candidateId: string
   projectId:   string
   stage:       PipelineStage
   canEdit:     boolean
   onChange:    (s: PipelineStage) => void
+  onSubmittalPrompt?: (type: 'internal' | 'client') => void
 }) {
   const [saving, setSaving] = useState(false)
 
@@ -159,6 +162,14 @@ function StageDropdown({
       if (next === 'placed' && data.spreadCreated) {
         toast.success(`Marked as Placed — added to Spread Tracker as Locked Up`, {
           action: { label: 'Add spread details →', onClick: () => window.location.href = '/dashboard/spread-tracker' },
+        })
+      } else if (next === 'internal_submittal' && onSubmittalPrompt) {
+        toast.success(`Moved to Internal Submittal`, {
+          action: { label: 'Generate Submittal', onClick: () => onSubmittalPrompt('internal') },
+        })
+      } else if (next === 'client_submittal' && onSubmittalPrompt) {
+        toast.success(`Moved to Client Submittal`, {
+          action: { label: 'Generate Submittal', onClick: () => onSubmittalPrompt('client') },
         })
       } else {
         toast.success(`Moved to ${STAGES.find(s => s.key === next)?.label}`)
@@ -227,6 +238,7 @@ export function CandidateSlideout({
   const [summaryOpen,    setSummaryOpen]   = useState(false)
   const [submittalOpen,  setSubmittalOpen] = useState(false)
   const [assessOpen,     setAssessOpen]   = useState(false)
+  const [clientSubOpen,  setClientSubOpen] = useState(false)
   const [localFlags,    setLocalFlags]    = useState<Array<{ type: string; severity: string; evidence: string; explanation: string }> | null>(null)
   const [localFlagScore, setLocalFlagScore] = useState<number | null>(null)
   const [starred,     setStarred]     = useState(candidate?.starred ?? false)
@@ -419,6 +431,10 @@ export function CandidateSlideout({
                     stage={currentStage}
                     canEdit={canEdit}
                     onChange={s => onStageChange(candidate.id, s)}
+                    onSubmittalPrompt={type => {
+                      if (type === 'internal') setSubmittalOpen(true)
+                      else setClientSubOpen(true)
+                    }}
                   />
                   {(candidate.pay_rate_min != null || candidate.pay_rate_max != null) && (
                     <span className="text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full tabular-nums">
@@ -888,6 +904,14 @@ export function CandidateSlideout({
               project={project}
               onClose={() => setAssessOpen(false)}
               onSent={(cId, invId) => { setAssessOpen(false); onAssessmentSent?.(cId, invId) }}
+            />
+
+            {/* Client Submittal modal */}
+            <ClientSubmittalModal
+              open={clientSubOpen}
+              candidate={candidate}
+              project={project}
+              onClose={() => setClientSubOpen(false)}
             />
 
             {/* Flag candidate modal */}
