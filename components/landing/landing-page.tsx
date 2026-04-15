@@ -724,12 +724,14 @@ function PricingSection() {
                             <span className="text-4xl font-bold text-white">
                               $<NumberFlow value={price ?? 0} />
                             </span>
-                            <span className="text-slate-500 ml-1">/{isYearly ? 'year' : 'mo'}</span>
+                            <span className="text-slate-500 ml-1">/mo</span>
                           </>
                         )}
                       </div>
                       {isYearly && price != null && price > 0 && (
-                        <p className="text-xs text-slate-500 mt-1">billed annually</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          ${(price as number) * 12}/yr — billed annually
+                        </p>
                       )}
                     </CardHeader>
                     <CardContent>
