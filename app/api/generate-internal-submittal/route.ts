@@ -70,22 +70,36 @@ export async function POST(req: NextRequest) {
 
   const userContent = `Write a 4-bullet internal submittal note for your account manager.
 
-RULES:
-- 4 bullets total, no more no less
-- Each bullet: bold label + 1-2 sentences max
-- Every sentence must reference something specific from the resume — a company name, a tool, a metric, a project type, a voltage level, a team size, anything concrete
+CONTENT RULES:
+- Every sentence must reference something specific from the resume — a company name, a tool, a metric, a project type, a team size, anything concrete
 - Tie each bullet to what the JD is actually asking for — stated plainly, no sales language
 - No phrases like: 'maps cleanly to', 'direct hit', 'I am pleased to present', 'strong communicator', 'team player', or any generic filler
 - No emojis
-- If the candidate is overqualified for the role, acknowledge it briefly in bullet 4 with honest positioning advice — do not hide it
+- If the candidate is overqualified, acknowledge it briefly in bullet 4
 - If pay rate is provided include it in bullet 4
-- If there is a notable gap vs the JD (missing tool, wrong industry, level mismatch) — note it briefly rather than padding it out
+- If there is a notable gap vs the JD, note it briefly
 
-BULLET STRUCTURE:
-- Bullet 1: Core technical experience — specific years, tools, environments that match the JD's primary requirement
-- Bullet 2: Relevant domain or project type — specific companies, industries, project scales that tie to what the client does
-- Bullet 3: Strongest differentiator for THIS role specifically — what makes them stand out vs a typical candidate, with a metric or example
-- Bullet 4: Rate, availability, and honest assessment — W2 hourly rate if known, notice period if in resume, and one honest line about fit (level match, tool gap, or positioning note)
+BULLET TOPICS:
+- Bullet 1: Core technical experience — specific years, tools, environments
+- Bullet 2: Relevant domain or project type — companies, industries, project scales
+- Bullet 3: Strongest differentiator for THIS role — metric or example
+- Bullet 4: Rate, availability, and honest assessment
+
+OUTPUT FORMAT — FOLLOW EXACTLY:
+• **[Specific Descriptive Label]** – [one sentence max, specific facts from resume]
+• **[Specific Descriptive Label]** – [one sentence max, specific facts from resume]
+• **[Specific Descriptive Label]** – [one sentence max, specific facts from resume]
+• **[Specific Descriptive Label]** – [one sentence max, specific facts from resume]
+
+FORMAT RULES:
+- Bullet character: • (not -, not *, not a number)
+- Label: bold, wrapped in **, specific and descriptive (NOT generic like 'Experience' or 'Technical Skills')
+- Dash: – (em dash, not hyphen)
+- Body: exactly 1 sentence after the dash, max 25 words
+- 4 bullets minimum, 5 maximum
+- No paragraphs, no sub-bullets, no line breaks within a bullet
+- Do not add any intro text, summary, or closing statement — bullets only
+- If you find yourself writing more than one sentence after the dash, cut it to the strongest one
 
 JD:
 ${jd_text ? jd_text.slice(0, 3000) : 'Not provided'}

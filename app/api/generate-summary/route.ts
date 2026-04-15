@@ -100,20 +100,34 @@ Incorporate these results naturally into Bullet 4 of the summary. Example format
               role: 'user',
               content: `Write a ${safeSessionId ? '5' : '4'}-bullet candidate summary for a client submittal.
 
-Format:
+BULLET TOPICS:
 - Bullet 1: Years of experience + core title/specialty
 - Bullet 2: Top 3 technical skills or tools with context
 - Bullet 3: Most relevant domain or industry experience
 - Bullet 4: Compensation, availability, or standout differentiator${safeSessionId ? '\n- Bullet 5: Assessment results — be factual, include scores' : ''}
 
-Rules:
-- Each bullet: 1-2 sentences max
-- Use bold label + colon format: **Label**: content
+CONTENT RULES:
 - Pull specific numbers, tools, companies, and titles from the resume
 - If a JD is provided, tailor each bullet to what the JD is asking for
-- If recruiter notes are provided, incorporate key points naturally — treat them as insider context
+- If recruiter notes are provided, incorporate key points naturally
 - No fluff, no filler phrases, no emojis
 - Confident, client-ready tone
+
+OUTPUT FORMAT — FOLLOW EXACTLY:
+• **[Specific Descriptive Label]** – [one sentence max, specific facts from resume]
+• **[Specific Descriptive Label]** – [one sentence max, specific facts from resume]
+• **[Specific Descriptive Label]** – [one sentence max, specific facts from resume]
+• **[Specific Descriptive Label]** – [one sentence max, specific facts from resume]
+
+FORMAT RULES:
+- Bullet character: • (not -, not *, not a number)
+- Label: bold, wrapped in **, specific and descriptive (NOT generic like 'Experience' or 'Skills')
+- Dash: – (em dash, not hyphen)
+- Body: exactly 1 sentence after the dash, max 25 words
+- ${safeSessionId ? '5' : '4'} bullets, no more
+- No paragraphs, no sub-bullets, no line breaks within a bullet
+- Do not add any intro text, summary, or closing statement — bullets only
+- If you find yourself writing more than one sentence after the dash, cut it to the strongest one
 
 Job Title: ${jobTitle.trim()}
 Company: ${safeCompany || 'Not specified'}
