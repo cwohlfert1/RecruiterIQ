@@ -14,6 +14,7 @@ import { GenerateSummaryModal }      from '@/components/projects/candidates/gene
 import { InternalSubmittalModal }    from '@/components/projects/candidates/internal-submittal-modal'
 import { SendAssessmentModal }      from '@/components/projects/candidates/send-assessment-modal'
 import { ClientSubmittalModal }     from '@/components/projects/candidates/client-submittal-modal'
+import { RejectionReasonModal }    from '@/components/projects/rejection-reason-modal'
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -136,6 +137,8 @@ function StageDropdown({
   canEdit,
   onChange,
   onSubmittalPrompt,
+  onRejected,
+  onPlacedOutcome,
 }: {
   candidateId: string
   projectId:   string
@@ -143,6 +146,8 @@ function StageDropdown({
   canEdit:     boolean
   onChange:    (s: PipelineStage) => void
   onSubmittalPrompt?: (type: 'internal' | 'client') => void
+  onRejected?: () => void
+  onPlacedOutcome?: () => void
 }) {
   const [saving, setSaving] = useState(false)
 
@@ -171,6 +176,12 @@ function StageDropdown({
         toast.success(`Moved to Client Submittal`, {
           action: { label: 'Generate Submittal', onClick: () => onSubmittalPrompt('client') },
         })
+      } else if (next === 'rejected' && onRejected) {
+        toast.success(`Moved to Rejected`)
+        setTimeout(() => onRejected(), 500)
+      } else if (next === 'placed' && onPlacedOutcome) {
+        onPlacedOutcome()
+        if (!data.spreadCreated) toast.success(`Moved to Placed`)
       } else {
         toast.success(`Moved to ${STAGES.find(s => s.key === next)?.label}`)
       }
@@ -239,6 +250,8 @@ export function CandidateSlideout({
   const [submittalOpen,  setSubmittalOpen] = useState(false)
   const [assessOpen,     setAssessOpen]   = useState(false)
   const [clientSubOpen,  setClientSubOpen] = useState(false)
+  const [rejectionOpen,  setRejectionOpen] = useState(false)
+  const [clientIntel,    setClientIntel]  = useState<{ outcome_count: number; success_threshold: number | null; avg_cqi_placed: number | null } | null>(null)
   const [localFlags,    setLocalFlags]    = useState<Array<{ type: string; severity: string; evidence: string; explanation: string }> | null>(null)
   const [localFlagScore, setLocalFlagScore] = useState<number | null>(null)
   const [starred,     setStarred]     = useState(candidate?.starred ?? false)
@@ -294,6 +307,15 @@ export function CandidateSlideout({
       .then(data => { if (data?.benchmark) setBenchmark(data.benchmark) })
       .catch(() => null)
   }, [candidate?.id, candidate?.cqi_score, project.title])
+
+  // Fetch client intel for this project's client
+  useEffect(() => {
+    if (!candidate?.cqi_score || !project.client_name) { setClientIntel(null); return }
+    fetch(`/api/client-intel?client=${encodeURIComponent(project.client_name)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.intel) setClientIntel(data.intel) })
+      .catch(() => null)
+  }, [candidate?.id, project.client_name])
 
   async function handleStar() {
     if (!candidate) return
@@ -435,6 +457,15 @@ export function CandidateSlideout({
                       if (type === 'internal') setSubmittalOpen(true)
                       else setClientSubOpen(true)
                     }}
+                    onRejected={() => setRejectionOpen(true)}
+                    onPlacedOutcome={() => {
+                      // Auto-save placed outcome silently
+                      fetch(`/api/projects/${projectId}/candidates/${candidate.id}/outcome`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ outcome: 'placed' }),
+                      }).catch((err: unknown) => console.error('[slideout] placed outcome error:', err))
+                    }}
                   />
                   {(candidate.pay_rate_min != null || candidate.pay_rate_max != null) && (
                     <span className="text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full tabular-nums">
@@ -551,6 +582,20 @@ export function CandidateSlideout({
                               )}>
                                 {RECOMMENDATION_BADGE[breakdown.recommendation].label}
                               </span>
+                            )}
+                            {clientIntel && clientIntel.outcome_count >= 3 && clientIntel.success_threshold != null && (
+                              <div className="w-full max-w-[100px] text-center mt-1">
+                                <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                                  <Star className="w-2.5 h-2.5" fill="currentColor" />
+                                  Client Intel
+                                </span>
+                                <p className="text-[9px] text-slate-500 mt-0.5 leading-tight">
+                                  {candidate.cqi_score != null && candidate.cqi_score < clientIntel.success_threshold
+                                    ? `Below ${clientIntel.success_threshold} CQI on ${project.client_name} = low success`
+                                    : `${clientIntel.outcome_count} past submissions to ${project.client_name}`
+                                  }
+                                </p>
+                              </div>
                             )}
                           </div>
                           {breakdown && (
@@ -904,6 +949,16 @@ export function CandidateSlideout({
               project={project}
               onClose={() => setAssessOpen(false)}
               onSent={(cId, invId) => { setAssessOpen(false); onAssessmentSent?.(cId, invId) }}
+            />
+
+            {/* Rejection Reason modal */}
+            <RejectionReasonModal
+              open={rejectionOpen}
+              candidateName={candidate.candidate_name}
+              candidateId={candidate.id}
+              projectId={projectId}
+              onClose={() => setRejectionOpen(false)}
+              onSaved={() => setRejectionOpen(false)}
             />
 
             {/* Client Submittal modal */}
