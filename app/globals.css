@@ -48,6 +48,12 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  /* Native select option styling (dark theme) */
+  option {
+    background-color: #1A1D2E;
+    color: #cbd5e1;          /* slate-300 */
+  }
+
   /* Scrollbar styling */
   ::-webkit-scrollbar {
     width: 6px;
