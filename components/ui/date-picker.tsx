@@ -79,27 +79,43 @@ export function DatePicker({ value, onChange, placeholder = 'Select date', disab
     ? parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : ''
 
+  // Determine if dropdown should open upward
+  const [openUp, setOpenUp] = useState(false)
+
+  function handleOpen() {
+    if (disabled) return
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom
+      setOpenUp(spaceBelow < 320)
+    }
+    setOpen(o => !o)
+  }
+
   return (
     <div ref={ref} className={cn('relative', className)}>
       {/* Trigger */}
       <button
         type="button"
-        onClick={() => !disabled && setOpen(o => !o)}
+        onClick={handleOpen}
         disabled={disabled}
         className={cn(
           'w-full flex items-center gap-2 bg-white/6 border border-white/10 rounded-lg px-3 py-2 text-sm text-left transition-colors',
-          'focus:outline-none focus:border-indigo-500/50',
+          'focus:outline-none focus:border-indigo-500/50 hover:border-white/20',
           disabled && 'opacity-50 cursor-not-allowed',
           displayValue ? 'text-white' : 'text-slate-500',
         )}
       >
-        <Calendar className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
         <span className="flex-1 truncate">{displayValue || placeholder}</span>
+        <Calendar className="w-4 h-4 text-slate-400 flex-shrink-0" />
       </button>
 
       {/* Dropdown calendar */}
       {open && (
-        <div className="absolute z-50 mt-1 w-64 bg-[#12141F] border border-white/10 rounded-xl shadow-2xl shadow-black/40 p-3">
+        <div className={cn(
+          'absolute z-50 w-64 bg-[#12141F] border border-white/10 rounded-xl shadow-2xl shadow-black/40 p-3',
+          openUp ? 'bottom-full mb-1' : 'top-full mt-1',
+        )}>
           {/* Month/year header */}
           <div className="flex items-center justify-between mb-2">
             <button type="button" onClick={prevMonth} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/8 transition-colors">
