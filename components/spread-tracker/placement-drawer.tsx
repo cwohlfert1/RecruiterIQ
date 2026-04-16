@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { ColorPicker } from './color-picker'
+import { DatePicker } from '@/components/ui/date-picker'
 
 export interface Placement {
   id: string
@@ -245,12 +246,11 @@ export function PlacementDrawer({ open, placement, readOnly, onClose, onSaved, c
               </Field>
 
               <Field label="Contract End Date" required>
-                <input
-                  type="date"
+                <DatePicker
                   value={form.contract_end_date}
-                  onChange={e => set('contract_end_date', e.target.value)}
+                  onChange={v => set('contract_end_date', v)}
                   disabled={readOnly}
-                  className="w-full bg-white/6 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 disabled:opacity-50"
+                  placeholder="Select end date"
                 />
               </Field>
 
@@ -295,12 +295,11 @@ export function PlacementDrawer({ open, placement, readOnly, onClose, onSaved, c
                     <label className="text-xs font-medium text-slate-400 block">
                       Expected Start Date <span className="text-red-400">*</span>
                     </label>
-                    <input
-                      type="date"
+                    <DatePicker
                       value={form.expected_start_date ?? ''}
-                      onChange={e => set('expected_start_date', e.target.value || null)}
+                      onChange={v => set('expected_start_date', v || null)}
                       disabled={readOnly}
-                      className="w-full bg-white/6 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 disabled:opacity-50"
+                      placeholder="When are they starting?"
                     />
                     {isEdit && !form.expected_start_date && (
                       <p className="text-[10px] text-amber-400">Add an expected start date to enable start day reminders</p>

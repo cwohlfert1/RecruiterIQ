@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { CalendarClock, Trash2, RefreshCw, Clock, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { DatePicker } from '@/components/ui/date-picker'
 import { toast } from 'sonner'
 import type { Placement } from './placement-drawer'
 
@@ -138,7 +139,7 @@ export function EndDateCheckinModal({ placements, onDone }: Props) {
                 <motion.div key="extend" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
                   <div>
                     <label className="text-xs font-medium text-slate-400 mb-1.5 block">New contract end date</label>
-                    <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} className="w-full bg-white/6 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500/50" />
+                    <DatePicker value={newDate} onChange={setNewDate} placeholder="Select new end date" />
                   </div>
                   <div className="flex gap-2">
                     <button onClick={handleExtend} disabled={busy || !newDate} className="flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-400 hover:to-violet-400 disabled:opacity-50 transition-all">

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { X, CheckCircle2, CalendarClock, Trash2, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { DatePicker } from '@/components/ui/date-picker'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { Placement } from './placement-drawer'
@@ -172,11 +173,10 @@ export function CheckinModal({ placements, onDone }: CheckinModalProps) {
                 >
                   <div>
                     <label className="text-xs font-medium text-slate-400 mb-1.5 block">New expected start date</label>
-                    <input
-                      type="date"
+                    <DatePicker
                       value={newDate}
-                      onChange={e => setNewDate(e.target.value)}
-                      className="w-full bg-white/6 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500/50"
+                      onChange={setNewDate}
+                      placeholder="Select new start date"
                     />
                   </div>
                   <div className="flex gap-2">
