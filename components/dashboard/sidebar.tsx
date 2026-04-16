@@ -19,6 +19,8 @@ import {
   BookOpen,
   AlertOctagon,
   TrendingUp,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react'
 import { CandidLogo } from '@/components/candid-logo'
 import { UserAvatar } from '@/components/ui/user-avatar'
@@ -61,25 +63,33 @@ const itemVariants = {
 }
 
 interface SidebarProps {
-  profile:   UserProfile
-  userEmail: string
+  profile:          UserProfile
+  userEmail:        string
+  collapsed?:       boolean
+  onToggleCollapse?: () => void
 }
 
-function SectionDivider({ label }: { label: string }) {
+function SectionDivider({ label, collapsed }: { label: string; collapsed?: boolean }) {
   return (
     <motion.li variants={itemVariants}>
       <div className="flex items-center gap-2 px-3 pt-4 pb-1.5">
-        <div className="flex-1 h-px bg-white/8" />
-        <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 whitespace-nowrap">
-          {label}
-        </span>
-        <div className="flex-1 h-px bg-white/8" />
+        {collapsed ? (
+          <div className="w-full h-px bg-white/8" />
+        ) : (
+          <>
+            <div className="flex-1 h-px bg-white/8" />
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 whitespace-nowrap">
+              {label}
+            </span>
+            <div className="flex-1 h-px bg-white/8" />
+          </>
+        )}
       </div>
     </motion.li>
   )
 }
 
-export function Sidebar({ profile, userEmail }: SidebarProps) {
+export function Sidebar({ profile, userEmail, collapsed = false, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname()
   const router   = useRouter()
 
@@ -108,29 +118,56 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
   }
 
   return (
-    <aside className="flex flex-col w-64 h-full bg-[#1A1D2E] border-r border-white/8 flex-shrink-0">
-      {/* Logo */}
-      <div className="flex items-center px-5 py-5 border-b border-white/8">
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        {(profile as any).agency_logo_url ? (
-          <div className="flex flex-col gap-0.5">
-            <Image
-              src={(profile as any).agency_logo_url as string}
-              alt={(profile as any).agency_name ?? 'Agency logo'}
-              width={120}
-              height={36}
-              className="object-contain max-h-9 w-auto"
-              unoptimized
-            />
-            <span className="text-[10px] text-slate-600 leading-none">Powered by Candid.ai</span>
-          </div>
+    <aside className={cn(
+      'relative flex flex-col h-full bg-[#1A1D2E] border-r border-white/8 flex-shrink-0 transition-all duration-200',
+      collapsed ? 'w-[72px]' : 'w-64'
+    )}>
+      {/* Logo + collapse toggle */}
+      <div className={cn(
+        'flex items-center border-b border-white/8',
+        collapsed ? 'justify-center px-2 py-5' : 'justify-between px-5 py-5'
+      )}>
+        {collapsed ? (
+          <CandidLogo variant="icon" className="h-8 w-8" />
         ) : (
-          <CandidLogo variant="dark" className="h-10 w-auto" />
+          <>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {(profile as any).agency_logo_url ? (
+              <div className="flex flex-col gap-0.5">
+                <Image
+                  src={(profile as any).agency_logo_url as string}
+                  alt={(profile as any).agency_name ?? 'Agency logo'}
+                  width={120}
+                  height={36}
+                  className="object-contain max-h-9 w-auto"
+                  unoptimized
+                />
+                <span className="text-[10px] text-slate-600 leading-none">Powered by Candid.ai</span>
+              </div>
+            ) : (
+              <CandidLogo variant="dark" className="h-10 w-auto" />
+            )}
+          </>
+        )}
+        {onToggleCollapse && (
+          <button
+            onClick={onToggleCollapse}
+            className={cn(
+              'p-1.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-colors duration-150',
+              collapsed && 'absolute top-4 right-1.5'
+            )}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed
+              ? <ChevronsRight className="w-4 h-4" />
+              : <ChevronsLeft className="w-4 h-4" />
+            }
+          </button>
         )}
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 overflow-y-auto">
+      <nav className={cn('flex-1 py-4 overflow-y-auto', collapsed ? 'px-2' : 'px-3')}>
         <motion.ul
           variants={containerVariants}
           initial="hidden"
@@ -141,15 +178,20 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
           <motion.li variants={itemVariants}>
             <Link
               href="/dashboard"
-              className={cn('nav-item', isActive('/dashboard') && 'nav-active')}
+              title={collapsed ? 'Home' : undefined}
+              className={cn(
+                'nav-item',
+                collapsed && 'justify-center px-0 py-2.5',
+                isActive('/dashboard') && 'nav-active',
+              )}
             >
               <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
-              <span>Home</span>
+              {!collapsed && <span>Home</span>}
             </Link>
           </motion.li>
 
           {/* ── Projects section ─────────────────────────── */}
-          <SectionDivider label="Projects" />
+          <SectionDivider label="Projects" collapsed={collapsed} />
 
           {PROJECTS_NAV.map(({ label, href, icon: Icon }) => (
             <motion.li key={href} variants={itemVariants}>
@@ -159,17 +201,22 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
               >
                 <Link
                   href={href}
-                  className={cn('nav-item', isActive(href) && 'nav-active')}
+                  title={collapsed ? label : undefined}
+                  className={cn(
+                    'nav-item',
+                    collapsed && 'justify-center px-0 py-2.5',
+                    isActive(href) && 'nav-active',
+                  )}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />
-                  <span>{label}</span>
+                  {!collapsed && <span>{label}</span>}
                 </Link>
               </PulseHint>
             </motion.li>
           ))}
 
           {/* ── Tools section ─────────────────────────────── */}
-          <SectionDivider label="Tools" />
+          <SectionDivider label="Tools" collapsed={collapsed} />
 
           {TOOLS_NAV.map(({ label, href, icon: Icon }) => {
             const hintKey = href === '/dashboard/scorer' ? 'resume_scorer'
@@ -180,14 +227,23 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
                 <PulseHint featureKey={hintKey} aiCallsUsed={profile.ai_calls_this_month}>
                   <Link
                     href={href}
-                    className={cn('nav-item', isActive(href) && 'nav-active')}
+                    title={collapsed ? label : undefined}
+                    className={cn(
+                      'nav-item',
+                      collapsed && 'justify-center px-0 py-2.5',
+                      isActive(href) && 'nav-active',
+                    )}
                   >
                     <Icon className="w-4 h-4 flex-shrink-0" />
-                    <span>{label}</span>
-                    {href === '/dashboard/ranking' && profile.plan_tier === 'free' && (
-                      <span className="ml-auto text-[10px] font-semibold text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded-full">
-                        PRO
-                      </span>
+                    {!collapsed && (
+                      <>
+                        <span>{label}</span>
+                        {href === '/dashboard/ranking' && profile.plan_tier === 'free' && (
+                          <span className="ml-auto text-[10px] font-semibold text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded-full">
+                            PRO
+                          </span>
+                        )}
+                      </>
                     )}
                   </Link>
                 </PulseHint>
@@ -199,10 +255,15 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
           <motion.li variants={itemVariants}>
             <Link
               href="/dashboard/flagged"
-              className={cn('nav-item', isActive('/dashboard/flagged') && 'nav-active')}
+              title={collapsed ? 'Flagged Candidates' : undefined}
+              className={cn(
+                'nav-item',
+                collapsed && 'justify-center px-0 py-2.5',
+                isActive('/dashboard/flagged') && 'nav-active',
+              )}
             >
               <AlertOctagon className="w-4 h-4 flex-shrink-0 text-rose-400" />
-              <span>Flagged Candidates</span>
+              {!collapsed && <span>Flagged Candidates</span>}
             </Link>
           </motion.li>
 
@@ -210,25 +271,35 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
           <motion.li variants={itemVariants}>
             <Link
               href="/dashboard/spread-tracker"
-              className={cn('nav-item', isActive('/dashboard/spread-tracker') && 'nav-active')}
+              title={collapsed ? 'Spread Tracker' : undefined}
+              className={cn(
+                'nav-item',
+                collapsed && 'justify-center px-0 py-2.5',
+                isActive('/dashboard/spread-tracker') && 'nav-active',
+              )}
             >
               <TrendingUp className="w-4 h-4 flex-shrink-0" />
-              <span>Spread Tracker</span>
+              {!collapsed && <span>Spread Tracker</span>}
             </Link>
           </motion.li>
 
           {/* ── Assessments section (manager only) ────────── */}
           {isManager && (
             <>
-              <SectionDivider label="Assessments" />
+              <SectionDivider label="Assessments" collapsed={collapsed} />
               {ASSESSMENT_NAV.map(({ label, href, icon: Icon }) => (
                 <motion.li key={href} variants={itemVariants}>
                   <Link
                     href={href}
-                    className={cn('nav-item', isActive(href) && 'nav-active')}
+                    title={collapsed ? label : undefined}
+                    className={cn(
+                      'nav-item',
+                      collapsed && 'justify-center px-0 py-2.5',
+                      isActive(href) && 'nav-active',
+                    )}
                   >
                     <Icon className="w-4 h-4 flex-shrink-0" />
-                    <span>{label}</span>
+                    {!collapsed && <span>{label}</span>}
                   </Link>
                 </motion.li>
               ))}
@@ -244,10 +315,15 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
             <motion.li key={href} variants={itemVariants}>
               <Link
                 href={href}
-                className={cn('nav-item', isActive(href) && 'nav-active')}
+                title={collapsed ? label : undefined}
+                className={cn(
+                  'nav-item',
+                  collapsed && 'justify-center px-0 py-2.5',
+                  isActive(href) && 'nav-active',
+                )}
               >
                 <Icon className="w-4 h-4 flex-shrink-0" />
-                <span>{label}</span>
+                {!collapsed && <span>{label}</span>}
               </Link>
             </motion.li>
           ))}
@@ -255,47 +331,67 @@ export function Sidebar({ profile, userEmail }: SidebarProps) {
       </nav>
 
       {/* User section */}
-      <div className="px-3 py-4 border-t border-white/8 space-y-1">
-        <Link href="/dashboard/settings/profile" className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/4 hover:bg-white/6 transition-colors">
-          <UserAvatar
-            userId={profile.user_id}
-            avatarUrl={(profile as UserProfile & { avatar_url?: string | null }).avatar_url ?? null}
-            displayName={(profile as UserProfile & { display_name?: string | null }).display_name ?? null}
-            email={userEmail}
-            size={32}
-          />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-white truncate">
-              {(profile as UserProfile & { display_name?: string | null }).display_name ?? userEmail}
-            </p>
-            {(profile as UserProfile & { job_title?: string | null }).job_title ? (
-              <p className="text-[10px] text-slate-500 truncate">
-                {(profile as UserProfile & { job_title?: string | null }).job_title}
+      <div className={cn('py-4 border-t border-white/8 space-y-1', collapsed ? 'px-2' : 'px-3')}>
+        {collapsed ? (
+          <Link
+            href="/dashboard/settings/profile"
+            title="Profile settings"
+            className="flex items-center justify-center py-2.5 rounded-xl bg-white/4 hover:bg-white/6 transition-colors"
+          >
+            <UserAvatar
+              userId={profile.user_id}
+              avatarUrl={(profile as UserProfile & { avatar_url?: string | null }).avatar_url ?? null}
+              displayName={(profile as UserProfile & { display_name?: string | null }).display_name ?? null}
+              email={userEmail}
+              size={28}
+            />
+          </Link>
+        ) : (
+          <Link href="/dashboard/settings/profile" className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/4 hover:bg-white/6 transition-colors">
+            <UserAvatar
+              userId={profile.user_id}
+              avatarUrl={(profile as UserProfile & { avatar_url?: string | null }).avatar_url ?? null}
+              displayName={(profile as UserProfile & { display_name?: string | null }).display_name ?? null}
+              email={userEmail}
+              size={32}
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-white truncate">
+                {(profile as UserProfile & { display_name?: string | null }).display_name ?? userEmail}
               </p>
-            ) : (
-              <span className="inline-flex items-center gap-1 mt-0.5">
-                <span className={cn(
-                  'inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full border',
-                  planBadgeClass
-                )}>
-                  {getPlanLabel(profile.plan_tier)}
-                </span>
-                {isBetaUser && (
-                  <span className="text-[9px] font-semibold text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded-full border border-emerald-500/25">
-                    Beta
+              {(profile as UserProfile & { job_title?: string | null }).job_title ? (
+                <p className="text-[10px] text-slate-500 truncate">
+                  {(profile as UserProfile & { job_title?: string | null }).job_title}
+                </p>
+              ) : (
+                <span className="inline-flex items-center gap-1 mt-0.5">
+                  <span className={cn(
+                    'inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full border',
+                    planBadgeClass
+                  )}>
+                    {getPlanLabel(profile.plan_tier)}
                   </span>
-                )}
-              </span>
-            )}
-          </div>
-        </Link>
+                  {isBetaUser && (
+                    <span className="text-[9px] font-semibold text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded-full border border-emerald-500/25">
+                      Beta
+                    </span>
+                  )}
+                </span>
+              )}
+            </div>
+          </Link>
+        )}
 
         <button
           onClick={handleLogout}
-          className="nav-item w-full text-slate-500 hover:text-red-400 hover:bg-red-500/8"
+          title={collapsed ? 'Sign out' : undefined}
+          className={cn(
+            'nav-item w-full text-slate-500 hover:text-red-400 hover:bg-red-500/8',
+            collapsed && 'justify-center px-0 py-2.5',
+          )}
         >
           <LogOut className="w-4 h-4" />
-          <span>Sign out</span>
+          {!collapsed && <span>Sign out</span>}
         </button>
       </div>
     </aside>

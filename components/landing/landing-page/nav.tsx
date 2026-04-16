@@ -28,7 +28,7 @@ export function Nav() {
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <Link href="/" className="select-none">
-          <CandidLogo variant="light" className="h-9 w-auto" />
+          <CandidLogo variant="dark" className="h-9 w-auto" />
         </Link>
 
         <div className="hidden md:flex items-center gap-7">
